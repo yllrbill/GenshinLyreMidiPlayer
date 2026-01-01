@@ -1,0 +1,391 @@
+进行中的工作
+claude终极开场/ai-resume
+chatgpt终极开场/context-pack-plan  
+claude中场复盘/ai-resume <TASK_ID> 然后立刻跑/ai-end <TASK_ID> DRAFT
+chatgpt中场复盘$planner 
+claude终极结尾/ai-end
+新工作
+claude：/ai-intake 任务目标   备用：/ai-task-new <TASK_ID> "一句话目标"
+chatgpt：$planner
+claude：/ai-resume <TASK_ID>
+
+补充命令：
+claude：/ai-project-sum
+0）在 Claude Code（执行层）开新任务
+
+创建工单（request）
+在 Claude Code 里运行你已有的命令（命令名来自 .claude/commands 文件名）：
+
+/ai-task-new <TASK_ID> "一句话目标" 
+它会先问你非目标/约束/验收标准，你确认后才落盘 ops/ai/tasks/<TASK_ID>/request.md。
+
+（可选但强烈建议）先生成给决策层的 Context Pack
+
+如果你已经把“打包”功能放进了 /ai-end：直接 /ai-end <TASK_ID> DRAFT（或你现在的 /ai-end 默认行为）
+
+目标是产出：ops/ai/tasks/<TASK_ID>/evidence/context_pack.md、diff.patch 等最小材料，方便 ChatGPT 不用吞全仓库。
+
+Claude Code 的自定义 slash commands 就是干这个的：把固定流程编码成可复用命令。
+复杂任务更建议让 subagent 负责 context pack/仓库映射，避免主会话变长。
+
+1）在 ChatGPT/Codex（决策层）产出 plan（两种用法，二选一）
+用法 A：用 Codex “Skill”当命令（最像“执行命令”）
+
+你可以创建一个 $planner skill：读取 STATE.md + request.md + context_pack.md → 输出 plan.md (+ patch.diff)
+
+创建/更新 skill 用 $skill-creator。
+
+调用 skill 直接输入：$planner（Codex 支持 $skill-name 显式调用）。
+
+用法 B：不用 skill，直接给固定“Planner 提示词”
+
+把这段（你也可以存进 ops/ai/context/PROMPTS.md）发给 ChatGPT：
+
+你是决策层（Planner）。不运行命令、不直接改仓库。只基于以下文件输出：
+
+ops/ai/state/STATE.md
+
+ops/ai/tasks/<TASK_ID>/request.md
+
+ops/ai/tasks/<TASK_ID>/evidence/context_pack.md（若有）
+交付物：生成 ops/ai/tasks/<TASK_ID>/plan.md（≤10步，含命令、验收、证据清单、Stop conditions）；信息不足就列“我需要你补的文件/输出清单”。
+
+如果你是在 Codex IDE 扩展里做决策，可以用 @file（点名文件）喂上下文，会更省 token。
+
+2）把 plan 落回仓库，然后让 Claude 执行
+
+把 ChatGPT 输出的 plan.md（以及可选 patch.diff）保存到：
+ops/ai/tasks/<TASK_ID>/plan.md（和 patch.diff）
+
+回到 Claude Code：
+
+/ai-resume <TASK_ID> 让它读状态+计划并给出≤10步可执行步骤（只读恢复）。
+
+然后按 plan 落地改代码、跑测试、收集证据。
+
+3）收尾交接（让下次继续不痛苦）
+
+/ai-end <TASK_ID> DONE 或 /ai-end <TASK_ID> BLOCKED
+目标是把：handoff、tests.log、execute.log、diff.patch、context_pack 都凑齐，并更新 STATE.md。
+
+快速流程（很小的问题、你不想建一堆文件时）
+
+直接在 ChatGPT/Codex 里问“给我一个≤5步计划 + 验收命令”
+
+Claude 直接执行
+但你会失去“可复跑/可交接/可审计”，所以只建议处理一次性小问题。
+
+新问题里“技能/MCP/插件/命令”最该注意的事
+
+命令侧（Claude）：命令名来自文件名；把重复流程固化在 .claude/commands 最稳。
+
+subagent：用来隔离上下文、做打包/映射这类“重活”。
+
+权限/敏感信息：你前面说副产物可能敏感——原则是“raw 进 private、脱敏摘要进 evidence”。另外提醒你：Claude Code 的 deny/权限体系最近有人报告过 bug，别把它当成唯一防线；流程上仍然要坚持“敏感不喂给决策层”。
+
+你下一次“直接处理新问题”的最短操作清单
+
+Claude：/ai-task-new 2026-01-01-xxx "目标一句话"
+
+Claude：/ai-end 2026-01-01-xxx DRAFT（生成 context_pack）
+
+ChatGPT/Codex：$planner（或用固定 Planner 提示词）→ 产出 plan.md
+
+Claude：/ai-resume 2026-01-01-xxx → 执行 plan
+
+Claude：/ai-end 2026-01-01-xxx DONE|BLOCKED
+
+----------------------------------------------------------------------------------
+你这套“双代理”怎么接起来（建议）
+
+你可以在 Codex 侧做 2 个 skills：
+
+Planner skill：读 STATE.md + request.md + context_pack.md → 产出 plan.md（以及可选 patch.diff）
+
+Review skill：读 diff.patch + tests.log → 给风险点/回滚点/验收 checklist
+
+这样你就能做到：
+
+Claude 执行层：/ai-resume、/ai-end
+
+Codex 决策层：$planner（一条技能当“命令”用）
+
+下面按你现在这套“双代理（ChatGPT 规划 + Claude 执行）”骨架，给你一套**最省心的开场/收尾习惯**、**加技能/MCP/代理/命令的注意点**，以及两份“**让 Claude 直接执行仓库迁移/合并**”的提示词模板（空远端 / 已有内容且架构不同）。
+
+---
+
+## 1) 开场白 & 结尾：要不要说话，还是直接跑命令？
+
+### 最推荐：**开场直接跑命令**（把开场白“仓库化”）
+
+你已经把流程固化到 `.claude/commands`，那就让 Claude **每次新会话都从“读状态文件”开始**，不用你写长开场白。
+
+Claude Code 的自定义 slash commands 支持 frontmatter（`description / argument-hint / allowed-tools / model` 等），很适合把“恢复上下文”做成一个 `/ai-resume` 命令。([Claude Code][1])
+
+**建议你新增一个命令：**`.claude/commands/ai/ai-resume.md`
+功能：读取 `CLAUDE.md`、`ops/ai/state/STATE.md`、最新任务的 `request/plan/handoff/evidence`，然后输出“≤10 步执行计划 + 证据清单”，最后提示你执行下一条命令（例如 `/ai-task-new` 或开始按 plan 执行）。
+
+> 这样你以后新会话只要输入：`/ai-resume` 或 `/ai-resume <TASK_ID>` 就行。
+
+### 如果你不想加命令：给你两句“极短开场白/结尾”
+
+**Claude 执行层开场白（只要这一段）**
+
+> “按仓库骨架恢复上下文：先读 `CLAUDE.md`、`ops/ai/state/STATE.md`、最新任务目录的 `request.md/plan.md/handoff.md` 和 `evidence/`。输出 ≤10 条执行计划（含命令、验收、证据路径），再开始动手。Fail-closed + Evidence-first + Minimal change。”
+
+**Claude 执行层结尾（只要这一段）**
+
+> “收尾必须：写 `handoff.md`（含 Evidence Index），落盘 `evidence/execute.log tests.log diff.patch context_pack.md(如需要)`，更新 `STATE.md` 指向最新任务与状态，然后停止。”
+
+---
+
+## 2) 加 skills / MCP / subagents / 插件 / 命令：要注意什么？
+
+### A) Slash commands：**把“描述/用法/权限”写进 frontmatter**
+
+Claude Code 的 slash commands 文档明确支持在 frontmatter 中配置 `allowed-tools / argument-hint / description / model` 等。([Claude Code][1])
+建议你每个命令都做到：
+
+* **最小工具权限**：能不让 `Bash` 就不让；能只 `Read/Glob/Grep` 就只给读。
+* **统一前缀命名**：例如 `ai-task-new / ai-task-pack / ai-resume`，避免和别的仓库命令冲突（因为命令名最终看文件名）。
+* **命令只做一件事**（计划、执行、打包、收尾分开），更可靠。
+
+### B) Subagents：**单职责 + 隔离上下文**
+
+Subagents 的官方建议是：从 Claude 生成初版开始，然后迭代；并且每个 subagent 保持单一清晰责任，会更稳定、可预测。([Claude Code][2])
+你现在最值的两个 subagent：
+
+* `repo-mapper`：维护 `ops/ai/context/REPO_MAP.md`
+* `context-packer`：产出给 Planner 的 `context_pack.md`
+
+### C) 工具/权限：**把“允许哪些工具”当作安全边界**
+
+Anthropic 的最佳实践里明确提到：可以用 `/permissions` 管理 allowlist，并且可以编辑 `.claude/settings.json`（还建议把项目级设置进版本控制用于团队共享）。([Anthropic][3])
+实操建议：
+
+* 默认 **不允许网络/不允许危险 bash**，需要时临时开。
+* git 操作也建议按命令粒度放行（例如只允许 `git status`、需要 push 再临时放行）。
+
+> 小心点：社区里也有 subagent 权限相关的 bug 报告，所以你在高风险仓库里仍然要坚持“先 review 再 commit/push”的习惯。([GitHub][4])
+
+### D) MCP：**把它当“新攻击面”，只连你信任的服务器**
+
+Claude Code 官方有 MCP 接入说明：MCP 用来把 Claude Code 连到外部工具/数据源（客户端-服务器式）。([Claude Code][5])
+建议：
+
+* 只接入你信任/可审计的 MCP server（最好自建或可读源码）。
+* 把 MCP 配置和凭据分离：配置可进仓库，密钥走环境变量或 `private/`。
+* MCP 输出落盘到 `evidence/` 时要脱敏（敏感原文进 `private/`）。
+
+### E) ChatGPT/Codex 侧：用 “@file + reasoning effort” 控成本
+
+Codex IDE 扩展支持 `@file` 引用、open files/selection 上下文，并可调 reasoning effort（low/medium/high）。([OpenAI разработчиков][6])
+对你这套双代理最适合的用法是：
+
+* Planner 优先读 `context_pack.md + request.md + STATE.md`，缺什么再点名要文件，不要上来就吃全仓库。
+
+---
+
+## 3) “让 Claude 直接执行迁移/合并”的提示词（两套）
+
+下面两份都按你要求：**Claude 在执行前会询问你**（确认 URL / 分支 / 是否保留历史 / 是否允许覆盖），并严格遵守 **private 隔离**（敏感原文不进 Git）。
+
+---
+
+### 3.1 迁移到“空远端地址”（新 repo、无内容）
+
+> 用于：你现在这个仓库要换一个新的 GitHub/GitLab repo 地址，历史保留，直接推过去。
+
+```text
+你在 Claude Code 中作为执行层工作。目标：把当前仓库迁移到一个“空的远端仓库 URL”（新地址），保留完整 git 历史、分支与 tag。必须先询问我确认再做任何会影响远端的操作。
+
+硬规则：
+- Fail-closed：任何一步不确定就停下问我。
+- Secret-safe：不得输出或提交 private/ 中真实敏感内容；只允许提交 private/.gitignore 和 private/README.md。
+- Minimal change：不改代码逻辑，只做迁移所需最小 git 操作。
+- Evidence-first：把关键 git 输出落盘到 ops/ai/tasks/<TASK_ID>/evidence/execute.log。
+
+执行流程：
+1) 读取并确认：git status 干净（或列出未提交变更）；列出当前远端 remote -v；列出当前分支与 tags。
+2) 询问我 4 个确认项（一次性问完）：
+   a) 新远端 URL 是什么（HTTPS/SSH）
+   b) 目标默认分支名（main/master）
+   c) 是否要推送所有分支与 tags（默认是）
+   d) 是否保留旧 origin（改名为 origin-old）还是直接替换 origin
+3) 我确认后，按我的选择执行：
+   - 若保留旧 origin：git remote rename origin origin-old；git remote add origin <NEW_URL>
+   - 若替换 origin：git remote set-url origin <NEW_URL>
+4) 推送：
+   - 推送默认分支：git push -u origin <default-branch>
+   - 推送所有分支：git push --all origin
+   - 推送 tags：git push --tags origin
+5) 验证：git remote -v、git log -1、确认远端分支/标签推送成功（以 push 输出为准）。
+6) 写一份迁移 handoff 到 ops/ai/tasks/<TASK_ID>/handoff.md：新旧远端、做了哪些命令、结果如何、回滚方式（如何切回旧远端）。
+```
+
+---
+
+### 3.2 合并进“已有内容的仓库（架构可能不同）”
+
+> 用于：你想把这套骨架（ops/ai + .claude commands/agents + private 规则）迁到另一个已有仓库；避免破坏对方结构、避免命令冲突。
+
+```text
+你在 Claude Code 中作为执行层工作。目标：把当前仓库的“双代理骨架”迁入一个“已有内容的目标仓库”（架构可能不同），要求可回滚、冲突可控、最小改动。
+
+硬规则：
+- 先问我确认：目标仓库 URL / 目标分支 / 引入方式（cherry-pick 或复制文件）/ 命令是否需要重命名避免冲突。
+- Fail-closed：遇到冲突先停下给我选项，不要擅自覆盖。
+- Secret-safe：private/ 真实内容绝不提交；只带 private/.gitignore 与 private/README.md。
+- Deterministic：列文件清单必须排序；所有改动必须在单独分支完成。
+- Evidence-first：所有关键输出落盘到 ops/ai/tasks/<TASK_ID>/evidence/execute.log，最终写 handoff。
+
+优先推荐方案：cherry-pick 引入（保留骨架提交的审计痕迹）：
+1) 询问我：
+   a) 目标仓库 URL（HTTPS/SSH）
+   b) 目标仓库的默认分支（main/master）
+   c) 引入骨架的版本：使用 skeleton tag（例如 skeleton-v0.1）还是当前工作树
+   d) 是否要把命令统一加前缀（推荐：ai-xxx，避免冲突）
+2) 我确认后，你执行：
+   - 在一个新目录 clone 目标仓库（避免污染当前仓库）
+   - 在目标仓库创建分支 chore/import-ai-skeleton
+   - 添加 skeleton remote（如果有）并 fetch --tags
+   - git cherry-pick -x <skeleton-tag-or-commit>
+   - 若冲突：列出冲突文件（sorted）+ 给我 2-3 个合并策略选项（保留目标/保留骨架/手工融合），等待我选。
+3) 校验引入结果：
+   - ops/ai/ 目录齐全
+   - .claude/commands 与 .claude/agents 存在且命令无重名（若有就重命名文件）
+   - private/ 只追踪 .gitignore 与 README
+4) 提交并推送分支到目标仓库远端（不要直接推 main），输出 PR/合并建议步骤。
+5) 写 handoff：本次引入内容、冲突处理、后续如何升级骨架（fetch + cherry-pick 新 tag）。
+```
+
+> 这个“合并进已有仓库”的方式，和你之前的“方式 B（骨架仓库 + cherry-pick）”完全一致，只是把“确认点/冲突策略/安全边界”写得更硬。
+
+---
+
+## 4) 你现在最省事的日常操作（建议固定成习惯）
+
+* **Claude 新会话：**先 `/ai-resume`（或者你现在用短开场白也行）
+* **任务创建：**`/ai-task-new <TASK_ID>`（先问你再落盘）
+* **执行后交接：**`/ai-task-pack <TASK_ID>` 产出 `context_pack.md` 给 Planner
+* **收尾：**`/ai-task-close <TASK_ID>`（或按你模板手动也行）
+* **Planner（ChatGPT/Codex）只读最小集：**`STATE + request + context_pack + handoff + diff + logs`（不读全仓库）
+
+---
+
+3) 加技能 / MCP / 代理 / 插件 / 命令：最需要注意的 6 件事
+① “共享 vs 本地”分层要固定
+
+Claude Code 的 settings 有三层：
+
+~/.claude/settings.json（用户级）
+
+.claude/settings.json（项目共享、建议提交）
+
+.claude/settings.local.json（本机本项目，不提交；Claude Code 会自动把它 gitignore）
+
+**建议：**把“团队约束/安全 deny”放 .claude/settings.json；把“你个人偏好、临时放权”放 .claude/settings.local.json。
+
+② 用 permissions.deny 把敏感区直接挡掉（防误读/误泄露）
+
+官方明确支持在 .claude/settings.json 用 permissions.deny 排除敏感文件（示例包含 .env、credentials、build 等）。
+你的骨架里有 private/，建议至少加：
+
+Read(./private/**)
+
+Read(./**/.env*) 之类
+需要时你再在会话里临时授权“读某一个文件”，而不是默认放开整个目录。
+
+③ MCP：把它当“扩权点”，严格白名单 + 密钥不进仓库
+
+Claude Code 通过 MCP 连接外部工具。
+settings 文档也提到：MCP 配置可能分散在 ~/.claude.json 和项目的 .mcp.json 等位置，并有一些审批/启用项。
+实践上：配置可进仓库，密钥放环境变量或 private（且默认 deny read）。
+
+④ 命令命名统一前缀（避免迁移到别的仓库冲突）
+
+命令名来自文件名。
+所以强烈建议统一 ai- 前缀：ai-resume / ai-task-new / ai-task-pack / ai-task-close。
+
+⑤ 允许工具（allowed-tools / allowlist）别过度信任
+
+allowed-tools 和 settings allowlist 在现实里偶尔会遇到“仍然反复询问权限”的 bug（Anthropic issue tracker 里有类似报告）。
+所以流程上仍然建议：任何会写盘/跑危险命令的步骤，最后都要求你确认一次（你本来也想要“执行前询问”，这正好匹配）。
+
+⑥ ChatGPT/Codex 做“决策层”：只喂 context pack，不吞全仓库
+
+OpenAI 的 Codex IDE 扩展支持用 @file 引用文件、调 reasoning effort、控制 agent 权限；非常适合当 Planner 只读最小集。
+
+4) 你要“直接让 Claude 执行仓库迁移/合并”：提示词怎么写（带你的路径）
+
+你可以把下面这句当成每次迁移的Claude 执行层开场提示词（它会在动手前问你确认）：
+
+“你在 Claude Code 执行层工作，仓库根目录是 D:\dw11\piano。先运行 git status、git remote -v、确认工作区干净；然后按我提供的新远端 URL 或目标仓库 URL 进行迁移/合并。所有关键输出写入 ops/ai/tasks/<TASK_ID>/evidence/execute.log，并在结束写 handoff.md。严格 Secret-safe：private/ 只允许提交占位文件，真实内容不得提交或输出。”
+
+（迁移到空远端 / 合并到已有仓库那两套完整提示词，你前面已经收到了；这里我只是把你的本地路径锁进去。）
+
+2) 让 /ai-end 具备“收尾+交接”语义（给你一个建议版 ai-end.md）
+
+把下面内容放到：D:\dw11\piano\.claude\commands\ai\ai-end.md
+
+---
+description: 任务收尾与交接：生成 context_pack + 确保证据/hand off/STATE 更新（执行前若信息不足先询问）
+argument-hint: " 可选> [DONE|BLOCKED 可选] 例: /ai-end 2026-01-01-piano DONE"
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep
+---
+
+你在 Claude Code 执行层工作。目标：把当前任务“收尾到可交接状态”，让 Planner（ChatGPT）用最小上下文继续决策。
+
+硬规则：
+- Fail-closed：缺关键文件/测试失败/证据不足就标记 BLOCKED，不要假装完成。
+- Evidence-first：所有关键命令输出落盘到 ops/ai/tasks/>/evidence/ 下。
+- Secret-safe：若日志可能含敏感信息，只在 evidence 中保存“脱敏版摘要”；原始敏感内容放 private/，不要提交到 git。
+
+A) 选择 TASK_ID
+1) 若用户传了 $1 则用它；否则从 ops/ai/state/STATE.md 读取 latest task。
+2) 若仍无法确定：列出 ops/ai/tasks/*（sorted）并询问用户选哪一个，然后停止等待。
+
+B) 准备目录
+- 确保存在：ops/ai/tasks/>/evidence/
+- 若不存在 request.md：停止并说明缺口。
+
+C) 生成/更新 evidence（最小交接包）
+1) 写入/追加 ops/ai/tasks/>/evidence/execute.log：
+   - 记录 git status、git log -1、以及本次收尾步骤的关键输出（不要贴长日志，必要时只摘录失败段+上下文）
+2) 若存在测试命令（plan.md 或 REPO_MAP.md 中能找到）：运行并把输出写入 tests.log；失败则后续状态倾向 BLOCKED。
+3) 生成 ops/ai/tasks/>/evidence/diff.patch（git diff）用于给 Planner 审阅。
+4) 生成 ops/ai/tasks/>/evidence/context_pack.md：
+   - 优先：调用 context-packer subagent 产出“低 token”摘要（路径索引、失败点、下一步）。
+   - 若无 subagent：自己按模板写（不贴大量源码，给路径+要点）。
+
+D) handoff + STATE
+1) 写/更新 ops/ai/tasks/>/handoff.md（必须包含 Evidence Index：列出 evidence 文件路径）。
+2) 更新 ops/ai/state/STATE.md：
+   - Latest Task = >
+   - Status = DONE 或 BLOCKED（如果用户第二参数提供就按其；否则按 tests 结果判定）
+   - Next Actions：按优先级列出 3-5 条
+
+E) 最后输出（8 行以内）
+- DONE/BLOCKED
+- Planner 最小阅读清单：STATE.md、request.md、handoff.md、diff.patch、tests.log、context_pack.md
+- 下一条建议命令（例如：让 Planner 生成下一轮 plan / 或继续执行）
+
+
+自定义命令放在 .claude/commands 并可版本控制，是官方推荐的工作流；命令支持传参（如 $ARGUMENTS）也属于常见用法。
+你如果配了 subagents，Claude Code 的 subagent 会有独立上下文窗口，适合用来做 context pack/仓库映射，减少主会话变长的风险。
+
+3) 可选：保留旧命令当“兼容别名”（避免肌肉记忆踩坑）
+
+如果你还想让旧的 /ai-task-pack 暂时可用（提示改用新命令），就别删旧文件，而是把旧文件改成只做提示：
+
+D:\dw11\piano\.claude\commands\ai\ai-task-pack.md：
+
+---
+description: (DEPRECATED) Use /ai-end instead
+argument-hint: " 可选>"
+allowed-tools: Read
+---
+
+此命令已废弃，请使用：/ai-end $ARGUMENTS
+
+

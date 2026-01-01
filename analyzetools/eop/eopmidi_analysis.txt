@@ -1,0 +1,2180 @@
+EOPmidi.exe Analysis Report
+==================================================
+Analyzing: D:\dw11\EveryonePiano\EOPmidi.exe
+Base: 0x00400000
+
+=== String Reference Analysis ===
+  0x0059E450: "runtime error "
+  0x0059E498: "R6034
+An application has made an attempt to load the C runtime library incorrectly.
+Please contact the application's support team for more information.
+"
+  0x0059E890: "
+This application has requested the Runtime to terminate it in an unusual way.
+Please contact the application's support team for more information.
+"
+  0x0059E9B0: "Microsoft Visual C++ Runtime Library"
+    -> __NMSG_WRITE @ 0x0054E268
+  0x0059E9F8: "Runtime Error!
+
+Program: "
+    -> __NMSG_WRITE @ 0x0054E169
+  0x005AAC68: "e:\work\PinaoMidi\BIN\EOPmidi.pdb"
+  0x005CB862: "FileTimeToSystemTime"
+  0x005CB87A: "GetSystemTime"
+  0x005CB9CC: "SystemTimeToFileTime"
+  0x005CB9FC: "DosDateTimeToFileTime"
+  0x005CBA14: "SetFileTime"
+  0x005CBB22: "FileTimeToLocalFileTime"
+  0x005CBD30: "GetFileTime"
+  0x005CBE10: "GetSystemTimeAsFileTime"
+  0x005CBFD8: "GetTimeZoneInformation"
+  0x005CC190: "SetTimer"
+  0x005CC19C: "KillTimer"
+  0x005CC9A4: "GetMessageTime"
+  0x005CCFA8: "GetDoubleClickTime"
+  0x005CE0C4: "midiOutGetNumDevs"
+  0x005CE0D8: "midiOutGetDevCapsW"
+  0x005CE0EE: "midiOutOpen"
+  0x005CE0FC: "midiOutClose"
+  0x005CE10C: "midiInGetNumDevs"
+  0x005CE120: "midiInGetDevCapsW"
+  0x005CE134: "midiInOpen"
+  0x005CE142: "midiInStart"
+  0x005CE150: "midiInClose"
+  0x005CE15E: "midiOutShortMsg"
+  0x005CE170: "timeGetTime"
+  0x005CE17E: "timeBeginPeriod"
+  0x005CE190: "timeEndPeriod"
+  0x005F34CC: ".?AUmidi_enum_callback@@"
+  0x005F3860: ".?AUenum_midi_callback@?1??FunMenuCreate@CNMenuSrc@@QAEHIVCPoint@@PAVCWnd@@@Z@"
+
+=== File Operation Analysis ===
+
+[CreateFileW @ 0x00578268]
+  31 call sites
+  - sub_41D160 @ 0x0041D1D5
+  - sub_434020 @ 0x0043412B
+  - sub_43D460 @ 0x0043D4C2
+  - sub_43DE70 @ 0x0043DEE5
+  - sub_43E0A0 @ 0x0043E0FF
+
+[CreateFileA @ 0x00578210]
+  2 call sites
+  - ___initconout @ 0x0055F0C3
+  - ___initconout @ 0x0055F0C3
+
+[ReadFile @ 0x00578270]
+  23 call sites
+  - sub_41D160 @ 0x0041D217
+  - sub_43D460 @ 0x0043D54B
+  - sub_43E0A0 @ 0x0043E15C
+  - sub_43E6B0 @ 0x0043E78B
+  - sub_43E6B0 @ 0x0043E7C8
+
+=== MIDI Function Analysis ===
+
+[midiOutOpen @ 0x005788D8]
+  Called from: sub_42FED0 @ 0x0042FF7F
+  Called from: sub_42FED0 @ 0x0042FF7F
+
+[midiOutShortMsg @ 0x005788F4]
+  Called from: sub_430190 @ 0x004301F0
+  Called from: sub_430190 @ 0x004301F0
+
+[midiOutClose @ 0x005788DC]
+  Called from: sub_42F3D0 @ 0x0042F450
+  Called from: sub_42F9D0 @ 0x0042F9E5
+  Called from: sub_42FED0 @ 0x0042FF07
+  Called from: sub_42F3D0 @ 0x0042F450
+  Called from: sub_42F9D0 @ 0x0042F9E5
+  Called from: sub_42FED0 @ 0x0042FF07
+
+[midiInOpen @ 0x005788E8]
+  Called from: sub_430080 @ 0x00430134
+  Called from: sub_430080 @ 0x00430134
+
+[midiInStart @ 0x005788EC]
+  Called from: sub_430080 @ 0x00430160
+  Called from: sub_430080 @ 0x00430160
+
+[midiInClose @ 0x005788F0]
+  Called from: sub_40D0D0 @ 0x0040D12F
+  Called from: sub_430080 @ 0x004300C3
+  Called from: sub_40D0D0 @ 0x0040D12F
+  Called from: sub_430080 @ 0x004300C3
+
+=== Marker Byte Analysis ===
+
+[Searching for 0xE2]
+  0x0040E6EC in sub_40E660: push    0E2h; int
+  0x004ABA0E in sub_4A7F05: mov     byte ptr [ebp+var_4], 0E2h
+  0x004AF19B in sub_4A7F05: mov     byte ptr [ebp+var_4], 0E2h
+
+[Searching for 0xE6]
+  0x0040EAB9 in sub_40E660: push    0E6h; int
+  0x004ABB1F in sub_4A7F05: mov     byte ptr [ebp+var_4], 0E6h
+  0x004ABC46 in sub_4A7F05: mov     byte ptr [ebp+var_4], 0E6h
+  0x004ABF8B in sub_4A7F05: mov     byte ptr [ebp+var_4], 0E6h
+
+[Searching for 0xF2]
+  0x00401CA9 in sub_401990: push    0F2h; int
+  0x004ABDD4 in sub_4A7F05: mov     byte ptr [ebp+var_4], 0F2h
+
+[Searching for 0xF6]
+  0x004ABF39 in sub_4A7F05: mov     byte ptr [ebp+var_4], 0F6h
+
+[Searching for 0xBD]
+  0x004AB0C0 in sub_4A7F05: mov     byte ptr [ebp+var_4], 0BDh
+  0x004AE91E in sub_4A7F05: mov     byte ptr [ebp+var_4], 0BDh
+  0x004AEAD6 in sub_4A7F05: mov     byte ptr [ebp+var_4], 0BDh
+
+[Searching for 0xD8]
+  0x00408620 in sub_408540: sub     ecx, 0D8h
+  0x004AB761 in sub_4A7F05: mov     byte ptr [ebp+var_4], 0D8h
+  0x004AEF91 in sub_4A7F05: mov     byte ptr [ebp+var_4], 0D8h
+  0x004D38B6 in ?Initialize@CMFCToolBarMenuButton@@IAEXXZ: add     esi, 0D8h
+  0x0052FBCB in no_func: db 68h
+  0x0056D81A in sub_52C035: add     ecx, 0D8h
+  0x0056F06D in sub_541E8A: add     ecx, 0D8h
+
+[Searching for 0xDE]
+  0x004AB8D9 in sub_4A7F05: mov     byte ptr [ebp+var_4], 0DEh
+  0x004AF0C5 in sub_4A7F05: mov     byte ptr [ebp+var_4], 0DEh
+
+[Searching for 0xF4]
+  0x00402C0D in sub_402BB0: cmp     ecx, 0F4h
+  0x00405DD2 in sub_405110: add     esp, 0F4h
+  0x0048D223 in ?SetDefaultButton@COccManager@@SAXPAVCWnd@@H@Z: push    0F4h; Msg
+  0x004ABE75 in sub_4A7F05: mov     byte ptr [ebp+var_4], 0F4h
+  0x004CA05D in sub_4CA053: add     ecx, 0F4h
+  0x004CA0A6 in ?CopyFrom@CHelpComboBoxButton@@UAEXABVCMFCToolBarButton@@@Z: add     edi, 0F4h
+  0x004CA0D0 in ?Serialize@CHelpComboBoxButton@@UAEXAAVCArchive@@@Z: add     esi, 0F4h
+  0x004D3FEF in sub_4D3F2C: add     edi, 0F4h
+  0x0052CA7C in sub_52CA70: push    0F4h; Size
+  0x0054F3F4 in _memcpy_0: dd offset TrailUp0_0; jump table for switch statement
+  0x005695CA in sub_4C9EE5: add     ecx, 0F4h; void *
+  0x00569EFC in sub_4DA99A: add     ecx, 0F4h; void *
+  0x00569F2D in sub_4DAB69: add     ecx, 0F4h; void *
+  0x0056A66A in ??1?$call@IV?$function@$$A6AXABI@Z@tr1@std@@@Concurrency@@UAE@XZ_1: add     ecx, 0F4h; void *
+
+[Found 21 functions using marker bytes]
+
+=== Key Function Details ===
+
+=== Function Analysis: sub_401990 @ 0x00401990 ===
+  Size: 1996 bytes
+
+  [Decompiled pseudocode]
+int __thiscall sub_401990(CWnd *this)
+{
+  const WCHAR *v2; // ecx
+  const WCHAR *v3; // ecx
+  const WCHAR *v4; // ecx
+  const WCHAR *v5; // ecx
+  const WCHAR *v6; // ecx
+  const WCHAR *v7; // ecx
+  const WCHAR *v8; // ecx
+  const WCHAR *v9; // ecx
+  const WCHAR *v10; // ecx
+  const WCHAR *v11; // ecx
+  const WCHAR *v12; // ecx
+  const WCHAR *v13; // ecx
+  const WCHAR *v14; // ecx
+  int v15; // ecx
+  const WCHAR *v16; // ecx
+  LPCWSTR v17; // ecx
+  const WCHAR *v18; // ecx
+  const WCHAR *v19; // ecx
+  unsigned int v20; // edx
+  unsigned int v21; // ecx
+  int v22; // edx
+  unsigned int v23; // ecx
+  int v24; // eax
+  int v25; // ecx
+  unsigned int v26; // edx
+  LONG WindowLongW; // eax
+  int v28; // eax
+  int v29; // eax
+  int v30; // eax
+  int *v31; // eax
+  int v32; // eax
+  int v33; // ecx
+  int v34; // eax
+  HANDLE Thread; // eax
+  LPSECURITY_ATTRIBUTES v37; // [esp-18h] [ebp-84h]
+  SIZE_T v38; // [esp-14h] [ebp-80h]
+  LPTHREAD_START_ROUTINE v39; // [esp-10h] [ebp-7Ch]
+  LPVOID v40; // [esp-Ch] [ebp-78h]
+  int v41; // [esp-8h] [ebp-74h] BYREF
+  LPCWSTR v42[5]; // [esp-4h] [ebp-70h] BYREF
+  int *v43; // [esp+10h] [ebp-5Ch]
+  int v44[2]; // [esp+14h] [ebp-58h] BYREF
+  _BYTE v45[28]; // [esp+1Ch] [ebp-50h] BYREF
+  int v46; // [esp+38h] [ebp-34h]
+  int v47; // [esp+3Ch] [ebp-30h]
+  int v48; // [esp+40h] [ebp-2Ch]
+  int v49; // [esp+44h] [ebp-28h]
+  int v50; // [esp+48h] [ebp-24h]
+  int v51; // [esp+4Ch] [ebp-20h]
+  int v52; // [esp+50h] [ebp-1Ch]
+  int v53; // [esp+54h] [ebp-18h]
+  int v54; // [esp+68h] [ebp-4h]
+
+  CDialog::OnInitDialog(this);
+  SendMessageW(*((HWND *)this + 8), 0x80u, 1u, *((_DWORD *)this + 579));
+  SendMessageW(*((HWND *)this + 8), 0x80u, 0, *((_DWORD *)this + 579));
+  CWnd::SetWindowTextW(this, L"EOPMIDI");
+  v42[0] = (LPCWSTR)238;
+  v41 = (int)v2;
+  v43 = &v41;
+  sub_40A2F0((void *)&NewItem);
+  sub_4389E0((LPCWSTR)v41, (int)v42[0]);
+  v42[0] = (LPCWSTR)280;
+  v41 = (int)v3;
+  v43 = &v41;
+  sub_40A2F0((void *)&NewItem);
+  sub_4389E0((LPCWSTR)v41, (int)v42[0]);
+  v42[0] = (LPCWSTR)258;
+  v41 = (int)v4;
+  v43 = &v41;
+  sub_40A2F0((void *)&NewItem);
+  sub_4389E0((LPCWSTR)v41, (int)v42[0]);
+  v42[0] = (LPCWSTR)276;
+  v41 = (int)v5;
+  v43 = &v41;
+  sub_40A2F0((void *)&NewItem);
+  sub_4389E0((LPCWSTR)v41, (int)v42[0]);
+  v42[0] = (LPCWSTR)277;
+  v41 = (int)v6;
+  v43 = &v41;
+  sub_40A2F0((void *)&NewItem);
+  sub_4389E0((LPCWSTR)v41, (int)v42[0]);
+  v42[0] = (LPCWSTR)278;
+  v41 = (int)v7;
+  v43 = &v41;
+  sub_40A2F0((void *)&NewItem);
+  sub_4389E0((LPCWSTR)v41, (int)v42[0]);
+  v42[0] = (LPCWSTR)264;
+  v41 = (int)v8;
+  v43 = &v41;
+  sub_40A2F0((void *)&NewItem);
+  sub_4389E0((LPCWSTR)v41, (int)v42[0]);
+  v42[0] = (LPCWSTR)265;
+  v41 = (int)v9;
+  v43 = &v41;
+  sub_40A2F0((void *)&NewItem);
+  sub_4389E0((LPCWSTR)v41, (int)v42[0]);
+  v42[0] = (LPCWSTR)266;
+  v41 = (int)v10;
+  v43 = &v41;
+  sub_40A2F0((void *)&NewItem);
+  sub_4389E0((LPCWSTR)v41, (int)v42[0]);
+  v42[0] = (LPCWSTR)287;
+  v41 = (int)v11;
+  v43 = &v41;
+  sub_40A2F0((void *)&NewItem);
+  sub_4389E0((LPCWSTR)v41, (int)v42[0]);
+  v42[0] = (LPCWSTR)288;
+  v41 = (int)v12;
+  v43 = &v41;
+  sub_40A2F0((void *)&NewItem);
+  sub_4389E0((LPCWSTR)v41, (int)v42[0]);
+  v42[0] = (LPCWSTR)289;
+  v41 = (int)v13;
+  v43 = &v41;
+  sub_40A2F0((void *)&NewItem);
+  sub_4389E0((LPCWSTR)v41, (int)v42[0]);
+  v42[0] = (LPCWSTR)290;
+  v41 = (int)v14;
+  v43 = &v41;
+  sub_40A2F0((void *)&NewItem);
+  sub_4389E0((LPCWSTR)v41, (int)v42[0]);
+  v15 = *((_DWORD *)this + 386);
+  *((_DWORD *)this + 576) = *((_DWORD *)this + 374) / 52;
+  *((_DWORD *)this + 577) = v15 / 52;
+  v16 = (const WCHAR *)*((_DWORD *)this + 398);
+  *((_DWORD *)this + 578) = (int)v16 / 52;
+  sub_406F30(v16, this, 3);
+  sub_4416C0(v17, v41, (int)v42[0]);
+  *((_DWORD *)this + 633) = 0;
+  *((_DWORD *)this + 634) = 0;
+  if ( *((_DWORD *)this + 622) )
+  {
+    v42[0] = *((LPCWSTR *)this + 622);
+    *((_DWORD *)this + 622) = 0;
+    *((_DWORD *)this + 623) = 0;
+    *((_DWORD *)this + 624) = 0;
+    *((_DWORD *)this + 625) = 0;
+    *((_DWORD *)this + 627) = 0;
+    *((_DWORD *)this + 626) = 0;
+    *((_DWORD *)this + 629) = -1;
+    *((_BYTE *)this + 2513) = 0;
+    *((_BYTE *)this + 2512) = 0;
+    DeleteObject((HGDIOBJ)v42[0]);
+  }
+  v42[0] = (LPCWSTR)242;
+  v41 = (int)v18;
+  v43 = &v41;
+  sub_40A2F0((void *)&NewItem);
+  sub_4389E0((LPCWSTR)v41, (int)v42[0]);
+  v19 = (const WCHAR *)*((_DWORD *)this + 625);
+  v20 = *((_DWORD *)this + 624) / 3u;
+  *((_DWORD *)this + 620) = this;
+  *((_DWORD *)this + 633) = v20;
+  *((_DWORD *)this + 634) = v19;
+  *((_DWORD *)this + 697) = 0;
+  *((_DWORD *)this + 698) = 0;
+  if ( *((_DWORD *)this + 686) )
+  {
+    v42[0] = *((LPCWSTR *)this + 686);
+    *((_DWORD *)this + 686) = 0;
+    *((_DWORD *)this + 687) = 0;
+    *((_DWORD *)this + 688) = 0;
+    *((_DWORD *)this + 689) = 0;
+    *((_DWORD *)this + 691) = 0;
+    *((_DWORD *)this + 690) = 0;
+    *((_DWORD *)this + 693) = -1;
+    *((_BYTE *)this + 2769) = 0;
+    *((_BYTE *)this + 2768) = 0;
+    DeleteObject((HGDIOBJ)v42[0]);
+  }
+  v42[0] = (LPCWSTR)243;
+  v41 = (int)v19;
+  v43 = &v41;
+  sub_40A2F0((void *)&NewItem);
+  sub_4389E0((LPCWSTR)v41, (int)v42[0]);
+  v21 = *((_DWORD *)this + 688);
+  *((_DWORD *)this + 697) = v21 / 3;
+  v22 = *((_DWORD *)this + 689);
+  *((_DWORD *)this + 684) = this;
+  *((_DWORD *)this + 698) = v22;
+  *((_DWORD *)this + 665) = 0;
+  *((_DWORD *)this + 666) = 0;
+  if ( *((_DWORD *)this + 654) )
+  {
+    v42[0] = *((LPCWSTR *)this + 654);
+    *((_DWORD *)this + 654) = 0;
+    *((_DWORD *)this + 655) = 0;
+    *((_DWORD *)this + 656) = 0;
+    *((_DWORD *)this + 657) = 0;
+    *((_DWORD *)this + 659) = 0;
+    *((_DWORD *)this + 658) = 0;
+    *((_DWORD *)this + 661) = -1;
+    *((_BYTE *)this + 2641) = 0;
+    *((_BYTE *)this + 2640) = 0;
+    DeleteObject((HGDIOBJ)v42[0]);
+  }
+  v42[0] = (LPCWSTR)241;
+  v41 = v21;
+  v43 = &v41;
+  sub_40A2F0((void *)&NewItem);
+  sub_4389E0((LPCWSTR)v41, (int)v42[0]);
+  v23 = *((_DWORD *)this + 656);
+  v24 = *((_DWORD *)this + 657);
+  *((_DWORD *)this + 652) = this;
+  *((_DWORD *)this + 665) = v23 / 3;
+  *((_DWORD *)this + 666) = v24;
+  *((_DWORD *)this + 729) = 0;
+  *((_DWORD *)this + 730) = 0;
+  if ( *((_DWORD *)this + 718) )
+  {
+    v42[0] = *((LPCWSTR *)this + 718);
+    *((_DWORD *)this + 718) = 0;
+    *((_DWORD *)this + 719) = 0;
+    *((_DWORD *)this + 720) = 0;
+    *((_DWORD *)this + 721) = 0;
+    *((_DWORD *)this + 723) = 0;
+    *((_DWORD *)this + 722) = 0;
+    *((_DWORD *)this + 725) = -1;
+    *((_BYTE *)this + 2897) = 0;
+    *((_BYTE *)this + 2896) = 0;
+    DeleteObject((HGDIOBJ)v42[0]);
+  }
+  v42[0] = (LPCWSTR)239;
+  v41 = v23;
+  v43 = &v41;
+  sub_40A2F0((void *)&NewItem);
+  sub_4389E0((LPCWSTR)v41, (int)v42[0]);
+  v25 = *((_DWORD *)this + 721);
+  v26 = *((_DWORD *)this + 720) / 3u;
+  v42[0] = (LPCWSTR)this;
+  *((_DWORD *)this + 716) = this;
+  *((_DWORD *)this + 729) = v26;
+  *((_DWORD *)this + 730) = v25;
+  sub_409230(v42[0]);
+  dword_15FEDCC = *((_DWORD *)this + 8);
+  sub_42F2C0(dword_5F9EF8);
+  WindowLongW = GetWindowLongW(*((HWND *)this + 8), -16);
+  SetWindowLongW(*((HWND *)this + 8), -16, WindowLongW | 0x20000);
+  *((_DWORD *)this + 217) = this;
+  *((_DWORD *)this + 222) = this;
+  *((_DWORD *)this + 226) = this;
+  *((_DWORD *)this + 234) = this;
+  *((_DWORD *)this + 230) = this;
+  *((_DWORD *)this + 273) = this;
+  dword_15FED80 = (int)this;
+  CWnd::SetWindowPos(this, 0, *(int *)X, (int)Y, (int)dword_5F9E28, *(int *)dword_5F9E2C, 0x40u);
+  sub_43E400();
+  v54 = 0;
+  v28 = sub_439470(v42[1], v42[2]);
+  LOBYTE(v54) = 1;
+  v29 = sub_409F90((int)v44, v28, (void *)L"kmf");
+  v44[1] = (int)v42;
+  LOBYTE(v54) = 2;
+  sub_409F90((int)v42, v29, L"\\Default.kmm");
+  sub_43E6B0(v42[0]);
+  LOBYTE(v54) = 1;
+  v30 = v44[0] - 16;
+  if ( _InterlockedDecrement((volatile signed __int32 *)(v44[0] - 16 + 12)) <= 0 )
+    (*(void (__stdcall **)(int))(**(_DWORD **)v30 + 4))(v30);
+  LOBYTE(v54) = 0;
+  v31 = v43 - 4;
+  if ( _InterlockedDecrement(v43 - 1) <= 0 )
+    (*(void (__stdcall **)(int *))(*(_DWORD *)*v31 + 4))(v31);
+  v50 = 0;
+  v47 = 0;
+  v48 = 0;
+  v49 = 0;
+  v51 = 0;
+  v52 = 0;
+  v53 = 0;
+  v32 = sub_443750();
+  v46 = v32;
+  if ( v32 == 2 || v32 == 3 )
+  {
+    sub_443600();
+    v32 = v46;
+  }
+  LOBYTE(v54) = 3;
+  if ( v32 == 1 )
+  {
+    v33 = sub_443380();
+    v32 = v46;
+  }
+  else if ( v32 <= 1 || v32 > 3 )
+  {
+    v33 = 0;
+  }
+  else
+  {
+    v44[0] = 0;
+    if ( v47 )
+    {
+      (*(void (__stdcall **)(int, int *))(*(_DWORD *)v47 + 60))(v47, v44);
+      v32 = v46;
+    }
+    v33 = v44[0];
+  }
+  *((_DWORD *)this + 305) = v33;
+  if ( v32 == 1 )
+  {
+    v34 = sub_443090();
+  }
+  else if ( v32 <= 1 || v32 > 3 )
+  {
+    v34 = -1;
+  }
+  else
+  {
+    v44[0] = 0;
+    sub_4436F0();
+    v34 = v44[0];
+  }
+  *((_DWORD *)this + 306) = v34;
+  sub_402AD0(v34);
+  v42[0] = 0;
+  v41 = 0;
+  v40 = (char *)this + 120;
+  v39 = sub_41E1B0;
+  v38 = 0;
+  v37 = 0;
+  *((_DWORD *)this + 32) = this;
+  Thread = CreateThread(v37, v38, v39, v40, v41, (LPDWORD)v42[0]);
+  v42[0] = 0;
+  v41 = 100;
+  *((_DWORD *)this + 54) = Thread;
+  SetTimer(*((HWND *)this + 8), 0x3E9u, v41, (TIMERPROC)v42[0]);
+  LOBYTE(v54) = 0;
+  sub_443000();
+  sub_43E490(v45);
+  return 1;
+}
+
+
+=== Function Analysis: sub_402BB0 @ 0x00402BB0 ===
+  Size: 7238 bytes
+
+  [Decompiled pseudocode]
+int __thiscall sub_402BB0(struct CWnd *this, LPARAM lParam)
+{
+  struct tagMSG *v2; // edi
+  HWND v4; // eax
+  LONG v5; // ecx
+  int v6; // esi
+  HWND Capture; // eax
+  int v8; // eax
+  int v9; // eax
+  bool v10; // zf
+  char *v11; // esi
+  HWND v12; // eax
+  HCURSOR CursorW; // eax
+  LONG v15; // ecx
+  int v16; // eax
+  int v17; // eax
+  char *v18; // ebx
+  LONG v19; // edx
+  int v20; // eax
+  int v21; // eax
+  unsigned __int16 v22; // ax
+  int v23; // eax
+  int v24; // eax
+  LONG v25; // edx
+  int v26; // eax
+  HMENU PopupMenu; // eax
+  LONG v28; // ecx
+  LONG v29; // ecx
+  wchar_t *v30; // ecx
+  int v31; // eax
+  LONG v32; // ecx
+  LONG v33; // ecx
+  wchar_t *v34; // ecx
+  int v35; // eax
+  LONG v36; // ecx
+  LONG v37; // ecx
+  wchar_t *v38; // ecx
+  int v39; // eax
+  LONG v40; // ecx
+  LONG v41; // ecx
+  wchar_t *v42; // ecx
+  int v43; // eax
+  LONG v44; // ecx
+  LONG v45; // ecx
+  wchar_t *v46; // ecx
+  int v47; // eax
+  LONG v48; // ecx
+  LONG v49; // ecx
+  wchar_t *v50; // ecx
+  int v51; // eax
+  LONG v52; // ecx
+  LONG v53; // ecx
+  wchar_t *v54; // ecx
+  int v55; // eax
+  LONG v56; // ecx
+  LONG v57; // ecx
+  wchar_t *v58; // ecx
+  int v59; // eax
+  LONG v60; // ecx
+  LONG v61; // ecx
+  wchar_t *v62; // ecx
+  int v63; // eax
+  LONG v64; // ecx
+  LONG v65; // ecx
+  wchar_t *v66; // ecx
+  int v67; // eax
+  LONG v68; // ecx
+  LONG v69; // ecx
+  wchar_t *v70; // ecx
+  int v71; // eax
+  HMENU v72; // eax
+  LONG v73; // ecx
+  LONG v74; // ecx
+  wchar_t *v75; // ecx
+  int v76; // eax
+  LONG v77; // ecx
+  LONG v78; // ecx
+  wchar_t *v79; // ecx
+  int v80; // eax
+  LONG v81; // ecx
+  LONG v82; // ecx
+  wchar_t *v83; // ecx
+  int v84; // eax
+  LONG v85; // ecx
+  LONG v86; // ecx
+  wchar_t *v87; // ecx
+  int v88; // eax
+  LONG v89; // ecx
+  LONG v90; // ecx
+  wchar_t *v91; // ecx
+  int v92; // eax
+  LONG v93; // ecx
+  LONG v94; // ecx
+  wchar_t *v95; // ecx
+  int v96; // eax
+  LONG v97; // ecx
+  LONG v98; // ecx
+  wchar_t *v99; // ecx
+  int v100; // eax
+  LONG v101; // ecx
+  LONG v102; // ecx
+  wchar_t *v103; // ecx
+  int v104; // eax
+  LONG v105; // ecx
+  LONG v106; // ecx
+  wchar_t *v107; // ecx
+  int v108; // eax
+  LONG v109; // ecx
+  LONG v110; // ecx
+  wchar_t *v111; // ecx
+  int v112; // eax
+  LONG v113; // ecx
+  LONG v114; // ecx
+  wchar_t *v115; // ecx
+  int v116; // eax
+  LONG v117; // ecx
+  LONG v118; // ecx
+  wchar_t *v119; // ecx
+  int v120; // eax
+  LPARAM v121; // esi
+  int v122; // eax
+  wchar_t *v123; // [esp-Ch] [ebp-E0h] BYREF
+  POINT v124; // [esp-8h] [ebp-DCh] BYREF
+  int v125; // [esp+0h] [ebp-D4h]
+  int v126; // [esp+4h] [ebp-D0h]
+  LPCWSTR lpNewItem; // [esp+14h] [ebp-C0h] BYREF
+  struct tagPOINT Point; // [esp+18h] [ebp-BCh] BYREF
+  void *p_y; // [esp+20h] [ebp-B4h]
+  void *v130; // [esp+24h] [ebp-B0h]
+  LPARAM v131; // [esp+28h] [ebp-ACh]
+  void **v132; // [esp+2Ch] [ebp-A8h] BYREF
+  HMENU v133; // [esp+30h] [ebp-A4h]
+  void **v134; // [esp+34h] [ebp-A0h] BYREF
+  HMENU hMenu; // [esp+38h] [ebp-9Ch]
+  POINT pt; // [esp+3Ch] [ebp-98h] BYREF
+  int v137; // [esp+44h] [ebp-90h] BYREF
+  int v138; // [esp+48h] [ebp-8Ch] BYREF
+  int v139; // [esp+4Ch] [ebp-88h] BYREF
+  int v140; // [esp+50h] [ebp-84h] BYREF
+  int v141; // [esp+54h] [ebp-80h] BYREF
+  int v142; // [esp+58h] [ebp-7Ch] BYREF
+  int v143; // [esp+5Ch] [ebp-78h] BYREF
+  int v144; // [esp+60h] [ebp-74h] BYREF
+  int v145; // [esp+64h] [ebp-70h] BYREF
+  int v146; // [esp+68h] [ebp-6Ch] BYREF
+  int v147; // [esp+6Ch] [ebp-68h] BYREF
+  int v148; // [esp+70h] [ebp-64h] BYREF
+  int v149; // [esp+74h] [ebp-60h] BYREF
+  int v150; // [esp+78h] [ebp-5Ch] BYREF
+  int v151; // [esp+7Ch] [ebp-58h] BYREF
+  int v152; // [esp+80h] [ebp-54h] BYREF
+  int v153; // [esp+84h] [ebp-50h] BYREF
+  int v154; // [esp+88h] [ebp-4Ch] BYREF
+  int v155; // [esp+8Ch] [ebp-48h] BYREF
+  int v156; // [esp+90h] [ebp-44h] BYREF
+  int v157; // [esp+94h] [ebp-40h] BYREF
+  int v158; // [esp+98h] [ebp-3Ch] BYREF
+  int v159; // [esp+9Ch] [ebp-38h] BYREF
+  int v160; // [esp+D0h] [ebp-4h]
+
+  v2 = (struct tagMSG *)lParam;
+  v4 = (HWND)*((_DWORD *)this + 8);
+  v131 = lParam;
+  if ( *(HWND *)lParam == v4 )
+  {
+    switch ( *(_DWORD *)(lParam + 4) )
+    {
+      case 0x111:
+        if ( !*(_WORD *)(lParam + 10) )
+        {
+          v22 = *(_WORD *)(lParam + 8);
+          if ( v22 >= 0x15E0u && v22 <= 0x1644u )
+          {
+            v23 = *((_DWORD *)this + 525);
+            if ( v23 != -1 )
+              dword_5F1EE8[13 * v23 - 273] = *(_DWORD *)(lParam + 8) - 5500;
+            sub_408350(v125, v126);
+          }
+          if ( *(_WORD *)(lParam + 8) == 5497 )
+          {
+            v24 = *((_DWORD *)this + 525);
+            if ( v24 != -1 )
+              dword_5F1EE8[13 * v24 - 273] = 0;
+            sub_408350(v125, v126);
+          }
+        }
+        return CDialog::PreTranslateMessage(this, v2);
+      case 0x200:
+        v5 = *(_DWORD *)(lParam + 24);
+        Point.x = *(_DWORD *)(lParam + 20);
+        Point.y = v5;
+        ScreenToClient(v4, &Point);
+        v6 = sub_407030(Point);
+        Capture = GetCapture();
+        if ( CWnd::FromHandle(Capture) == this )
+        {
+          if ( *((_DWORD *)this + 525) == -1 )
+          {
+            *((_DWORD *)this + 526) = -1;
+          }
+          else
+          {
+            if ( v6 == -1 )
+              return 1;
+            v8 = *((_DWORD *)this + 526);
+            if ( v6 != v8 )
+            {
+              if ( v8 != -1 )
+              {
+                LOBYTE(lpNewItem) = dword_5F1EBC[13 * v8 - 273];
+                p_y = &stru_1600704;
+                EnterCriticalSection(&stru_1600704);
+                v160 = 0;
+                sub_4318D0(128, lpNewItem);
+                LeaveCriticalSection(&stru_1600704);
+              }
+              LOBYTE(lpNewItem) = dword_5F1EBC[13 * v6 - 273];
+              p_y = &stru_1600704;
+              EnterCriticalSection(&stru_1600704);
+              v160 = 1;
+              sub_4318D0(144, lpNewItem);
+              v160 = -1;
+              LeaveCriticalSection(&stru_1600704);
+              v2 = (struct tagMSG *)v131;
+              *((_DWORD *)this + 526) = v6;
+            }
+          }
+        }
+        else if ( v6 != -1 )
+        {
+          v9 = 13 * (v6 - 21);
+          v10 = dword_5F1EE8[v9] == 0;
+          v131 = (LPARAM)&dword_5F1EE8[v9];
+          v11 = (char *)this + 2108;
+          if ( v10 )
+          {
+            if ( this != (struct CWnd *)-2108 && *((_DWORD *)this + 535) )
+            {
+              CToolTipCtrl::DelTool((struct CWnd *)((char *)this + 2108), this, 0);
+              (*(void (__thiscall **)(char *))(*(_DWORD *)v11 + 96))((char *)this + 2108);
+            }
+          }
+          else if ( this == (struct CWnd *)-2108 || !*((_DWORD *)this + 535) )
+          {
+            sub_40A940(&lpNewItem);
+            v160 = 2;
+            switch ( *(_DWORD *)v131 )
+            {
+              case 'd':
+              case 'x':
+                v124.y = (LONG)L"Fst";
+                break;
+              case 'e':
+              case 'z':
+                v124.y = (LONG)L"Prev";
+                break;
+              case 'f':
+              case '{':
+                v124.y = (LONG)L"Next";
+                break;
+              case 'g':
+              case 'y':
+                v124.y = (LONG)L"Last";
+                break;
+              case 'h':
+              case 't':
+                v124.y = (LONG)L"SP+";
+                break;
+              case 'i':
+              case 'u':
+                v124.y = (LONG)L"SP-";
+                break;
+              case 'j':
+              case 'v':
+                v124.y = (LONG)L"Run";
+                break;
+              case 'k':
+              case 'w':
+                v124.y = (LONG)L"Stop";
+                break;
+              case 'l':
+              case '|':
+                v124.y = (LONG)L"Up";
+                break;
+              case 'm':
+              case '}':
+                v124.y = (LONG)L"Down";
+                break;
+              case 'n':
+                v124.y = (LONG)L"LLi";
+                break;
+              case 'o':
+                v124.y = (LONG)L"RLi";
+                break;
+              case 'p':
+                v124.y = (LONG)L"LRst";
+                break;
+              case 'q':
+                v124.y = (LONG)L"RRst";
+                break;
+              case 'r':
+                v124.y = (LONG)L"VOI";
+                break;
+              case 's':
+                v124.y = (LONG)L"APP";
+                break;
+              default:
+                v124.y = (LONG)&NewItem;
+                break;
+            }
+            sub_40A8C0((void *)v124.y);
+            (*(void (__thiscall **)(char *, struct CWnd *, _DWORD))(*(_DWORD *)v11 + 316))((char *)this + 2108, this, 0);
+            CToolTipCtrl::AddTool((struct CWnd *)((char *)this + 2108), this, lpNewItem, 0, 0);
+            sub_409BF0(1u);
+            sub_409BD0();
+            sub_409C10(lParam);
+            v160 = -1;
+            sub_43B550(&lpNewItem);
+          }
+          else
+          {
+            sub_409C10(lParam);
+          }
+        }
+        sub_441740(0, Point);
+        sub_441740(0, Point);
+        sub_441740(0, Point);
+        sub_441740(0, Point);
+        sub_441740(0, Point);
+        sub_441740(0, Point);
+        sub_441740(0, Point);
+        sub_441740(0, Point);
+        sub_441740(0, Point);
+        sub_441740(0, Point);
+        sub_441740(0, Point);
+        if ( *((_DWORD *)this + 307) )
+        {
+          v12 = GetCapture();
+          if ( CWnd::FromHandle(v12) == this )
+          {
+            if ( sub_409BB0((RECT *)this + 78, Point) )
+            {
+              sub_442FB0();
+              v160 = 3;
+              sub_402B70(this);
+              sub_443060();
+              v160 = -1;
+              sub_443000();
+            }
+          }
+        }
+        if ( sub_409BB0((RECT *)((char *)this + 2268), Point) || sub_409BB0((RECT *)((char *)this + 2284), Point) )
+        {
+          AfxGetModuleState();
+          CursorW = LoadCursorW(0, (LPCWSTR)0x7F84);
+          SetCursor(CursorW);
+          return 1;
+        }
+        break;
+      case 0x201:
+      case 0x203:
+        v15 = *(_DWORD *)(lParam + 24);
+        Point.x = *(_DWORD *)(lParam + 20);
+        Point.y = v15;
+        ScreenToClient(v4, &Point);
+        if ( PtInRect((const RECT *)((char *)this + 2220), Point) )
+        {
+          v124 = Point;
+          *((_DWORD *)this + 525) = -1;
+          v16 = sub_407030(v124);
+          *((_DWORD *)this + 525) = v16;
+          *((_DWORD *)this + 526) = v16;
+          if ( v16 != -1 )
+          {
+            LOBYTE(v131) = dword_5F1EBC[13 * v16 - 273];
+            p_y = &stru_1600704;
+            EnterCriticalSection(&stru_1600704);
+            v160 = 4;
+            sub_4318D0(144, v131);
+            v160 = -1;
+            LeaveCriticalSection(&stru_1600704);
+            sub_409B90(this);
+            v17 = *((_DWORD *)this + 525);
+            if ( v17 != -1 )
+            {
+              if ( dword_5F1EE8[13 * v17 - 273] )
+              {
+                v18 = (char *)this + 2108;
+                if ( v18 )
+                {
+                  if ( *((_DWORD *)v18 + 8) )
+                    sub_409C10(lParam);
+                }
+              }
+            }
+          }
+          return 1;
+        }
+        if ( sub_441920(Point)
+          || sub_441920(Point)
+          || sub_441920(Point)
+          || sub_441920(Point)
+          || sub_441920(Point)
+          || sub_441920(Point) && *((_DWORD *)this + 775)
+          || sub_441920(Point) && *((_DWORD *)this + 807)
+          || sub_441920(Point) && *((_DWORD *)this + 839)
+          || sub_441920(Point) && *((_DWORD *)this + 871)
+          || sub_441920(Point) && *((_DWORD *)this + 903)
+          || sub_441920(Point) && *((_DWORD *)this + 935) )
+        {
+          sub_4417C0(0, 2);
+          sub_409B90(this);
+          return 1;
+        }
+        if ( sub_409BB0((RECT *)this + 78, Point) )
+        {
+          *((_DWORD *)this + 307) = 1;
+          sub_409B90(this);
+          return 1;
+        }
+        return CDialog::PreTranslateMessage(this, v2);
+      case 0x202:
+        v19 = *(_DWORD *)(lParam + 24);
+        Point.x = *(_DWORD *)(lParam + 20);
+        Point.y = v19;
+        ScreenToClient(v4, &Point);
+        v124 = Point;
+        *((_DWORD *)this + 525) = -1;
+        v20 = sub_407030(v124);
+        *((_DWORD *)this + 525) = v20;
+        if ( v20 == -1 )
+        {
+          sub_4417C0(0, 0);
+          sub_4417C0(0, 0);
+          sub_4417C0(0, 0);
+          sub_4417C0(0, 0);
+          sub_4417C0(0, 0);
+          if ( sub_441920(Point) )
+            sub_405110(this);
+          if ( sub_441920(Point) )
+            sub_405E40((LPCWSTR)this);
+          if ( sub_441920(Point) )
+            CWnd::ShowWindow(this, 6);
+          if ( sub_441920(Point) )
+            sub_405DE0(this);
+          if ( sub_441920(Point) )
+            sub_406440(this);
+          if ( sub_409BB0((RECT *)this + 77, Point) )
+            sub_406570(v125, v126);
+          sub_4417C0(0, 0);
+          sub_4417C0(0, 0);
+          sub_4417C0(0, 0);
+          sub_4417C0(0, 0);
+          sub_4417C0(0, 0);
+          sub_4417C0(0, 0);
+          if ( sub_441920(Point) && *((_DWORD *)this + 775) )
+            sub_421140(v125, v126);
+          if ( sub_441920(Point) && *((_DWORD *)this + 807) )
+            sub_421140(v125, v126);
+          if ( sub_441920(Point) && *((_DWORD *)this + 839) )
+            sub_421140(v125, v126);
+          if ( sub_441920(Point) && *((_DWORD *)this + 871) )
+            sub_421140(v125, v126);
+          if ( sub_441920(Point) && *((_DWORD *)this + 903) )
+            sub_421140(v125, v126);
+          if ( sub_441920(Point) && *((_DWORD *)this + 935) )
+            sub_421140(v125, v126);
+          if ( sub_409BB0((RECT *)this + 78, Point) )
+          {
+            sub_442FB0();
+            v160 = 6;
+            sub_402B70(this);
+            sub_443060();
+            v160 = -1;
+            sub_443000();
+          }
+        }
+        else
+        {
+          LOBYTE(lpNewItem) = dword_5F1EBC[13 * v20 - 273];
+          p_y = &stru_1600704;
+          EnterCriticalSection(&stru_1600704);
+          v160 = 5;
+          sub_4318D0(128, lpNewItem);
+          v160 = -1;
+          LeaveCriticalSection(&stru_1600704);
+          v21 = *((_DWORD *)this + 525);
+          if ( v21 != -1 && dword_5F1EE8[13 * v21 - 273] && this != (struct CWnd *)-2108 && *((_DWORD *)this + 535) )
+            sub_409C10(v131);
+        }
+        *((_DWORD *)this + 525) = -1;
+        *((_DWORD *)this + 526) = -1;
+        ReleaseCapture();
+        goto LABEL_129;
+      case 0x205:
+        v25 = *(_DWORD *)(lParam + 24);
+        pt.x = *(_DWORD *)(lParam + 20);
+        pt.y = v25;
+        ScreenToClient(v4, &pt);
+        v124 = pt;
+        *((_DWORD *)this + 525) = -1;
+        v26 = sub_407030(v124);
+        *((_DWORD *)this + 525) = v26;
+        if ( v26 == -1 )
+          return CDialog::PreTranslateMessage(this, v2);
+        if ( dword_5F1EB8[13 * v26 - 273] == 4 )
+          return 1;
+        sub_40A940(&lpNewItem);
+        v160 = 7;
+        if ( this != (struct CWnd *)-1104 && *((_DWORD *)this + 277) )
+          CMenu::DestroyMenu((struct CWnd *)((char *)this + 1104));
+        CMenu::CreatePopupMenu((struct CWnd *)((char *)this + 1104));
+        v134 = &CMenu::`vftable';
+        hMenu = 0;
+        LOBYTE(v160) = 8;
+        PopupMenu = CreatePopupMenu();
+        CMenu::Attach((CMenu *)&v134, PopupMenu);
+        v124.y = v28;
+        p_y = &v124.y;
+        sub_40A2F0(L"IDC_MEU_MAIN_KEYBOARD_PLUGIN_EOPMSTAND_PS");
+        v124.x = v29;
+        LOBYTE(v160) = 9;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v30;
+        LOBYTE(v160) = 10;
+        Point.x = (LONG)&v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 8;
+        v31 = sub_4395C0((int)&v145, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 11;
+        sub_409D10(v31);
+        LOBYTE(v160) = 8;
+        sub_43B550(&v145);
+        AppendMenuW(hMenu, dword_5F1EE8[13 * *((_DWORD *)this + 525)] != 100 ? 0 : 8, 0x15E0u, lpNewItem);
+        v124.y = v32;
+        Point.x = (LONG)&v124.y;
+        sub_40A2F0(L"IDC_MEU_MAIN_KEYBOARD_PLUGIN_EOPMSTAND_PE");
+        v124.x = v33;
+        LOBYTE(v160) = 12;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v34;
+        LOBYTE(v160) = 13;
+        p_y = &v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 8;
+        v35 = sub_4395C0((int)&v148, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 14;
+        sub_409D10(v35);
+        LOBYTE(v160) = 8;
+        sub_43B550(&v148);
+        AppendMenuW(hMenu, dword_5F1EE8[13 * *((_DWORD *)this + 525)] != 103 ? 0 : 8, 0x15E3u, lpNewItem);
+        v124.y = v36;
+        Point.x = (LONG)&v124.y;
+        sub_40A2F0(L"IDC_MEU_MAIN_KEYBOARD_PLUGIN_EOPMSTAND_PL");
+        v124.x = v37;
+        LOBYTE(v160) = 15;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v38;
+        LOBYTE(v160) = 16;
+        p_y = &v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 8;
+        v39 = sub_4395C0((int)&v150, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 17;
+        sub_409D10(v39);
+        LOBYTE(v160) = 8;
+        sub_43B550(&v150);
+        AppendMenuW(hMenu, dword_5F1EE8[13 * *((_DWORD *)this + 525)] != 101 ? 0 : 8, 0x15E1u, lpNewItem);
+        v124.y = v40;
+        Point.x = (LONG)&v124.y;
+        sub_40A2F0(L"IDC_MEU_MAIN_KEYBOARD_PLUGIN_EOPMSTAND_PN");
+        v124.x = v41;
+        LOBYTE(v160) = 18;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v42;
+        LOBYTE(v160) = 19;
+        p_y = &v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 8;
+        v43 = sub_4395C0((int)&v152, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 20;
+        sub_409D10(v43);
+        LOBYTE(v160) = 8;
+        sub_43B550(&v152);
+        AppendMenuW(hMenu, dword_5F1EE8[13 * *((_DWORD *)this + 525)] != 102 ? 0 : 8, 0x15E2u, lpNewItem);
+        v124.y = v44;
+        Point.x = (LONG)&v124.y;
+        sub_40A2F0(L"IDC_MEU_MAIN_KEYBOARD_PLUGIN_EOPMSTAND_PUH");
+        v124.x = v45;
+        LOBYTE(v160) = 21;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v46;
+        LOBYTE(v160) = 22;
+        p_y = &v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 8;
+        v47 = sub_4395C0((int)&v154, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 23;
+        sub_409D10(v47);
+        LOBYTE(v160) = 8;
+        sub_43B550(&v154);
+        AppendMenuW(hMenu, dword_5F1EE8[13 * *((_DWORD *)this + 525)] != 108 ? 0 : 8, 0x15E8u, lpNewItem);
+        v124.y = v48;
+        Point.x = (LONG)&v124.y;
+        sub_40A2F0(L"IDC_MEU_MAIN_KEYBOARD_PLUGIN_EOPMSTAND_PDH");
+        v124.x = v49;
+        LOBYTE(v160) = 24;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v50;
+        LOBYTE(v160) = 25;
+        p_y = &v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 8;
+        v51 = sub_4395C0((int)&v156, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 26;
+        sub_409D10(v51);
+        LOBYTE(v160) = 8;
+        sub_43B550(&v156);
+        AppendMenuW(hMenu, dword_5F1EE8[13 * *((_DWORD *)this + 525)] != 109 ? 0 : 8, 0x15E9u, lpNewItem);
+        AppendMenuW(hMenu, 0x800u, 0, &NewItem);
+        v124.y = v52;
+        Point.x = (LONG)&v124.y;
+        sub_40A2F0(L"IDC_MEU_MAIN_KEYBOARD_PLUGIN_EOPMSTAND_AC");
+        v124.x = v53;
+        LOBYTE(v160) = 27;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v54;
+        LOBYTE(v160) = 28;
+        p_y = &v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 8;
+        v55 = sub_4395C0((int)&v158, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 29;
+        sub_409D10(v55);
+        LOBYTE(v160) = 8;
+        sub_43B550(&v158);
+        AppendMenuW(hMenu, dword_5F1EE8[13 * *((_DWORD *)this + 525)] != 104 ? 0 : 8, 0x15E4u, lpNewItem);
+        v124.y = v56;
+        Point.x = (LONG)&v124.y;
+        sub_40A2F0(L"IDC_MEU_MAIN_KEYBOARD_PLUGIN_EOPMSTAND_SD");
+        v124.x = v57;
+        LOBYTE(v160) = 30;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v58;
+        LOBYTE(v160) = 31;
+        p_y = &v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 8;
+        v59 = sub_4395C0((int)&v139, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 32;
+        sub_409D10(v59);
+        LOBYTE(v160) = 8;
+        sub_43B550(&v139);
+        AppendMenuW(hMenu, dword_5F1EE8[13 * *((_DWORD *)this + 525)] != 105 ? 0 : 8, 0x15E5u, lpNewItem);
+        v124.y = v60;
+        Point.x = (LONG)&v124.y;
+        sub_40A2F0(L"IDC_MEU_MAIN_KEYBOARD_PLUGIN_EOPMSTAND_ST");
+        v124.x = v61;
+        LOBYTE(v160) = 33;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v62;
+        LOBYTE(v160) = 34;
+        p_y = &v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 8;
+        v63 = sub_4395C0((int)&v155, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 35;
+        sub_409D10(v63);
+        LOBYTE(v160) = 8;
+        sub_43B550(&v155);
+        AppendMenuW(hMenu, dword_5F1EE8[13 * *((_DWORD *)this + 525)] != 106 ? 0 : 8, 0x15E6u, lpNewItem);
+        v124.y = v64;
+        Point.x = (LONG)&v124.y;
+        sub_40A2F0(L"IDC_MEU_MAIN_KEYBOARD_PLUGIN_EOPMSTAND_PU");
+        v124.x = v65;
+        LOBYTE(v160) = 36;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v66;
+        LOBYTE(v160) = 37;
+        p_y = &v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 8;
+        v67 = sub_4395C0((int)&v141, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 38;
+        sub_409D10(v67);
+        LOBYTE(v160) = 8;
+        sub_43B550(&v141);
+        AppendMenuW(hMenu, dword_5F1EE8[13 * *((_DWORD *)this + 525)] != 107 ? 0 : 8, 0x15E7u, lpNewItem);
+        v124.y = v68;
+        Point.x = (LONG)&v124.y;
+        sub_40A2F0(L"IDC_MEU_MAIN_PLUGIN_MSTAND");
+        LOBYTE(v160) = 39;
+        v124.x = v69;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v70;
+        LOBYTE(v160) = 40;
+        p_y = &v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 8;
+        v71 = sub_4395C0((int)&v151, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 41;
+        sub_409D10(v71);
+        sub_43B550(&v151);
+        sub_409B50(0x10u, (UINT_PTR)hMenu, lpNewItem);
+        v132 = &CMenu::`vftable';
+        v133 = 0;
+        LOBYTE(v160) = 42;
+        v72 = CreatePopupMenu();
+        CMenu::Attach((CMenu *)&v132, v72);
+        v124.y = v73;
+        Point.x = (LONG)&v124.y;
+        sub_40A2F0(L"IDC_MEU_MAIN_KEYBOARD_PLUGIN_EOPMSTAND_PS");
+        v124.x = v74;
+        LOBYTE(v160) = 43;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v75;
+        LOBYTE(v160) = 44;
+        p_y = &v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 42;
+        v76 = sub_4395C0((int)&v143, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 45;
+        sub_409D10(v76);
+        LOBYTE(v160) = 42;
+        sub_43B550(&v143);
+        AppendMenuW(v133, dword_5F1EE8[13 * *((_DWORD *)this + 525)] != 100 ? 0 : 8, 0x15F4u, lpNewItem);
+        v124.y = v77;
+        Point.x = (LONG)&v124.y;
+        sub_40A2F0(L"IDC_MEU_MAIN_KEYBOARD_PLUGIN_EOPMSTAND_PE");
+        v124.x = v78;
+        LOBYTE(v160) = 46;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v79;
+        LOBYTE(v160) = 47;
+        p_y = &v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 42;
+        v80 = sub_4395C0((int)&v159, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 48;
+        sub_409D10(v80);
+        LOBYTE(v160) = 42;
+        sub_43B550(&v159);
+        AppendMenuW(v133, dword_5F1EE8[13 * *((_DWORD *)this + 525)] != 103 ? 0 : 8, 0x15F5u, lpNewItem);
+        v124.y = v81;
+        Point.x = (LONG)&v124.y;
+        sub_40A2F0(L"IDC_MEU_MAIN_KEYBOARD_PLUGIN_EOPMSTAND_PL");
+        v124.x = v82;
+        LOBYTE(v160) = 49;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v83;
+        LOBYTE(v160) = 50;
+        p_y = &v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 42;
+        v84 = sub_4395C0((int)&v137, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 51;
+        sub_409D10(v84);
+        LOBYTE(v160) = 42;
+        sub_43B550(&v137);
+        AppendMenuW(v133, dword_5F1EE8[13 * *((_DWORD *)this + 525)] != 101 ? 0 : 8, 0x15F6u, lpNewItem);
+        v124.y = v85;
+        Point.x = (LONG)&v124.y;
+        sub_40A2F0(L"IDC_MEU_MAIN_KEYBOARD_PLUGIN_EOPMSTAND_PN");
+        v124.x = v86;
+        LOBYTE(v160) = 52;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v87;
+        LOBYTE(v160) = 53;
+        p_y = &v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 42;
+        v88 = sub_4395C0((int)&v153, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 54;
+        sub_409D10(v88);
+        LOBYTE(v160) = 42;
+        sub_43B550(&v153);
+        AppendMenuW(v133, dword_5F1EE8[13 * *((_DWORD *)this + 525)] != 102 ? 0 : 8, 0x15F7u, lpNewItem);
+        v124.y = v89;
+        Point.x = (LONG)&v124.y;
+        sub_40A2F0(L"IDC_MEU_MAIN_KEYBOARD_PLUGIN_EOPMSTAND_PUH");
+        v124.x = v90;
+        LOBYTE(v160) = 55;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v91;
+        LOBYTE(v160) = 56;
+        p_y = &v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 42;
+        v92 = sub_4395C0((int)&v147, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 57;
+        sub_409D10(v92);
+        LOBYTE(v160) = 42;
+        sub_43B550(&v147);
+        AppendMenuW(v133, dword_5F1EE8[13 * *((_DWORD *)this + 525)] != 108 ? 0 : 8, 0x15F8u, lpNewItem);
+        v124.y = v93;
+        Point.x = (LONG)&v124.y;
+        sub_40A2F0(L"IDC_MEU_MAIN_KEYBOARD_PLUGIN_EOPMSTAND_PDH");
+        v124.x = v94;
+        LOBYTE(v160) = 58;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v95;
+        LOBYTE(v160) = 59;
+        p_y = &v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 42;
+        v96 = sub_4395C0((int)&v157, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 60;
+        sub_409D10(v96);
+        LOBYTE(v160) = 42;
+        sub_43B550(&v157);
+        AppendMenuW(v133, dword_5F1EE8[13 * *((_DWORD *)this + 525)] != 109 ? 0 : 8, 0x15F9u, lpNewItem);
+        AppendMenuW(v133, 0x800u, 0, &NewItem);
+        v124.y = v97;
+        Point.x = (LONG)&v124.y;
+        sub_40A2F0(L"IDC_MEU_MAIN_KEYBOARD_PLUGIN_EOPMSTAND_AC");
+        v124.x = v98;
+        LOBYTE(v160) = 61;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v99;
+        LOBYTE(v160) = 62;
+        p_y = &v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 42;
+        v100 = sub_4395C0((int)&v149, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 63;
+        sub_409D10(v100);
+        LOBYTE(v160) = 42;
+        sub_43B550(&v149);
+        AppendMenuW(v133, dword_5F1EE8[13 * *((_DWORD *)this + 525)] != 116 ? 0 : 8, 0x15F0u, lpNewItem);
+        v124.y = v101;
+        Point.x = (LONG)&v124.y;
+        sub_40A2F0(L"IDC_MEU_MAIN_KEYBOARD_PLUGIN_EOPMSTAND_SD");
+        v124.x = v102;
+        LOBYTE(v160) = 64;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v103;
+        LOBYTE(v160) = 65;
+        p_y = &v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 42;
+        v104 = sub_4395C0((int)&v138, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 66;
+        sub_409D10(v104);
+        LOBYTE(v160) = 42;
+        sub_43B550(&v138);
+        AppendMenuW(v133, dword_5F1EE8[13 * *((_DWORD *)this + 525)] != 117 ? 0 : 8, 0x15F1u, lpNewItem);
+        v124.y = v105;
+        Point.x = (LONG)&v124.y;
+        sub_40A2F0(L"IDC_MEU_MAIN_KEYBOARD_PLUGIN_EOPMSTAND_ST");
+        v124.x = v106;
+        LOBYTE(v160) = 67;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v107;
+        LOBYTE(v160) = 68;
+        p_y = &v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 42;
+        v108 = sub_4395C0((int)&v140, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 69;
+        sub_409D10(v108);
+        LOBYTE(v160) = 42;
+        sub_43B550(&v140);
+        AppendMenuW(v133, dword_5F1EE8[13 * *((_DWORD *)this + 525)] != 118 ? 0 : 8, 0x15F2u, lpNewItem);
+        v124.y = v109;
+        Point.x = (LONG)&v124.y;
+        sub_40A2F0(L"IDC_MEU_MAIN_KEYBOARD_PLUGIN_EOPMSTAND_PU");
+        v124.x = v110;
+        LOBYTE(v160) = 70;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v111;
+        LOBYTE(v160) = 71;
+        p_y = &v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 42;
+        v112 = sub_4395C0((int)&v142, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 72;
+        sub_409D10(v112);
+        LOBYTE(v160) = 42;
+        sub_43B550(&v142);
+        AppendMenuW(v133, dword_5F1EE8[13 * *((_DWORD *)this + 525)] != 119 ? 0 : 8, 0x15F3u, lpNewItem);
+        v124.y = v113;
+        Point.x = (LONG)&v124.y;
+        sub_40A2F0(L"IDC_MEU_MAIN_PLUGIN_NUMUNO");
+        v124.x = v114;
+        LOBYTE(v160) = 73;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v115;
+        LOBYTE(v160) = 74;
+        p_y = &v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 42;
+        v116 = sub_4395C0((int)&v144, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 75;
+        sub_409D10(v116);
+        LOBYTE(v160) = 42;
+        sub_43B550(&v144);
+        sub_409B50(0x10u, (UINT_PTR)v133, lpNewItem);
+        AppendMenuW(*((HMENU *)this + 277), 0x800u, 0, &NewItem);
+        v124.y = v117;
+        Point.x = (LONG)&v124.y;
+        sub_40A2F0(L"IDC_MENU_RBUTTON_CLEAR");
+        v124.x = v118;
+        LOBYTE(v160) = 76;
+        v130 = &v124;
+        sub_40A2F0(L"String");
+        v123 = v119;
+        LOBYTE(v160) = 77;
+        p_y = &v123;
+        sub_409F70(&dword_160052C);
+        LOBYTE(v160) = 42;
+        v120 = sub_4395C0((int)&v146, v123, (LPCWSTR)v124.x, (LPCWSTR)v124.y);
+        LOBYTE(v160) = 78;
+        sub_409D10(v120);
+        LOBYTE(v160) = 42;
+        sub_43B550(&v146);
+        AppendMenuW(*((HMENU *)this + 277), 0, 0x1579u, lpNewItem);
+        SetForegroundWindow(*((HWND *)this + 8));
+        v121 = v131;
+        CMenu::TrackPopupMenu(
+          (struct CWnd *)((char *)this + 1104),
+          0,
+          *(_DWORD *)(v131 + 20),
+          *(_DWORD *)(v131 + 24),
+          (HWND)this,
+          0);
+        *((_DWORD *)this + 300) = *(_DWORD *)(v121 + 20);
+        v122 = *(_DWORD *)(v121 + 24);
+        LOBYTE(v160) = 8;
+        *((_DWORD *)this + 301) = v122;
+        v132 = &CMenu::`vftable';
+        CMenu::DestroyMenu((CMenu *)&v132);
+        LOBYTE(v160) = 7;
+        v134 = &CMenu::`vftable';
+        CMenu::DestroyMenu((CMenu *)&v134);
+        v160 = -1;
+        sub_43B550(&lpNewItem);
+LABEL_129:
+        v2 = (struct tagMSG *)v131;
+        return CDialog::PreTranslateMessage(this, v2);
+      default:
+        return CDialog::PreTranslateMessage(this, v2);
+    }
+  }
+  return CDialog::PreTranslateMessage(this, v2);
+}
+
+
+=== Function Analysis: sub_405110 @ 0x00405110 ===
+  Size: 3275 bytes
+
+  [Decompiled pseudocode]
+int __stdcall sub_405110(_DWORD *a1)
+{
+  HMENU PopupMenu; // eax
+  int v2; // ecx
+  int v3; // eax
+  int v4; // eax
+  int v5; // eax
+  int v6; // eax
+  int v7; // eax
+  int v8; // eax
+  int **v9; // eax
+  int *v10; // ecx
+  int v11; // edx
+  int **v12; // eax
+  int *v13; // ecx
+  int v14; // edx
+  void **v15; // eax
+  void *v16; // ecx
+  LPCWSTR *v17; // eax
+  volatile signed __int32 *v18; // esi
+  int v19; // ebp
+  void (*v20)(void); // eax
+  const WCHAR *v21; // eax
+  int *v22; // ecx
+  int v23; // edx
+  int v24; // eax
+  void **v25; // eax
+  char *v26; // eax
+  volatile signed __int32 *v27; // esi
+  volatile signed __int32 *v28; // ebp
+  int (__thiscall ***v29)(_DWORD, _DWORD, int); // eax
+  volatile signed __int32 *v30; // edi
+  int v31; // eax
+  int **v32; // eax
+  int *v33; // ecx
+  int v34; // edx
+  _DWORD *v35; // eax
+  volatile signed __int32 *v36; // ecx
+  const WCHAR *v37; // ecx
+  const WCHAR *v38; // ecx
+  int v39; // ecx
+  int (__thiscall *v40)(int, LPCWSTR); // eax
+  char *v41; // esi
+  int (__thiscall ***v42)(_DWORD, _DWORD, int); // eax
+  wchar_t *v43; // edi
+  int v44; // eax
+  int v45; // eax
+  const WCHAR *v46; // ecx
+  const WCHAR *v47; // ecx
+  const WCHAR *v48; // ecx
+  int v49; // ecx
+  int (__thiscall *v50)(int, LPCWSTR); // eax
+  int (__thiscall ***v51)(_DWORD, _DWORD, int); // eax
+  wchar_t *v52; // edi
+  int v53; // eax
+  void **v54; // eax
+  void *v55; // ecx
+  _DWORD *v56; // eax
+  volatile signed __int32 *v57; // edi
+  int v58; // ebx
+  const WCHAR *v59; // eax
+  volatile signed __int32 *v60; // ecx
+  int *v61; // ecx
+  int v62; // edx
+  const WCHAR *v63; // ecx
+  int v64; // ecx
+  int v65; // ecx
+  int (__thiscall *v66)(int, int); // eax
+  int (__thiscall ***v67)(_DWORD, _DWORD, int); // eax
+  wchar_t *v68; // edi
+  int v69; // eax
+  int v70; // esi
+  void *v71; // eax
+  int v72; // eax
+  int v73; // esi
+  UINT v74; // ecx
+  int v75; // eax
+  _DWORD *v76; // eax
+  LPCWSTR v77; // ebx
+  int v78; // eax
+  void **v79; // eax
+  void *v80; // ecx
+  WCHAR *v81; // eax
+  volatile signed __int32 *v82; // esi
+  int v83; // ebp
+  LPCWSTR v84; // eax
+  _DWORD *v85; // eax
+  volatile signed __int32 *v86; // ecx
+  const WCHAR *v87; // ecx
+  int v88; // ecx
+  int v89; // ecx
+  int (__thiscall *v90)(int, int); // eax
+  _DWORD *v91; // esi
+  int (__thiscall ***v92)(_DWORD, _DWORD, int); // eax
+  LPCWSTR v93; // edi
+  int v94; // eax
+  const WCHAR *v95; // ecx
+  int v96; // edi
+  const WCHAR *v97; // ecx
+  int v98; // ecx
+  int v99; // eax
+  int v100; // eax
+  _DWORD *v101; // eax
+  void *v102; // eax
+  HWND v103; // esi
+  HWND v104; // ecx
+  volatile signed __int32 *v105; // eax
+  _DWORD *v106; // eax
+  _DWORD *v107; // eax
+  _DWORD *v108; // eax
+  LPCWSTR v109; // eax
+  int v111; // [esp-10h] [ebp-150h]
+  int v112; // [esp-Ch] [ebp-14Ch]
+  int v113; // [esp-8h] [ebp-148h] BYREF
+  LPCWSTR v114; // [esp-4h] [ebp-144h] BYREF
+  LPCWSTR v115[2]; // [esp+0h] [ebp-140h] BYREF
+  int v116; // [esp+8h] [ebp-138h] BYREF
+  LPCWSTR v117; // [esp+Ch] [ebp-134h] BYREF
+  LPCWSTR v118; // [esp+10h] [ebp-130h] BYREF
+  LPCWSTR v119; // [esp+14h] [ebp-12Ch] BYREF
+  LPCWSTR v120[2]; // [esp+18h] [ebp-128h] BYREF
+  int v121; // [esp+20h] [ebp-120h] BYREF
+  void *v122; // [esp+24h] [ebp-11Ch]
+  LPCWSTR v123; // [esp+28h] [ebp-118h]
+  volatile signed __int32 *v124; // [esp+2Ch] [ebp-114h] BYREF
+  int v125; // [esp+30h] [ebp-110h] BYREF
+  int v126; // [esp+34h] [ebp-10Ch]
+  int v127; // [esp+38h] [ebp-108h] BYREF
+  int v128; // [esp+3Ch] [ebp-104h] BYREF
+  LPCWSTR lpString; // [esp+40h] [ebp-100h]
+  LPCWSTR *v130; // [esp+44h] [ebp-FCh] BYREF
+  LPCWSTR *v131; // [esp+48h] [ebp-F8h]
+  int v132; // [esp+4Ch] [ebp-F4h]
+  int v133; // [esp+50h] [ebp-F0h] BYREF
+  int v134; // [esp+54h] [ebp-ECh]
+  int v135; // [esp+58h] [ebp-E8h] BYREF
+  int v136; // [esp+5Ch] [ebp-E4h] BYREF
+  int v137; // [esp+60h] [ebp-E0h] BYREF
+  char v138[4]; // [esp+64h] [ebp-DCh] BYREF
+  int NextFileW; // [esp+68h] [ebp-D8h] BYREF
+  int v140; // [esp+70h] [ebp-D0h] BYREF
+  _DWORD v141[2]; // [esp+74h] [ebp-CCh] BYREF
+  int *v142; // [esp+7Ch] [ebp-C4h]
+  int v143; // [esp+80h] [ebp-C0h]
+  int v144; // [esp+88h] [ebp-B8h] BYREF
+  int v145; // [esp+8Ch] [ebp-B4h]
+  int v146; // [esp+94h] [ebp-ACh]
+  char v147[12]; // [esp+98h] [ebp-A8h] BYREF
+  int v148; // [esp+A4h] [ebp-9Ch]
+  int v149; // [esp+A8h] [ebp-98h] BYREF
+  struct tagRECT rcDst; // [esp+B0h] [ebp-90h] BYREF
+  struct tagWINDOWINFO pwi; // [esp+C0h] [ebp-80h] BYREF
+  int v152; // [esp+FCh] [ebp-44h]
+  char v153; // [esp+100h] [ebp-40h]
+  char v154; // [esp+104h] [ebp-3Ch]
+  char v155; // [esp+108h] [ebp-38h]
+  char v156; // [esp+10Ch] [ebp-34h]
+  HWND hWnd; // [esp+110h] [ebp-30h]
+  char v158; // [esp+114h] [ebp-2Ch]
+  char v159; // [esp+118h] [ebp-28h]
+  char v160; // [esp+11Ch] [ebp-24h]
+  char v161; // [esp+120h] [ebp-20h]
+  char v162; // [esp+124h] [ebp-1Ch]
+  char v163; // [esp+128h] [ebp-18h]
+  char v164; // [esp+12Ch] [ebp-14h]
+  char v165; // [esp+130h] [ebp-10h]
+  char v166; // [esp+134h] [ebp-Ch]
+  char v167; // [esp+138h] [ebp-8h]
+  int v168; // [esp+13Ch] [ebp-4h]
+
+  v141[0] = a1 + 278;
+  if ( a1 != (_DWORD *)-1112 && a1[279] )
+    CMenu::DestroyMenu((CMenu *)(a1 + 278));
+  PopupMenu = CreatePopupMenu();
+  CMenu::Attach((CMenu *)(a1 + 278), PopupMenu);
+  rcDst.top = (LONG)&ATL::CImage::`vftable';
+  rcDst.right = 0;
+  rcDst.bottom = 0;
+  memset(&pwi, 0, 18);
+  pwi.rcClient.left = -1;
+  memset(&pwi.rcClient.top, 0, 12);
+  EnterCriticalSection(&CriticalSection);
+  ++dword_5F9994;
+  LeaveCriticalSection(&CriticalSection);
+  v126 = 300;
+  v125 = v2;
+  v168 = 0;
+  v142 = &v125;
+  sub_40A2F0((void *)&NewItem);
+  sub_4389E0((LPCWSTR)v125, v126);
+  a1[280] = &rcDst.top;
+  v3 = sub_447A0A();
+  if ( !v3 )
+    sub_40A900(-2147467259);
+  v133 = (*(int (__thiscall **)(int))(*(_DWORD *)v3 + 12))(v3) + 16;
+  LOBYTE(v168) = 1;
+  v4 = sub_447A0A();
+  if ( !v4 )
+    sub_40A900(-2147467259);
+  v135 = (*(int (__thiscall **)(int))(*(_DWORD *)v4 + 12))(v4) + 16;
+  LOBYTE(v168) = 2;
+  v5 = sub_447A0A();
+  if ( !v5 )
+    sub_40A900(-2147467259);
+  v142 = (int *)((*(int (__thiscall **)(int))(*(_DWORD *)v5 + 12))(v5) + 16);
+  LOBYTE(v168) = 3;
+  v145 = sub_409F00(dword_160052C - 16) + 16;
+  LOBYTE(v168) = 4;
+  v143 = 0;
+  CFileFind::CFileFind((CFileFind *)v147);
+  LOBYTE(v168) = 5;
+  v6 = sub_447A0A();
+  if ( !v6 )
+    sub_40A900(-2147467259);
+  v146 = (*(int (__thiscall **)(int))(*(_DWORD *)v6 + 12))(v6) + 16;
+  LOBYTE(v168) = 6;
+  v140 = 0;
+  v7 = sub_439470(v127, v128);
+  LOBYTE(v168) = 7;
+  v8 = sub_409F90((int)&v144, v7, L"Language\\EOPmidi");
+  LOBYTE(v168) = 8;
+  sub_409F90((int)&v137, v8, (void *)L"\\");
+  LOBYTE(v168) = 10;
+  v9 = (int **)(v144 - 16);
+  if ( _InterlockedDecrement((volatile signed __int32 *)(v144 - 16 + 12)) <= 0 )
+  {
+    v10 = *v9;
+    v11 = **v9;
+    v126 = (int)v9;
+    (*(void (__thiscall **)(int *))(v11 + 4))(v10);
+  }
+  v167 = 11;
+  v12 = (int **)(v145 - 16);
+  if ( _InterlockedDecrement((volatile signed __int32 *)(v145 - 16 + 12)) <= 0 )
+  {
+    v13 = *v12;
+    v14 = **v12;
+    v125 = (int)v12;
+    (*(void (__thiscall **)(int *))(v14 + 4))(v13);
+  }
+  do
+  {
+    v15 = (void **)sub_409F90((int)&v149, (int)&v135, L"*.ini");
+    v166 = 12;
+    v16 = *v15;
+    v17 = (LPCWSTR *)((char *)*v15 - 16);
+    v18 = (volatile signed __int32 *)(v131 - 4);
+    if ( v17 != v131 - 4 )
+    {
+      if ( *((int *)v18 + 3) >= 0 && *v17 == *(LPCWSTR *)v18 )
+      {
+        v19 = sub_409F00(v17);
+        if ( _InterlockedDecrement(v18 + 3) <= 0 )
+        {
+          v20 = *(void (**)(void))(**(_DWORD **)v18 + 4);
+          v124 = v18;
+          v20();
+        }
+        v130 = (LPCWSTR *)(v19 + 16);
+      }
+      else
+      {
+        sub_40A7B0(v16, *((_DWORD *)v16 - 3));
+      }
+    }
+    v165 = 11;
+    v21 = (const WCHAR *)(v148 - 16);
+    if ( _InterlockedDecrement((volatile signed __int32 *)(v148 - 16 + 12)) <= 0 )
+    {
+      v22 = *(int **)v21;
+      v23 = **(_DWORD **)v21;
+      v123 = v21;
+      (*(void (__thiscall **)(int *))(v23 + 4))(v22);
+    }
+    if ( ((1 - *((_DWORD *)lpString - 1)) | *((_DWORD *)lpString - 2)) < 0 )
+      sub_40A700(0);
+    if ( CFileFind::FindFile((CFileFind *)&v144, lpString, 0) )
+    {
+      do
+      {
+        NextFileW = CFileFind::FindNextFileW((CFileFind *)&v144);
+        if ( !CFileFind::IsDots((CFileFind *)&v144) )
+        {
+          v24 = sub_453BB4(&v136);
+          v164 = 13;
+          v25 = (void **)sub_409330(v141, &v133, v24);
+          v164 = 14;
+          v26 = (char *)*v25;
+          v27 = (volatile signed __int32 *)(v26 - 16);
+          v28 = (volatile signed __int32 *)(lpString - 8);
+          if ( v26 - 16 != (char *)(lpString - 8) )
+          {
+            if ( *((int *)v28 + 3) >= 0 && *v27 == *v28 )
+            {
+              v29 = (int (__thiscall ***)(_DWORD, _DWORD, int))(*(int (__thiscall **)(volatile signed __int32))(**(_DWORD **)v27 + 16))(*v27);
+              if ( *((int *)v27 + 3) >= 0 && v29 == *(int (__thiscall ****)(_DWORD, _DWORD, int))v27 )
+              {
+                v30 = v27;
+                _InterlockedExchangeAdd(v27 + 3, 1u);
+              }
+              else
+              {
+                v31 = (**v29)(v29, *((_DWORD *)v27 + 1), 2);
+                v30 = (volatile signed __int32 *)v31;
+                if ( !v31 )
+                  goto LABEL_93;
+                *(_DWORD *)(v31 + 4) = *((_DWORD *)v27 + 1);
+                memcpy_s(
+                  (void *const)(v31 + 16),
+                  2 * *((_DWORD *)v27 + 1) + 2,
+                  (const void *const)(v27 + 4),
+                  2 * *((_DWORD *)v27 + 1) + 2);
+              }
+              if ( _InterlockedDecrement(v28 + 3) <= 0 )
+                (*(void (__cdecl **)(volatile signed __int32 *))(**(_DWORD **)v28 + 4))(v28);
+              v128 = (int)(v30 + 4);
+            }
+            else
+            {
+              sub_40A7B0(v26, *((_DWORD *)v26 - 3));
+            }
+          }
+          v163 = 13;
+          v32 = (int **)(v140 - 16);
+          if ( _InterlockedDecrement((volatile signed __int32 *)(v140 - 16 + 12)) <= 0 )
+          {
+            v33 = *v32;
+            v34 = **v32;
+            v121 = (int)v32;
+            (*(void (__thiscall **)(int *))(v34 + 4))(v33);
+          }
+          v162 = 11;
+          v35 = (_DWORD *)(v134 - 16);
+          v36 = (volatile signed __int32 *)(v134 - 16 + 12);
+          if ( _InterlockedDecrement(v36) <= 0 )
+            (*(void (__thiscall **)(_DWORD, _DWORD *))(*(_DWORD *)*v35 + 4))(*v35, v35);
+          v120[0] = (LPCWSTR)v36;
+          v131 = v120;
+          sub_40A2F0(L"Order");
+          v119 = v37;
+          v161 = 15;
+          v132 = (int)&v119;
+          sub_40A2F0(L"General Settings");
+          v161 = 16;
+          v118 = v38;
+          v39 = *(_DWORD *)(v126 - 16);
+          v40 = *(int (__thiscall **)(int, LPCWSTR))(*(_DWORD *)v39 + 16);
+          v41 = (char *)(v126 - 16);
+          lpString = (LPCWSTR)&v118;
+          v42 = (int (__thiscall ***)(_DWORD, _DWORD, int))v40(v39, v118);
+          if ( *((int *)v41 + 3) < 0 )
+            goto LABEL_48;
+          if ( v42 == *(int (__thiscall ****)(_DWORD, _DWORD, int))v41 )
+          {
+            v43 = (wchar_t *)v41;
+            _InterlockedExchangeAdd((volatile signed __int32 *)v41 + 3, 1u);
+          }
+          else
+          {
+LABEL_48:
+            v44 = (**v42)(v42, *((_DWORD *)v41 + 1), 2);
+            v43 = (wchar_t *)v44;
+            if ( !v44 )
+              goto LABEL_93;
+            *(_DWORD *)(v44 + 4) = *((_DWORD *)v41 + 1);
+            memcpy_s((void *const)(v44 + 16), 2 * *((_DWORD *)v41 + 1) + 2, v41 + 16, 2 * *((_DWORD *)v41 + 1) + 2);
+          }
+          v161 = 11;
+          v45 = sub_439BA0(v43 + 8, v119, v120[0]);
+          if ( v45 != -1 && v134 == v45 )
+          {
+            v120[0] = v46;
+            lpString = (LPCWSTR)v120;
+            sub_40A2F0(L"Language");
+            v119 = v47;
+            v161 = 17;
+            v132 = (int)&v119;
+            sub_40A2F0(L"General Settings");
+            v161 = 18;
+            v118 = v48;
+            v49 = *(_DWORD *)v41;
+            v50 = *(int (__thiscall **)(int, LPCWSTR))(**(_DWORD **)v41 + 16);
+            v131 = &v118;
+            v51 = (int (__thiscall ***)(_DWORD, _DWORD, int))v50(v49, v118);
+            if ( *((int *)v41 + 3) >= 0 && v51 == *(int (__thiscall ****)(_DWORD, _DWORD, int))v41 )
+            {
+              v52 = (wchar_t *)v41;
+              _InterlockedExchangeAdd((volatile signed __int32 *)v41 + 3, 1u);
+            }
+            else
+            {
+              v53 = (**v51)(v51, *((_DWORD *)v41 + 1), 2);
+              v52 = (wchar_t *)v53;
+              if ( !v53 )
+                goto LABEL_93;
+              *(_DWORD *)(v53 + 4) = *((_DWORD *)v41 + 1);
+              memcpy_s((void *const)(v53 + 16), 2 * *((_DWORD *)v41 + 1) + 2, v41 + 16, 2 * *((_DWORD *)v41 + 1) + 2);
+            }
+            v161 = 11;
+            v54 = (void **)sub_4395C0((int)&v127, v52 + 8, v119, v120[0]);
+            v161 = 19;
+            v55 = *v54;
+            v56 = (char *)*v54 - 16;
+            v57 = (volatile signed __int32 *)(v128 - 16);
+            if ( v56 != (_DWORD *)(v128 - 16) )
+            {
+              if ( *((int *)v57 + 3) >= 0 && *v56 == *v57 )
+              {
+                v58 = sub_409F00(v56);
+                if ( _InterlockedDecrement(v57 + 3) <= 0 )
+                  (*(void (__cdecl **)(volatile signed __int32 *))(**(_DWORD **)v57 + 4))(v57);
+                v127 = v58 + 16;
+              }
+              else
+              {
+                sub_40A7B0(v55, *((_DWORD *)v55 - 3));
+              }
+            }
+            v160 = 11;
+            v59 = (const WCHAR *)(v126 - 16);
+            v60 = (volatile signed __int32 *)(v126 - 16 + 12);
+            if ( _InterlockedDecrement(v60) <= 0 )
+            {
+              v61 = *(int **)v59;
+              v62 = **(_DWORD **)v59;
+              v119 = v59;
+              (*(void (__thiscall **)(int *))(v62 + 4))(v61);
+            }
+            v118 = (LPCWSTR)v60;
+            v127 = (int)&v118;
+            sub_40A2F0(L"Index");
+            v117 = v63;
+            v159 = 20;
+            v130 = &v117;
+            sub_40A2F0(L"General Settings");
+            v159 = 21;
+            v116 = v64;
+            v65 = *(_DWORD *)v41;
+            v66 = *(int (__thiscall **)(int, int))(**(_DWORD **)v41 + 16);
+            lpString = (LPCWSTR)&v116;
+            v67 = (int (__thiscall ***)(_DWORD, _DWORD, int))v66(v65, v116);
+            if ( *((int *)v41 + 3) >= 0 && v67 == *(int (__thiscall ****)(_DWORD, _DWORD, int))v41 )
+            {
+              v68 = (wchar_t *)v41;
+              _InterlockedExchangeAdd((volatile signed __int32 *)v41 + 3, 1u);
+            }
+            else
+            {
+              v69 = (**v67)(v67, *((_DWORD *)v41 + 1), 2);
+              v68 = (wchar_t *)v69;
+              if ( !v69 )
+LABEL_93:
+                sub_43B570(v111, v112, v113, v114, v115[0], v115[1], v116, v117);
+              *(_DWORD *)(v69 + 4) = *((_DWORD *)v41 + 1);
+              memcpy_s((void *const)(v69 + 16), 2 * *((_DWORD *)v41 + 1) + 2, v41 + 16, 2 * *((_DWORD *)v41 + 1) + 2);
+            }
+            v159 = 11;
+            v70 = sub_439BA0(v68 + 8, v117, v118);
+            v136 = v70;
+            v71 = operator new(0x20u);
+            v127 = (int)v71;
+            v159 = 22;
+            if ( v71 )
+              v72 = sub_401090(v71, v70 + 1536, (void *)v126, v70);
+            else
+              v72 = 0;
+            v73 = v133;
+            v159 = 11;
+            v74 = 256;
+            if ( *(_DWORD *)(v133 + 52) )
+              v74 = 320;
+            if ( *(_DWORD *)(v133 + 56) )
+              v74 |= 0x20u;
+            v118 = (LPCWSTR)v72;
+            *(_DWORD *)(v133 + 56) = 0;
+            *(_DWORD *)(v73 + 52) = 0;
+            AppendMenuW(*(HMENU *)(v73 + 4), v74, *(_DWORD *)(v72 + 8), v118);
+          }
+        }
+      }
+      while ( v134 );
+    }
+    CFileFind::Close((CFileFind *)v141);
+    ++v132;
+  }
+  while ( v132 <= 10 );
+  v75 = sub_409F90((int)&v125, (int)&v128, L"*.ini");
+  v159 = 25;
+  sub_409D10(v75);
+  v159 = 11;
+  v76 = (_DWORD *)(v125 - 16);
+  if ( _InterlockedDecrement((volatile signed __int32 *)(v125 - 16 + 12)) <= 0 )
+    (*(void (__thiscall **)(_DWORD, _DWORD *))(*(_DWORD *)*v76 + 4))(*v76, v76);
+  v77 = v123;
+  if ( ((1 - *((_DWORD *)v123 - 1)) | *((_DWORD *)v123 - 2)) < 0 )
+  {
+    sub_40A700(0);
+    v77 = v123;
+  }
+  if ( CFileFind::FindFile((CFileFind *)&v140, v77, 0) )
+  {
+    while ( 1 )
+    {
+      v133 = CFileFind::FindNextFileW((CFileFind *)&v140);
+      if ( !CFileFind::IsDots((CFileFind *)&v140) )
+      {
+        v78 = sub_453BB4(&v130);
+        v158 = 26;
+        v79 = (void **)sub_409330(&v124, &v127, v78);
+        v158 = 27;
+        v80 = *v79;
+        v81 = (WCHAR *)((char *)*v79 - 16);
+        v82 = (volatile signed __int32 *)(v77 - 8);
+        if ( v81 != v77 - 8 )
+        {
+          if ( *((int *)v82 + 3) >= 0 && *(_DWORD *)v81 == *v82 )
+          {
+            v83 = sub_409F00(v81);
+            if ( _InterlockedDecrement(v82 + 3) <= 0 )
+              (*(void (__thiscall **)(volatile signed __int32, LPCWSTR))(**(_DWORD **)v82 + 4))(*v82, v77 - 8);
+            v77 = (LPCWSTR)(v83 + 16);
+            v122 = (void *)(v83 + 16);
+          }
+          else
+          {
+            sub_40A7B0(v80, *((_DWORD *)v80 - 3));
+            v77 = v123;
+          }
+        }
+        LOBYTE(hWnd) = 26;
+        v84 = v123 - 8;
+        if ( _InterlockedDecrement((volatile signed __int32 *)v123 - 1) <= 0 )
+          (*(void (__thiscall **)(_DWORD, LPCWSTR))(**(_DWORD **)v84 + 4))(*(_DWORD *)v84, v84);
+        v156 = 11;
+        v85 = (_DWORD *)(v128 - 16);
+        v86 = (volatile signed __int32 *)(v128 - 16 + 12);
+        if ( _InterlockedDecrement(v86) <= 0 )
+          (*(void (__thiscall **)(_DWORD, _DWORD *))(*(_DWORD *)*v85 + 4))(*v85, v85);
+        v115[0] = (LPCWSTR)v86;
+        v123 = (LPCWSTR)v115;
+        sub_40A2F0(L"Order");
+        v114 = v87;
+        v155 = 28;
+        v126 = (int)&v114;
+        sub_40A2F0(L"General Settings");
+        v155 = 29;
+        v113 = v88;
+        v89 = *((_DWORD *)v77 - 4);
+        v90 = *(int (__thiscall **)(int, int))(*(_DWORD *)v89 + 16);
+        v91 = v77 - 8;
+        v125 = (int)&v113;
+        v92 = (int (__thiscall ***)(_DWORD, _DWORD, int))v90(v89, v113);
+        if ( *((int *)v77 - 1) < 0 )
+          goto LABEL_102;
+        if ( v92 == (int (__thiscall ***)(_DWORD, _DWORD, int))*v91 )
+        {
+          v93 = v77 - 8;
+          _InterlockedExchangeAdd((volatile signed __int32 *)v77 - 1, 1u);
+        }
+        else
+        {
+LABEL_102:
+          v94 = (**v92)(v92, v91[1], 2);
+          v93 = (LPCWSTR)v94;
+          if ( !v94 )
+            goto LABEL_93;
+          *(_DWORD *)(v94 + 4) = v91[1];
+          memcpy_s((void *const)(v94 + 16), 2 * v91[1] + 2, v77, 2 * v91[1] + 2);
+        }
+        v155 = 11;
+        if ( sub_439BA0((wchar_t *)v93 + 8, v114, v115[0]) == -1 )
+          break;
+      }
+      if ( !v130 )
+        goto LABEL_112;
+    }
+    v115[0] = v95;
+    v123 = (LPCWSTR)v115;
+    v96 = v132 + 1;
+    sub_40A2F0(L"Language");
+    v114 = v97;
+    v155 = 30;
+    v126 = (int)&v114;
+    sub_40A2F0(L"General Settings");
+    v113 = v98;
+    v155 = 31;
+    v125 = (int)&v113;
+    v99 = sub_409F00(v77 - 8);
+    v155 = 11;
+    v100 = sub_4395C0((int)&v121, (wchar_t *)(v99 + 16), v114, v115[0]);
+    v155 = 32;
+    sub_409D10(v100);
+    v155 = 11;
+    v101 = (_DWORD *)(v121 - 16);
+    if ( _InterlockedDecrement((volatile signed __int32 *)(v121 - 16 + 12)) <= 0 )
+      (*(void (__thiscall **)(_DWORD, _DWORD *))(*(_DWORD *)*v101 + 4))(*v101, v101);
+    v102 = operator new(0x20u);
+    v122 = v102;
+    v154 = 33;
+    if ( v102 )
+      sub_401090(v102, v96 + 1536, (void *)v121, 2);
+    v154 = 11;
+    sub_438710(v128, v115[0]);
+  }
+LABEL_112:
+  CFileFind::Close((CFileFind *)v138);
+  v103 = hWnd;
+  v104 = (HWND)*((_DWORD *)hWnd + 8);
+  pwi.cbSize = 60;
+  GetWindowInfo(v104, &pwi);
+  CopyRect(&rcDst, &pwi.rcClient);
+  SetForegroundWindow(*((HWND *)v103 + 8));
+  CMenu::TrackPopupMenu((CMenu *)lpString, 0, rcDst.right - 190, rcDst.top + 41, v103, 0);
+  v155 = 6;
+  v105 = v124 - 4;
+  if ( _InterlockedDecrement(v124 - 1) <= 0 )
+    (*(void (__thiscall **)(volatile signed __int32, volatile signed __int32 *))(**(_DWORD **)v105 + 4))(*v105, v105);
+  v154 = 5;
+  v106 = (_DWORD *)(v136 - 16);
+  if ( _InterlockedDecrement((volatile signed __int32 *)(v136 - 16 + 12)) <= 0 )
+    (*(void (__thiscall **)(_DWORD, _DWORD *))(*(_DWORD *)*v106 + 4))(*v106, v106);
+  v153 = 4;
+  CFileFind::~CFileFind((CFileFind *)&v136);
+  v153 = 3;
+  v107 = (_DWORD *)(v133 - 16);
+  if ( _InterlockedDecrement((volatile signed __int32 *)(v133 - 16 + 12)) <= 0 )
+    (*(void (__thiscall **)(_DWORD, _DWORD *))(*(_DWORD *)*v107 + 4))(*v107, v107);
+  LOBYTE(v152) = 2;
+  v108 = (_DWORD *)(v128 - 16);
+  if ( _InterlockedDecrement((volatile signed __int32 *)(v128 - 16 + 12)) <= 0 )
+    (*(void (__thiscall **)(_DWORD, _DWORD *))(*(_DWORD *)*v108 + 4))(*v108, v108);
+  LOBYTE(pwi.atomWindowType) = 1;
+  v109 = v119 - 8;
+  if ( _InterlockedDecrement((volatile signed __int32 *)v119 - 1) <= 0 )
+    (*(void (__thiscall **)(_DWORD, LPCWSTR))(**(_DWORD **)v109 + 4))(*(_DWORD *)v109, v109);
+  LOBYTE(pwi.cyWindowBorders) = 0;
+  if ( _InterlockedDecrement((volatile signed __int32 *)v77 - 1) <= 0 )
+    (*(void (__thiscall **)(_DWORD, LPCWSTR))(**((_DWORD **)v77 - 4) + 4))(*((_DWORD *)v77 - 4), v77 - 8);
+  return sub_40A4A0(&NextFileW);
+}
+
+
+=== Function Analysis: sub_408540 @ 0x00408540 ===
+  Size: 675 bytes
+
+  [Decompiled pseudocode]
+void __userpurge sub_408540(int a1@<edi>, int a2)
+{
+  HBRUSH SolidBrush; // eax
+  int v3; // [esp-10h] [ebp-48h]
+  int v4; // [esp-10h] [ebp-48h]
+  void **v5; // [esp+10h] [ebp-28h] BYREF
+  HBRUSH hbr; // [esp+14h] [ebp-24h]
+  struct tagRECT Rect; // [esp+18h] [ebp-20h] BYREF
+  int v8; // [esp+34h] [ebp-4h]
+
+  if ( *(_DWORD *)(a1 + 1344) )
+  {
+    GetClientRect(*(HWND *)(a1 + 32), &Rect);
+    hbr = 0;
+    v5 = &CBrush::`vftable';
+    v8 = 0;
+    SolidBrush = CreateSolidBrush(0x282423u);
+    CGdiObject::Attach((CGdiObject *)&v5, SolidBrush);
+    FillRect(*(HDC *)(a2 + 4), &Rect, hbr);
+    sub_4098D0(0, 0, 6, 46, 0, 0, 46);
+    sub_4098D0(Rect.right - 210, 0, 210, 46, *(_DWORD *)(a1 + 1352) - 210, 0, 46);
+    sub_4098D0(Rect.left + 6, 0, Rect.right - Rect.left - 216, 46, 10, 0, 46);
+    sub_4098D0(Rect.left, 46, 1, Rect.bottom - Rect.top - 50, 0, 46, 1);
+    sub_4098D0(Rect.right - 1, 46, 1, Rect.bottom - Rect.top - 50, *(_DWORD *)(a1 + 1352) - 1, 46, 1);
+    sub_4098D0(0, Rect.bottom - 4, 4, 4, 0, *(_DWORD *)(a1 + 1356) - 4, 4);
+    sub_4098D0(Rect.right - 4, Rect.bottom - 4, 4, 4, *(_DWORD *)(a1 + 1352) - 4, *(_DWORD *)(a1 + 1356) - 4, 4);
+    sub_4098D0(Rect.left + 4, Rect.bottom - 4, Rect.right - Rect.left - 8, 4, 10, *(_DWORD *)(a1 + 1356) - 4, 4);
+    v3 = *(_DWORD *)(a1 + 1276) - *(_DWORD *)(a1 + 1268);
+    sub_4098D0(
+      *(_DWORD *)(a1 + 1264),
+      *(_DWORD *)(a1 + 1268),
+      *(_DWORD *)(a1 + 1272) - *(_DWORD *)(a1 + 1264),
+      v3,
+      0,
+      0,
+      v3);
+    v4 = *(_DWORD *)(a1 + 1292) - *(_DWORD *)(a1 + 1284);
+    sub_4098D0(
+      *(_DWORD *)(a1 + 1280),
+      *(_DWORD *)(a1 + 1284),
+      *(_DWORD *)(a1 + 1288) - *(_DWORD *)(a1 + 1280),
+      v4,
+      0,
+      0,
+      v4);
+    v8 = -1;
+    v5 = &CBrush::`vftable';
+    sub_4096A0();
+  }
+}
+
+
+=== Analysis Complete ===

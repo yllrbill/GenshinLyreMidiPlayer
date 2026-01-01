@@ -1,0 +1,51 @@
+{
+  "model": "opusplan",
+  "statusLine": {
+    "type": "command",
+    "command": "py -3 %USERPROFILE%\\.claude\\statusline_model_logger.py",
+    "padding": 0
+  },
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Edit",
+      "Write",
+      "Read",
+      "Glob",
+      "Grep",
+      "WebSearch",
+      "WebFetch",
+      "Task",
+      "TodoWrite",
+      "Skill(thinking)",
+      "Skill(thinking:*)",
+      "Skill(thingking:thingking)",
+      "Skill(thingking:thingking:*)",
+      "Skill(mcp-cus)",
+      "Skill(mcp-cus:*)",
+      "Skill(bootstrap)",
+      "Skill(bootstrap:*)",
+      "Skill(voteplan)",
+      "Skill(voteplan:*)",
+      "Skill(modelrouter)",
+      "Skill(modelrouter:*)",
+      "Skill(downloader)",
+      "Skill(downloader:*)",
+      "mcp__qwen_fallback__qwen_web_search",
+      "mcp__brave__brave_web_search",
+      "mcp__brave__brave_news_search",
+      "mcp__brave__brave_image_search",
+      "mcp__brave__brave_video_search",
+      "mcp__brave__brave_local_search",
+      "mcp__tavily-remote__tavily_search",
+      "mcp__tavily-remote__tavily_extract",
+      "mcp__tavily-remote__tavily_crawl",
+      "mcp__tavily-remote__tavily_map",
+      "mcp__freebird__freebird_search",
+      "mcp__freebird__freebird_fetch",
+      "Skill(handoff)",
+      "Skill(handoff:*)"
+    ]
+  },
+  "hooks": {}
+}

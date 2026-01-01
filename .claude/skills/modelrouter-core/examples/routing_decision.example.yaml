@@ -1,0 +1,27 @@
+# Example: Routing Decision Output
+# This shows what modelrouter produces when analyzing a prompt
+
+envelope:
+  command: modelrouter
+  timestamp: 2025-12-30T10:30:00Z
+  status: OK
+  error_code: null
+  artifacts_written:
+    - .claude/state/modelrouter/session.latest.yaml
+  next: null
+
+metrics:
+  routing:
+    complexity_level: HARD
+    complexity_score: 70
+    complexity_reasoning:
+      - "keyword: reverse engineer (+40, category: reverse_engineering)"
+      - "keyword: encryption (+30, category: crypto)"
+      - "length: 52 chars (+0)"
+      - "context: 0 files (+0)"
+    model_selected: opus
+    model_override: null
+    override_reason: null
+
+# Original prompt analyzed:
+# "Reverse engineer the encryption algorithm in neox_engine.dll"

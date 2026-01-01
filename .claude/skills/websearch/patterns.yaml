@@ -1,0 +1,74 @@
+# Websearch Auto-Trigger Patterns
+# 自动触发 websearch skill 的关键词和条件
+
+trigger_keywords:
+  search_action:
+    - '搜索'
+    - '查资料'
+    - '调研'
+    - '查找'
+    - 'search'
+    - 'research'
+    - 'look up'
+    - 'find information'
+
+  quality_indicators:
+    - '不全面'
+    - '不够详细'
+    - '缺少'
+    - '不完整'
+    - 'incomplete'
+    - 'insufficient'
+    - 'missing information'
+    - 'not comprehensive'
+
+  comparison:
+    - '对比'
+    - '比较'
+    - '差异'
+    - '最新'
+    - '最佳'
+    - 'compare'
+    - 'versus'
+    - 'vs'
+    - 'latest'
+    - 'best practice'
+
+  rootcause:
+    - '根因'
+    - '原因'
+    - '为什么'
+    - 'root cause'
+    - 'why'
+    - 'reason'
+    - 'cause'
+
+  decision:
+    - '选择'
+    - '决定'
+    - '哪个好'
+    - '推荐'
+    - 'which one'
+    - 'should I'
+    - 'recommend'
+    - 'best option'
+
+# 触发阈值：至少匹配1个关键词
+trigger_threshold: 1
+
+# 最小消息长度（字符）
+min_message_length: 10
+
+# 难度自适应关键词（触发 HARD 模式）
+hard_mode_keywords:
+  - '最新'
+  - 'latest'
+  - '对比'
+  - 'compare'
+  - '方案'
+  - 'solution'
+  - '根因'
+  - 'root cause'
+
+version: '1.0.0'
+created: '2025-12-31'

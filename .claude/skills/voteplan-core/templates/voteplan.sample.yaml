@@ -1,0 +1,158 @@
+# Voteplan Output Sample
+# 此文件为 voteplan.<vote_id>.yaml 模板，展示主输出的完整结构
+
+envelope:
+  command: voteplan
+  vote_id: 251228153042-a7f3
+  timestamp: 2025-12-28T15:30:42Z
+  status: OK
+  error_code: null
+  warnings:
+    - code: TOOL_UNAVAILABLE
+      tool: qwen
+      reason: "env DASHSCOPE_API_KEY not set"
+  missing_inputs: []
+  artifacts_read: []
+  artifacts_written_dirs:
+    - .claude/state/planvote-search/251228153042-a7f3/
+  artifacts_written:
+    - .claude/state/planvote-search/251228153042-a7f3/brave/query1_results.md
+    - .claude/state/planvote-search/251228153042-a7f3/brave/query2_results.md
+    - .claude/state/planvote-search/251228153042-a7f3/tavily_remote/query1_results.md
+    - .claude/state/planvote-search/251228153042-a7f3/freebird/query1_results.md
+    - .claude/state/planvote-search/251228153042-a7f3/summary.md
+    - .claude/state/planvote-search/251228153042-a7f3/candidates/plan_1.yaml
+    - .claude/state/planvote-search/251228153042-a7f3/candidates/plan_2.yaml
+    - .claude/state/planvote-search/251228153042-a7f3/candidates/plan_3.yaml
+    - .claude/state/planvote-search/251228153042-a7f3/candidates/plan_4.yaml
+    - .claude/state/planvote-search/251228153042-a7f3/score_log.yaml
+    - .claude/state/voteplan.251228153042-a7f3.yaml
+  artifacts_written_private:
+    - .claude/state/private/planvote/251228153042-a7f3/raw/brave/query1_raw.json
+    - .claude/state/private/planvote/251228153042-a7f3/debug/tool_probe.yaml
+  next: "python -X utf8 analyzetools/decrypt_harness.py --test"
+
+# 搜索元数据
+search_meta:
+  topic: "AES-128-ECB decryption with unknown key"
+  tool_probe:
+    timestamp: 2025-12-28T15:30:00Z
+    available:
+      brave: true
+      tavily_remote: true
+      freebird: true
+      qwen: false
+    env_status:
+      BRAVE_API_KEY: <SET>
+      TAVILY_MCP_URL: <SET>
+      DASHSCOPE_API_KEY: <UNSET>
+    selected_tools:
+      - brave
+      - tavily_remote
+      - freebird
+  queries_executed: 9
+  results_count: 27
+
+# 评分摘要
+scoring_summary:
+  formula: "total = 3*success + 2*evidence + 1*conciseness + 2*risk_score"
+  candidates_count: 4
+  winner:
+    plan_index: 1
+    total: 34
+    tiebreak_applied: true
+    tiebreak_field: risk_score
+
+# 最终计划（从 winner 复制）
+new_plan:
+  unified_goal: "使用 CryptoAPI Hook 捕获 AES-128-ECB 解密密钥"
+  constraints:
+    - "必须使用 Frida 17.5.2 虚拟环境"
+    - "目标进程为 dwrg.exe"
+    - "密钥格式为 4x uint32"
+  guardrails:
+    - "Hook 前验证目标函数地址"
+    - "避免在 DllMain 期间注入"
+    - "超时 30 秒自动退出"
+
+  steps:
+    - id: P-1
+      action: "验证 Frida 环境"
+      rationale: "确保虚拟环境正确激活，Frida 版本匹配"
+      commands:
+        - "D:\\dw11\\venvsfrida_env\\Scripts\\python.exe -c \"import frida; print(frida.__version__)\""
+      files: []
+      cwd: null
+      verification:
+        - "输出 17.5.2"
+      rollback: []
+      depends_on: []
+
+    - id: P-2
+      action: "定位 CryptDecrypt 导入地址"
+      rationale: "使用 Frida 的 Module.findExportByName 获取准确地址"
+      commands:
+        - "D:\\dw11\\venvsfrida_env\\Scripts\\python.exe -X utf8 analyzetools/locate_crypto_import.py"
+      files:
+        - analyzetools/locate_crypto_import.py
+      cwd: null
+      verification:
+        - "输出包含 CryptDecrypt 地址"
+      rollback: []
+      depends_on:
+        - P-1
+
+    - id: P-3
+      action: "部署 CryptDecrypt Hook"
+      rationale: "拦截解密调用，捕获 key 参数"
+      commands:
+        - "D:\\dw11\\venvsfrida_env\\Scripts\\python.exe -X utf8 analyzetools/hook_crypt_decrypt.py --target dwrg.exe"
+      files:
+        - analyzetools/hook_crypt_decrypt.py
+      cwd: null
+      verification:
+        - "日志显示 Hook 成功"
+        - "捕获到 key 数据"
+      rollback:
+        - "终止 Frida 进程"
+      depends_on:
+        - P-2
+
+    - id: P-4
+      action: "验证密钥格式"
+      rationale: "确认 4x uint32 格式符合预期"
+      commands:
+        - "D:\\dw11\\venvsfrida_env\\Scripts\\python.exe -X utf8 analyzetools/validate_key_format.py"
+      files:
+        - analyzetools/validate_key_format.py
+      cwd: null
+      verification:
+        - "输出 PASS: key format valid"
+      rollback: []
+      depends_on:
+        - P-3
+
+    - id: P-5
+      action: "运行解密验证"
+      rationale: "使用捕获的密钥解密 neox.xml，验证 XML 结构"
+      commands:
+        - "D:\\dw11\\venvsfrida_env\\Scripts\\python.exe -X utf8 analyzetools/decrypt_harness.py --key-file captured_key.json --target neox.xml"
+      files:
+        - analyzetools/decrypt_harness.py
+        - neox.xml
+      cwd: null
+      verification:
+        - "解密后文件包含 <ppg3d> 根元素"
+        - "XML 可被 ElementTree 解析"
+      rollback: []
+      depends_on:
+        - P-4
+
+  step_limit: 10
+  total_steps: 5
+
+# 引用
+references:
+  summary: .claude/state/planvote-search/251228153042-a7f3/summary.md
+  score_log: .claude/state/planvote-search/251228153042-a7f3/score_log.yaml
+  candidates_dir: .claude/state/planvote-search/251228153042-a7f3/candidates/

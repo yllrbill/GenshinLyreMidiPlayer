@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(ai-end)",
+      "Skill(ai-end:*)",
+      "Skill(ai-resume)",
+      "Skill(ai-resume:*)",
+      "Skill(ai-intake)",
+      "Skill(ai-intake:*)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "brave",
+    "tavily-remote",
+    "qwen_fallback",
+    "freebird"
+  ]
+}

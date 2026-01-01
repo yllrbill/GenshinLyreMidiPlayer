@@ -1,0 +1,441 @@
+# Tool Configuration
+# 唯一事实源: .claude/skills/downloader-core/SKILL.md
+
+tools:
+  # ============================================
+  # aria2c - 高速通用下载器
+  # ============================================
+  aria2c:
+    name: "aria2c"
+    description: "High-speed download utility with multi-connection support"
+    check_command: "aria2c --version"
+    version_pattern: "aria2 version ([\\d.]+)"
+    install:
+      windows: "winget install aria2.aria2 OR choco install aria2"
+      macos: "brew install aria2"
+      linux: "apt install aria2 OR yum install aria2"
+
+    commands:
+      # 单文件下载
+      single:
+        template: 'aria2c -x {connections} -s {connections} -k 1M -d "{output_dir}" "{url}"'
+        defaults:
+          connections: 16
+
+      # 批量下载 (从文件)
+      batch:
+        template: 'aria2c -x {connections} -s {connections} -k 1M -d "{output_dir}" -i "{url_file}"'
+        defaults:
+          connections: 16
+
+      # BT/磁力下载
+      torrent:
+        template: 'aria2c --seed-time=0 --max-overall-upload-limit=1K -d "{output_dir}" "{url}"'
+
+      # 带 referer
+      with_referer:
+        template: 'aria2c -x {connections} -s {connections} --referer="{referer}" -d "{output_dir}" "{url}"'
+
+    exit_codes:
+      0: "OK"
+      1: "Unknown error"
+      2: "Timeout"
+      3: "Resource not found"
+      4: "Max file not found"
+      5: "Download speed too slow"
+      6: "Network problem"
+      7: "Unfinished downloads"
+
+  # ============================================
+  # yt-dlp - 视频下载器
+  # ============================================
+  yt-dlp:
+    name: "yt-dlp"
+    description: "Video downloader for 1000+ sites"
+    check_command: "yt-dlp --version"
+    version_pattern: "([\\d.]+)"
+    install:
+      windows: "winget install yt-dlp.yt-dlp OR pip install yt-dlp"
+      macos: "brew install yt-dlp"
+      linux: "pip install yt-dlp"
+
+    commands:
+      # 最佳质量
+      best:
+        template: 'yt-dlp -f "bestvideo+bestaudio/best" -o "{output_dir}/%(title)s.%(ext)s" "{url}"'
+
+      # 配合 aria2c 加速
+      with_aria2c:
+        template: 'yt-dlp --downloader aria2c --downloader-args "-x 16 -s 16 -k 1M" -o "{output_dir}/%(title)s.%(ext)s" "{url}"'
+        requires: ["aria2c"]
+
+      # 仅音频
+      audio_only:
+        template: 'yt-dlp -x --audio-format mp3 -o "{output_dir}/%(title)s.%(ext)s" "{url}"'
+
+      # 指定质量
+      quality:
+        template: 'yt-dlp -f "{format}" -o "{output_dir}/%(title)s.%(ext)s" "{url}"'
+        defaults:
+          format: "bestvideo[height<=1080]+bestaudio/best[height<=1080]"
+
+      # 播放列表
+      playlist:
+        template: 'yt-dlp -o "{output_dir}/%(playlist)s/%(playlist_index)s - %(title)s.%(ext)s" "{url}"'
+
+      # 带 cookies
+      with_cookies:
+        template: 'yt-dlp --cookies-from-browser {browser} -o "{output_dir}/%(title)s.%(ext)s" "{url}"'
+        defaults:
+          browser: "chrome"
+
+    exit_codes:
+      0: "OK"
+      1: "Error"
+      2: "User abort"
+
+  # ============================================
+  # gallery-dl - 图片画廊下载器
+  # ============================================
+  gallery-dl:
+    name: "gallery-dl"
+    description: "Image gallery downloader for 120+ sites"
+    check_command: "gallery-dl --version"
+    version_pattern: "gallery-dl ([\\d.]+)"
+    install:
+      windows: "pip install gallery-dl"
+      macos: "brew install gallery-dl OR pip install gallery-dl"
+      linux: "pip install gallery-dl"
+
+    commands:
+      # 基本下载
+      basic:
+        template: 'gallery-dl -d "{output_dir}" "{url}"'
+
+      # 带 cookies (Pixiv/Fanbox 等需要登录)
+      with_cookies:
+        template: 'gallery-dl --cookies-from-browser {browser} -d "{output_dir}" "{url}"'
+        defaults:
+          browser: "chrome"
+
+      # 下载用户所有作品
+      user_all:
+        template: 'gallery-dl -d "{output_dir}" --range "1-" "{url}"'
+
+      # 仅列出 (不下载)
+      list_only:
+        template: 'gallery-dl -g "{url}"'
+
+      # 带文件名格式
+      with_format:
+        template: 'gallery-dl -d "{output_dir}" -f "{format}" "{url}"'
+        defaults:
+          format: "{category}_{id}_{filename}.{extension}"
+
+    exit_codes:
+      0: "OK"
+      1: "Error"
+
+  # ============================================
+  # wget2 - 通用下载/网站镜像
+  # ============================================
+  wget2:
+    name: "wget2"
+    description: "Advanced file retrieval with HTTP/2 support"
+    check_command: "wget2 --version"
+    version_pattern: "GNU Wget2 ([\\d.]+)"
+    install:
+      windows: "choco install wget2"
+      macos: "brew install wget2"
+      linux: "apt install wget2"
+
+    commands:
+      # 单文件
+      single:
+        template: 'wget2 -P "{output_dir}" "{url}"'
+
+      # 网站镜像
+      mirror:
+        template: 'wget2 -r -l {depth} --max-threads={threads} -P "{output_dir}" "{url}"'
+        defaults:
+          depth: 2
+          threads: 8
+
+      # 继续下载
+      continue:
+        template: 'wget2 -c -P "{output_dir}" "{url}"'
+
+      # 带认证
+      with_auth:
+        template: 'wget2 --user="{user}" --password="{password}" -P "{output_dir}" "{url}"'
+
+    exit_codes:
+      0: "OK"
+      1: "Generic error"
+      2: "Parse error"
+      3: "File I/O error"
+      4: "Network failure"
+      5: "SSL verification failure"
+      6: "Authentication failure"
+      7: "Protocol error"
+      8: "Server error"
+
+  # ============================================
+  # curl - 兜底下载工具
+  # ============================================
+  curl:
+    name: "curl"
+    description: "Command line tool for transferring data"
+    check_command: "curl --version"
+    version_pattern: "curl ([\\d.]+)"
+    install:
+      windows: "Built-in on Windows 10+"
+      macos: "Built-in"
+      linux: "apt install curl"
+
+    commands:
+      # 单文件 (自动命名)
+      single:
+        template: 'curl -L -o "{output_path}" "{url}"'
+
+      # 远程文件名
+      remote_name:
+        template: 'curl -L -O -J --output-dir "{output_dir}" "{url}"'
+
+      # 带 header
+      with_header:
+        template: 'curl -L -H "{header}" -o "{output_path}" "{url}"'
+
+      # 带认证
+      with_auth:
+        template: 'curl -L -u "{user}:{password}" -o "{output_path}" "{url}"'
+
+      # 静默模式
+      silent:
+        template: 'curl -sL -o "{output_path}" "{url}"'
+
+    exit_codes:
+      0: "OK"
+      1: "Unsupported protocol"
+      3: "URL malformed"
+      6: "Could not resolve host"
+      7: "Failed to connect"
+      22: "HTTP error"
+      28: "Operation timeout"
+
+  # ============================================
+  # httrack - 网站镜像 (备选)
+  # ============================================
+  httrack:
+    name: "httrack"
+    description: "Website copier for offline browsing"
+    check_command: "httrack --version"
+    version_pattern: "HTTrack version ([\\d.]+)"
+    install:
+      windows: "choco install httrack"
+      macos: "brew install httrack"
+      linux: "apt install httrack"
+
+    commands:
+      # 完整镜像
+      mirror:
+        template: 'httrack "{url}" -O "{output_dir}" +*.css +*.js +*.png +*.jpg +*.gif'
+
+      # 深度限制
+      with_depth:
+        template: 'httrack "{url}" -O "{output_dir}" -r{depth}'
+        defaults:
+          depth: 2
+
+    exit_codes:
+      0: "OK"
+      1: "Error"
+
+# ============================================
+# 认证配置 (Session 30 - voteplan winner)
+# ============================================
+authentication:
+  # 默认浏览器 (用于 --cookies-from-browser)
+  default_browser: "chrome"  # chrome | firefox | edge | brave | opera | safari
+
+  # 需要认证的站点
+  sites_requiring_auth:
+    video:
+      - youtube.com      # bot detection, age-restricted
+      - vimeo.com        # private videos
+      - bilibili.com     # 会员视频
+    gallery:
+      - pixiv.net        # OAuth required
+      - fanbox.cc        # Pixiv OAuth
+      - twitter.com      # login required for media
+      - deviantart.com   # mature content
+
+  # yt-dlp 认证选项
+  yt-dlp:
+    # 推荐方案: 从浏览器读取 cookies
+    cookies_from_browser: true
+    browser: "chrome"
+    # 备选: 配置文件路径 (Windows)
+    config_path: "%APPDATA%/yt-dlp/config"
+    # JS 运行时 (2024+ 版本需要)
+    js_runtime: "deno"  # deno | node
+
+  # gallery-dl 认证选项
+  gallery-dl:
+    # 推荐方案: 从浏览器读取 cookies
+    cookies_from_browser: true
+    browser: "chrome"
+    # Pixiv OAuth 认证
+    pixiv_oauth:
+      command: "gallery-dl oauth:pixiv"
+      token_location: "cache.sqlite3"
+    # 配置文件路径 (Windows)
+    config_path: "%APPDATA%/gallery-dl/config.json"
+
+# ============================================
+# 认证命令模板
+# ============================================
+auth_commands:
+  # 一次性设置 yt-dlp 配置
+  setup_ytdlp_config:
+    windows: |
+      mkdir -p $env:APPDATA/yt-dlp
+      echo "--cookies-from-browser chrome" > $env:APPDATA/yt-dlp/config
+    verify: "Test-Path $env:APPDATA/yt-dlp/config"
+
+  # Pixiv OAuth 授权
+  setup_pixiv_oauth:
+    command: "gallery-dl oauth:pixiv"
+    description: "Opens browser for Pixiv OAuth authorization"
+    verify: "gallery-dl --cookies-from-browser chrome https://www.pixiv.net/users/1"
+
+  # 安装 deno JS 运行时
+  install_deno:
+    windows: "winget install DenoLand.Deno"
+    macos: "brew install deno"
+    linux: "curl -fsSL https://deno.land/install.sh | sh"
+    verify: "deno --version"
+
+# ============================================
+# 并行配置
+# ============================================
+parallel:
+  default: 4
+  max: 16
+  per_domain_limit: 2  # 避免被 ban
+
+# ============================================
+# 超时配置 (秒)
+# ============================================
+timeout:
+  connect: 30
+  download: 3600  # 1 hour
+  total: 7200     # 2 hours
+
+# ============================================
+# 重试配置
+# ============================================
+retry:
+  max_attempts: 3
+  delay_seconds: 5
+  backoff_multiplier: 2
+
+# ============================================
+# JDownloader 2 - 网盘/文件托管下载 (via MyJDownloader API)
+# ============================================
+jdownloader:
+  name: "jdownloader"
+  description: "File hoster downloader via MyJDownloader API (500+ sites)"
+  type: "api"  # 非 CLI，通过 API 调用
+
+  setup:
+    requirements:
+      - "pip install myjdapi"
+      - "JDownloader 2 running (headless or GUI)"
+      - "MyJDownloader account configured in JD2"
+
+    headless_install:
+      windows: |
+        mkdir D:\tools\jdownloader2
+        curl -L -o D:\tools\jdownloader2\JDownloader.jar http://installer.jdownloader.org/JDownloader.jar
+        # First run with GUI to configure MyJDownloader account
+        java -jar D:\tools\jdownloader2\JDownloader.jar
+        # After setup, run headless
+        javaw -jar D:\tools\jdownloader2\JDownloader.jar -norestart
+
+    verify:
+      command: "python -c \"import myjdapi; print('myjdapi OK')\""
+      env_vars:
+        - MYJD_EMAIL       # MyJDownloader email
+        - MYJD_PASSWORD    # MyJDownloader password
+        - MYJD_DEVICE      # optional: specific device name
+
+  api:
+    library: myjdapi
+    connection:
+      template: |
+        import myjdapi
+        jd = myjdapi.Myjdapi()
+        jd.set_app_key("downloader-core")
+        jd.connect("{email}", "{password}")
+        jd.update_devices()
+        device = jd.get_device("{device_name}")
+
+    commands:
+      add_links:
+        description: "Add links to JDownloader queue"
+        template: |
+          device.linkgrabber.add_links([{
+              "autostart": {autostart},
+              "links": "{links}",
+              "packageName": "{package_name}",
+              "destinationFolder": "{output_dir}"
+          }])
+        defaults:
+          autostart: true
+          package_name: "downloader-core"
+
+      query_links:
+        description: "Query link grabber status"
+        template: "device.linkgrabber.query_links()"
+
+      get_packages:
+        description: "Get download packages"
+        template: "device.downloads.query_packages()"
+
+      start_downloads:
+        description: "Start all downloads"
+        template: "device.downloadcontroller.start_downloads()"
+
+      get_status:
+        description: "Get download controller state"
+        template: "device.downloadcontroller.get_current_state()"
+
+  supported_sites:
+    tier1:  # 高支持度
+      - mega.nz
+      - mediafire.com
+      - uploaded.net
+      - rapidgator.net
+      - 1fichier.com
+    tier2:  # 中等支持度
+      - turbobit.net
+      - nitroflare.com
+      - katfile.com
+      - hitfile.net
+    china:  # 中国网盘 (需账号)
+      - pan.baidu.com
+      - 115.com
+      - lanzou.com
+      - ctfile.com
+    cloud:  # 云存储
+      - drive.google.com
+      - onedrive.live.com
+      - dropbox.com
+
+  exit_codes:
+    0: "OK"
+    1: "Connection failed"
+    2: "Device not found"
+    3: "Link add failed"
+    4: "Download failed"

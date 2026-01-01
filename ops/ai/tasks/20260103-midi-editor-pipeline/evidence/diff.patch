@@ -1,0 +1,414 @@
+warning: in the working copy of '.claude/agents/context-packer.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.claude/commands/ai-task-pack.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CLAUDE.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ops/ai/context/PROMPTS.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ops/ai/state/STATE.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ops/ai/templates/context_pack.template.md', LF will be replaced by CRLF the next time Git touches it
+diff --git a/.claude/agents/context-packer.md b/.claude/agents/context-packer.md
+index df134a6..bf471ef 100644
+--- a/.claude/agents/context-packer.md
++++ b/.claude/agents/context-packer.md
+@@ -15,40 +15,49 @@ Generate a minimal, low-token Context Pack that ChatGPT Planner can consume effi
+ ## Rules
+ 
+ 1. **No long code blocks** - prefer file paths + line ranges + short bullets
+-2. **Always output a "Minimal files to read" list** (3-6 items, sorted)
++2. **Each section 3-6 lines max** - avoid long paragraphs
+ 3. **Log excerpts** - only include failing lines + 10 lines of context max
+ 4. **Secret-safe** - never include secrets; mask tokens/keys with `<REDACTED>`
+ 5. **Deterministic** - all lists must be sorted
+ 
+-## Output Structure
++## Output Structure (固定 6 段)
+ 
+ ```markdown
+ # Context Pack for <TASK_ID>
+ 
+-## Task Summary
+-(one-line goal from request.md)
+-
+-## Current Status
+-(from STATE.md: DRAFT/IN_PROGRESS/BLOCKED/DONE)
+-
+-## Key Files (sorted)
+-- path/to/file1.py (purpose)
+-- path/to/file2.md (purpose)
+-
+-## Evidence Index
+-| File | Exists | Summary |
+-|------|--------|---------|
+-| execute.log | ✅/❌ | (key result or "N/A") |
+-| tests.log | ✅/❌ | (pass/fail count) |
+-| diff.patch | ✅/❌ | (N files, +X/-Y lines) |
+-
+-## Failures (if any)
+-(only failing lines, max 20 lines)
+-
+-## Minimal Files for Planner
+-1. ops/ai/tasks/<TASK_ID>/request.md
+-2. ops/ai/tasks/<TASK_ID>/evidence/context_pack.md
+-3. (2-4 more relevant files, sorted)
++## 1. Goal
++(目标一句话，从 request.md 提取)
++
++## 2. What's Done
++(已完成的工作，列文件路径/函数名，3-6 行)
++- path/to/file1.py: 实现了 XXX
++- path/to/file2.md: 更新了 YYY
++
++## 3. Current Blocker / Decision Needed
++(要 ChatGPT Planner 决策的点，明确写出问题)
++- 问题 1: ...
++- 问题 2: ...
++- 需要决策: A 方案 vs B 方案
++
++## 4. Evidence Index
++| File | Path | Summary |
++|------|------|---------|
++| execute.log | evidence/ | (关键结果或 N/A) |
++| tests.log | evidence/ | (pass/fail 数量) |
++| diff.patch | evidence/ | (N files, +X/-Y lines) |
++
++## 5. Minimal Files to Read
++(最多 3-6 个文件，按重要性排序)
++1. ops/ai/tasks/<TASK_ID>/request.md - 任务定义
++2. ops/ai/tasks/<TASK_ID>/evidence/diff.patch - 当前改动
++3. path/to/key_file.py - 核心实现
++4. ...
++
++## 6. Next Actions Candidates
++(你认为的 2-3 条候选路径，让 Planner 选择)
++- [ ] A: 继续实现 XXX 功能
++- [ ] B: 先修复 YYY 问题
++- [ ] C: 需要更多信息才能决定
+ 
+ ---
+ *Generated: YYYY-MM-DD HH:MM*
+diff --git a/.claude/commands/ai-task-pack.md b/.claude/commands/ai-task-pack.md
+index 33c9e0c..bdb495c 100644
+--- a/.claude/commands/ai-task-pack.md
++++ b/.claude/commands/ai-task-pack.md
+@@ -1,109 +1,7 @@
+ ---
+-description: Generate a minimal Context Pack for Planner (logs/diff/file pointers)
+-argument-hint: <TASK_ID>
++description: (DEPRECATED) Use /ai-end instead
++argument-hint: "<TASK_ID>"
++allowed-tools: Read
+ ---
+ 
+-目标：生成 `ops/ai/tasks/<TASK_ID>/evidence/context_pack.md`，供 ChatGPT 决策层使用，尽量少 token 但可复跑。
+-
+-## 命令参数
+-- TASK_ID = `$1`
+-
+-## 硬规则
+-- 输出必须 deterministic（列清单时 sorted）
+-- 不要整段复制日志，只提取关键失败行摘要
+-- Secret-safe：禁止输出明文密钥/token
+-
+----
+-
+-## Subagent 调用
+-
+-**Use the `context-packer` subagent to generate context_pack.md, then summarize the minimal file paths for Planner.**
+-
+-该 subagent 位于 `.claude/agents/context-packer.md`：
+-
+-| 属性 | 值 |
+-|------|-----|
+-| tools | Read, Glob, Grep (只读) |
+-| permissionMode | plan (不会意外修改文件) |
+-| 独立上下文 | 防止日志/代码片段污染主会话 |
+-
+----
+-
+-## 执行步骤
+-
+-### 1) 验证输入
+-
+-检查 TASK_ID 是否有效：
+-- 若 `$1` 为空：提示用户提供 TASK_ID，然后停止
+-- 若 `ops/ai/tasks/<TASK_ID>/request.md` 不存在：报错并停止
+-
+-### 2) 调用 context-packer subagent
+-
+-让 subagent 读取以下文件：
+-
+-| 文件 | 必需 | 用途 |
+-|------|------|------|
+-| `ops/ai/state/STATE.md` | 是 | 当前状态 |
+-| `ops/ai/context/REPO_MAP.md` | 否 | 仓库地图 |
+-| `ops/ai/tasks/<TASK_ID>/request.md` | 是 | 任务请求 |
+-| `ops/ai/tasks/<TASK_ID>/plan.md` | 否 | 执行计划 |
+-| `ops/ai/tasks/<TASK_ID>/handoff.md` | 否 | 交接文档 |
+-| `ops/ai/tasks/<TASK_ID>/evidence/execute.log` | 否 | 执行日志 |
+-| `ops/ai/tasks/<TASK_ID>/evidence/tests.log` | 否 | 测试日志 |
+-| `ops/ai/tasks/<TASK_ID>/evidence/diff.patch` | 否 | 变更补丁 |
+-
+-### 3) context-packer 输出结构
+-
+-```markdown
+-# Context Pack for <TASK_ID>
+-
+-## Task Summary
+-(从 request.md 提取 Goal)
+-
+-## Current Status
+-(从 STATE.md 提取 Latest Task 状态)
+-
+-## Key Files (sorted)
+-- path/to/file1.py
+-- path/to/file2.md
+-
+-## Evidence Index
+-
+-| File | Exists | Summary |
+-|------|--------|---------|
+-| execute.log | ✅/❌ | (关键失败行或"成功") |
+-| tests.log | ✅/❌ | (失败测试名或"全部通过") |
+-| diff.patch | ✅/❌ | (改动文件数 + 行数) |
+-
+-## Failures (if any)
+-(最多 20 行错误摘要)
+-
+-## Minimal Files for Planner
+-1. ops/ai/tasks/<TASK_ID>/request.md
+-2. ops/ai/tasks/<TASK_ID>/evidence/context_pack.md
+-3. (2-4 more relevant files, sorted)
+-
+----
+-*Generated: YYYY-MM-DD HH:MM*
+-```
+-
+-### 4) 写入文件
+-
+-写入 `ops/ai/tasks/<TASK_ID>/evidence/context_pack.md`
+-
+-### 5) 输出建议
+-
+-```
+-✅ Context Pack 已生成：ops/ai/tasks/<TASK_ID>/evidence/context_pack.md
+-
+-建议发给 Planner 的最小文件集合：
+-1. ops/ai/tasks/<TASK_ID>/evidence/context_pack.md (本文件)
+-2. ops/ai/tasks/<TASK_ID>/request.md
+-3. (如果存在) ops/ai/tasks/<TASK_ID>/plan.md
+-4. (如果存在) ops/ai/tasks/<TASK_ID>/handoff.md
+-5. (从 request.md Planner Inputs 提取的关键文件，最多 3 个)
+-
+-Planner 读完后应产出：
+-- 新的 plan.md 或 plan 修订
+-- 如需改代码：patch.diff
+-```
++此命令已废弃，请使用：/ai-end $ARGUMENTS
+diff --git a/CLAUDE.md b/CLAUDE.md
+index ded3e56..aa18691 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -17,6 +17,7 @@
+ 4) 少问人：除非被权限/缺输入阻塞，否则优先从仓库恢复上下文
+ 
+ ## Start Here (每次新会话第一步)
++- **首选**: 运行 `/ai-resume` 恢复上下文并获取下一步计划
+ - 运行 /bootstrap
+ - 需要定位 bug：/triage
+ - 需要构造最小复现：/repro
+diff --git a/ops/ai/context/PROMPTS.md b/ops/ai/context/PROMPTS.md
+index da70ed1..ccf25da 100644
+--- a/ops/ai/context/PROMPTS.md
++++ b/ops/ai/context/PROMPTS.md
+@@ -1,44 +1,12 @@
+-# Prompts
+-
+-## ChatGPT (Planner) - Session Opener
+-
+-```
+-你是"决策层（Planner）"，不直接改仓库、不运行命令。优先读：
++你是决策层（Planner）。不运行命令、不直接改仓库。只基于以下文件做决策并输出可落盘的工件：
+ - ops/ai/state/STATE.md
+-- ops/ai/context/REPO_MAP.md
+ - ops/ai/tasks/<TASK_ID>/request.md
++- ops/ai/tasks/<TASK_ID>/evidence/context_pack.md（若有）
++- ops/ai/tasks/<TASK_ID>/handoff.md（若有）
++- ops/ai/tasks/<TASK_ID>/evidence/diff.patch / tests.log / execute.log（若有）
+ 
+-你的输出必须可执行：≤10步计划 + 影响文件 + 验收命令 + 证据清单；信息不足则先列 Context Pack 请求。
+-```
+-
+-## ChatGPT (Planner) - Session Closer
+-
+-```
+-1) 用 5 行以内列出执行层下一步要做什么（带路径）
+-2) 成功判据/失败判据各 1 条
+-3) 停止，不扩展
+-```
+-
+-## Claude (Executor) - Session Opener
+-
+-```
+-你是"执行层（Executor）"，先读：
+-- CLAUDE.md
+-- ops/ai/state/STATE.md
+-- ops/ai/tasks/<TASK_ID>/request.md + plan.md (+patch.diff)
+-
+-先给≤10条执行计划，再动手。Evidence-first、Fail-closed、Minimal change。
+-```
+-
+-## Claude (Executor) - Session Closer
+-
+-```
+-收尾必须完成：
+-- 写 ops/ai/tasks/<TASK_ID>/handoff.md（含 Evidence Index）
+-- evidence/ 下落盘 execute.log/tests.log/diff.patch/context_pack.md(如需要)
+-- 更新 ops/ai/state/STATE.md 指向最新任务目录与状态
+-```
+-
+----
++交付物：
++1) 生成 ops/ai/tasks/<TASK_ID>/plan.md（≤10 步，含命令、验收、证据清单、Stop conditions）
++2) 信息足够则给 patch.diff（统一 diff）；不足就列 Context Pack 请求清单（要哪些文件/命令输出）
+ 
+-*Created: 2026-01-01*
++约束：Fail-closed、Minimal change、Secret-safe（除非必要，不要要求我粘贴密钥/隐私原文）。
+diff --git a/ops/ai/state/STATE.md b/ops/ai/state/STATE.md
+index 1451a38..85bde02 100644
+--- a/ops/ai/state/STATE.md
++++ b/ops/ai/state/STATE.md
+@@ -1,25 +1,67 @@
+ # Project State
+ 
+ ## Latest Task
+-- TASK_ID: (none)
+-- Status: (INIT)
+-- Pointer: ops/ai/tasks/(none)
++- TASK_ID: 20260103-midi-editor-pipeline
++- Status: IN_PROGRESS (Phase 1 DONE)
++- Pointer: ops/ai/tasks/20260103-midi-editor-pipeline
++
++## Previous Task
++- TASK_ID: 20260102-2138-main-mixin-refactor
++- Status: DONE (包含 Input Diagnostics 实现)
++- Pointer: ops/ai/tasks/20260102-2138-main-mixin-refactor
+ 
+ ## Current Focus
+-- (write current focus here)
++- MIDI 编辑器 Phase 1 完成：钢琴卷帘可视化 + 播放骨架
++- 待进行 Phase 1.5：main.py 集成 + 版本选择弹窗
++
++## Completed Summary (MIDI Editor Phase 1)
++- **Phase 1 钢琴卷帘骨架完成**: 6 个新文件 (~745 行)
++- ui/editor/note_item.py: NoteItem (QGraphicsRectItem)
++- ui/editor/piano_roll.py: PianoRollWidget (QGraphicsView)
++- ui/editor/timeline.py: TimelineWidget
++- ui/editor/keyboard.py: KeyboardWidget
++- ui/editor/editor_window.py: EditorWindow (含保存/索引)
++- Syntax check: OK
++- Import check: OK (`from ui.editor import EditorWindow`)
++
++## 行数统计（当前）
++- main.py: 1050 行 (原 2206 → 1556 → 1039 → 1050)
++- ui/tab_builders.py: 575 行 (新增)
++- i18n/translations.py: 173 行 (+5 新翻译键)
++- ui/mixins/ 合计 910 行（7 files）
++  - config_mixin.py: 337
++  - settings_preset_mixin.py: 295
++  - playback_mixin.py: 153
++  - hotkeys_mixin.py: 68
++  - language_mixin.py: 24
++  - __init__.py: 18
++  - logs_mixin.py: 15
++
++## Known Issues / Technical Debt
++1. ~~**Field Drift Risk**: save_settings vs _collect_current_settings 字段结构不同~~ ✅ 已解决
++2. LyreAutoPlayer 目录策略性未纳入 git 跟踪
++   - 若未来要纳入，需先清理外部变更、确认子项目边界
++
++## Pending Tasks
++1. (IN_PROGRESS) 20260103-midi-editor-pipeline - MIDI 编辑管线 Phase 1.5+
+ 
+-## Known Issues / Risks
+-- (bullet list)
++## Recent Completions
++- Input Diagnostics 窗口 + 修复审计 (追加到 20260102-2138)
++  - ui/diagnostics_window.py (新增 ~240 行)
++  - 支持按键记录、过滤、来源标注
++  - 17 个新 i18n 翻译键
++  - **2026-01-03 修复**: 线程安全 signal、语言同步、防御性 KeySource、_sync_diagnostics_state() 统一方法
+ 
+-## Next Actions
+-- (bullet list, sorted by priority)
++## Evidence
++- Regression: LyreAutoPlayer/.claude/state/regression/mixin_refactor_20260102.json (14/14)
++- Handoff: ops/ai/tasks/20260102-2142-unify-config-schema-and-persistence/handoff.md
+ 
+ ## How to Resume in a New Session
+ 1. Read `ops/ai/state/STATE.md`
+-2. Read `ops/ai/context/REPO_MAP.md`
+-3. Read latest task folder `request.md` + `handoff.md` + `evidence/*`
+-4. Continue from "Next Actions"
++2. Read latest task's `request.md` and `handoff.md`
++3. Review evidence files if needed
++4. Continue from task status
+ 
+ ---
+ 
+-*Last Updated: 2026-01-01*
++*Last Updated: 2026-01-03 (MIDI Editor Phase 1 completed)*
+diff --git a/ops/ai/templates/context_pack.template.md b/ops/ai/templates/context_pack.template.md
+index bbc75c9..3d89c3d 100644
+--- a/ops/ai/templates/context_pack.template.md
++++ b/ops/ai/templates/context_pack.template.md
+@@ -1,19 +1,39 @@
+-# Context Pack (for Planner)
++# Context Pack for <TASK_ID>
+ 
+-## Repo map pointers
+-- Entry points:
+-- Key modules:
++> 固定 6 段结构，每段 3-6 行，避免长篇
+ 
+-## Changed files
+-- (sorted)
++## 1. Goal
++(目标一句话，从 request.md 提取)
+ 
+-## Relevant logs
+-- execute.log: (summary or key lines)
+-- tests.log: (summary or key lines)
++## 2. What's Done
++(已完成的工作，列文件路径/函数名)
++- path/to/file1.py: 实现了 XXX
++- path/to/file2.md: 更新了 YYY
+ 
+-## Questions / Unknowns
+-- ...
++## 3. Current Blocker / Decision Needed
++(要 ChatGPT Planner 决策的点，明确写出问题)
++- 问题 1: ...
++- 问题 2: ...
++- 需要决策: A 方案 vs B 方案
+ 
+----
++## 4. Evidence Index
++| File | Path | Summary |
++|------|------|---------|
++| execute.log | evidence/ | (关键结果或 N/A) |
++| tests.log | evidence/ | (pass/fail 数量) |
++| diff.patch | evidence/ | (N files, +X/-Y lines) |
++
++## 5. Minimal Files to Read
++(最多 3-6 个文件，按重要性排序)
++1. ops/ai/tasks/<TASK_ID>/request.md - 任务定义
++2. ops/ai/tasks/<TASK_ID>/evidence/diff.patch - 当前改动
++3. path/to/key_file.py - 核心实现
+ 
+-*Generated: YYYY-MM-DD*
++## 6. Next Actions Candidates
++(2-3 条候选路径，让 Planner 选择)
++- [ ] A: 继续实现 XXX 功能
++- [ ] B: 先修复 YYY 问题
++- [ ] C: 需要更多信息才能决定
++
++---
++*Generated: YYYY-MM-DD HH:MM*

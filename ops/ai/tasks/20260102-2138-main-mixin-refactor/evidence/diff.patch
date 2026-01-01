@@ -1,0 +1,19 @@
+=== Mixin Files Created ===
+-rw-r--r-- 1 yllrb 197609   499  1月  2 05:56 ui/mixins/__init__.py
+-rw-r--r-- 1 yllrb 197609 15052  1月  2 20:18 ui/mixins/config_mixin.py
+-rw-r--r-- 1 yllrb 197609  2792  1月  2 06:00 ui/mixins/hotkeys_mixin.py
+-rw-r--r-- 1 yllrb 197609   730  1月  2 06:00 ui/mixins/language_mixin.py
+-rw-r--r-- 1 yllrb 197609   340  1月  2 06:01 ui/mixins/logs_mixin.py
+-rw-r--r-- 1 yllrb 197609  6276  1月  2 05:58 ui/mixins/playback_mixin.py
+-rw-r--r-- 1 yllrb 197609 11343  1月  2 20:21 ui/mixins/settings_preset_mixin.py
+
+=== Line Counts ===
+  1556 main.py
+    18 ui/mixins/__init__.py
+   299 ui/mixins/config_mixin.py
+    68 ui/mixins/hotkeys_mixin.py
+    24 ui/mixins/language_mixin.py
+    15 ui/mixins/logs_mixin.py
+   153 ui/mixins/playback_mixin.py
+   248 ui/mixins/settings_preset_mixin.py
+  2381 total

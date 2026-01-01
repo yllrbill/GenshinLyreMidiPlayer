@@ -1,0 +1,467 @@
+---
+name: websearch
+description: 聚合 brave/tavily_remote/freebird/qwen/内置 websearch 做分类摘要；支持难度自适应；含 NSFW 门禁与用户确认/自动同意逻辑；含 secret-safe。
+allowed-tools: mcp__brave__*, mcp__tavily-remote__*, mcp__freebird__*, mcp__qwen_fallback__*, WebSearch, WebFetch, Read, Glob
+---
+
+# Websearch Skill
+
+## Purpose
+
+Websearch 是**聚合搜索模块**，整合多个 MCP 搜索工具和内置 WebSearch，提供统一的搜索接口。支持难度自适应、NSFW 内容门禁、敏感信息保护。
+
+**核心能力**：
+- 多源聚合搜索（brave, tavily_remote, freebird, qwen, 内置 websearch）
+- 难度自适应（EASY/MEDIUM/HARD）
+- NSFW 内容门禁与自动同意逻辑
+- Secret-safe 保护机制
+- 结构化输出协议
+
+## Sources of Truth
+
+> **本文件是 Websearch 的唯一事实源。** 其它文件只能引用此处，不得重复定义契约。
+
+| 文件 | 角色 |
+|------|------|
+| `.claude/skills/websearch/SKILL.md` | **唯一事实源** |
+| `.claude/rules/70-mcp-cus.md` | MCP 搜索规则（继承） |
+| `.claude/rules/65-thinking-envelope.md` | Envelope 规范（继承） |
+
+---
+
+## A) Trigger / Use When (PROACTIVELY 使用)
+
+Websearch 被触发的条件：
+
+1. **用户显式调用**：用户提到"搜索"、"查资料"、"调研"、"对比"、"最新"、"根因"等关键词
+2. **上游命令调用**：被 `/thingking_web`、`/voteplan` 等命令作为搜索模块调用
+3. **研究任务**：需要获取外部信息、验证假设、查找官方文档
+4. **内置搜索质量不足时自动升级**：当直接使用内置 WebSearch 的结果质量不满足需求时，自动调用本 skill 进行多源聚合搜索
+
+### 自动触发条件 (PROACTIVELY)
+
+> **Patterns 引用**: `patterns.yaml` (唯一事实源)
+
+当满足以下任一条件时，**必须**自动调用 websearch skill：
+
+1. **搜索动作关键词**：
+   - 中文: 搜索、查资料、调研、查找
+   - 英文: search, research, look up, find information
+
+2. **质量问题指示**：
+   - 中文: 不全面、不够详细、缺少、不完整
+   - 英文: incomplete, insufficient, missing information, not comprehensive
+   - **示例**: "找到的方法不全面" → 自动触发 websearch
+
+3. **对比分析需求**：
+   - 中文: 对比、比较、差异、最新、最佳
+   - 英文: compare, versus, vs, latest, best practice
+
+4. **根因分析**：
+   - 中文: 根因、原因、为什么
+   - 英文: root cause, why, reason, cause
+
+5. **决策需求**：
+   - 中文: 选择、决定、哪个好、推荐
+   - 英文: which one, should I, recommend, best option
+
+### 自动触发行为
+
+```yaml
+WHEN: <用户消息包含任意触发关键词>
+AND: <消息长度 >= 10 字符>
+AND: <非显式命令调用 (不以 /websearch 开头)>
+THEN:
+  - 提取搜索主题（从用户消息）
+  - 自动调用 Skill(skill: "websearch", args: "<topic>")
+  - LOG: "[websearch] 检测到搜索需求/质量问题，自动触发"
+  - 使用 HARD 模式（如包含 hard_mode_keywords）
+```
+
+**禁止绕过**: 如果检测到触发条件但未调用 websearch，视为流程错误。
+
+### 质量不足判定规则（确定性）
+
+当使用内置 WebSearch 后，满足以下任一条件时，**必须**自动调用 websearch skill 重新搜索：
+
+| 条件 | 判定标准 | 说明 |
+|------|----------|------|
+| **结果数不足** | results_count < 3 | 返回结果太少，无法做有效判断 |
+| **无官方来源** | 无 `.gov` / `.org` / `github.com` / `microsoft.com` 等官方域名 | 需要权威来源但未找到 |
+| **关键词未命中** | 搜索结果标题/摘要未包含 topic 核心关键词 | 搜索偏离主题 |
+| **时效性要求未满足** | topic 含"最新/latest/2024/2025"但结果均为旧内容 | 需要最新信息 |
+| **技术深度不足** | 需要代码示例/命令但结果仅为概念介绍 | 需要可执行方案 |
+
+### 自动升级行为
+
+```
+IF 已使用内置 WebSearch AND 质量不足条件满足:
+    LOG: "[websearch] 内置搜索质量不足，自动升级到多源聚合"
+    CALL: Skill(skill: "websearch", args: "<original_topic>")
+    # 使用 websearch skill 的完整 fallback 链和结构化输出
+```
+
+### 禁止绕过规则
+
+**CRITICAL**：以下场景**禁止**直接使用内置 WebSearch，必须首先调用 websearch skill：
+
+- `/thingking_web` 命令执行期间
+- `/voteplan` 命令执行期间
+- blocker.latest.yaml 中 `needs: [RESEARCH]` 时
+- 用户明确要求"搜索"、"调研"等动作时
+
+**原因**：这些场景需要多源验证和结构化输出，内置工具无法满足。
+
+---
+
+## B) Inputs
+
+| 输入 | 必需 | 说明 |
+|------|------|------|
+| `topic` | Yes | 搜索主题（来自 $ARGUMENTS 或上游调用方传入） |
+| `--allow-nsfw` | No | 显式允许 NSFW 内容的标志 |
+
+### allow_nsfw 自动同意判定（确定性规则）
+
+```
+allow_nsfw = (args 含 --allow-nsfw)
+          OR (topic 文本中包含以下任一 marker，大小写不敏感)
+```
+
+**NSFW 自动同意 Markers**：
+- `NSFW`
+- `成人`
+- `色情`
+- `porn`
+- `adult`
+- `hentai`
+- `18+`
+- `R18`
+- `エロ`
+
+**规则说明**：当 topic 文本明确包含上述任一 marker 时，视为用户已明确表达搜索 NSFW 内容的意图，自动同意，无需再次询问。
+
+---
+
+## C) Tool Probe（聚合器内部用）
+
+### 可用性探测
+
+在搜索前探测各工具可用性，仅输出状态，**不得输出任何 env 实值或 URL**。
+
+```yaml
+tool_probe:
+  brave:
+    available: true|false
+    env_status:
+      BRAVE_API_KEY: <SET>|<UNSET>
+  tavily_remote:
+    available: true|false
+    env_status:
+      TAVILY_MCP_URL: <SET>|<UNSET>
+  freebird:
+    available: true    # 无需 API key，始终可用
+  qwen:
+    available: true|false
+    env_status:
+      DASHSCOPE_API_KEY: <SET>|<UNSET>
+  websearch:
+    available: true    # 内置工具，始终可用作 fallback
+```
+
+### 优先级顺序
+
+按 `.claude/rules/70-mcp-cus.md` 定义：
+1. brave (Brave Search API)
+2. tavily_remote (Tavily Remote MCP)
+3. qwen (Qwen + DashScope)
+4. freebird (DuckDuckGo, 免费兜底)
+5. websearch (内置, fallback)
+
+---
+
+## D) Query Generation（3-6 条）
+
+### 查询优先级
+
+1. **官方文档** > **维护者/GitHub issue** > **StackOverflow** > **社区博客**
+
+### 难度自适应（确定性规则）
+
+| 难度 | 判定条件 | Queries | Results/Query | 并发 |
+|------|----------|---------|---------------|------|
+| **EASY** | 单一明确问题，无复杂约束 | 3 | 5 | 1 |
+| **MEDIUM** | 有 2-3 个约束或需要对比 | 4-5 | 7 | 2 |
+| **HARD** | 含特定关键词或高复杂度 | 6 | 10 | 3 |
+
+### HARD 难度触发条件（满足任一）
+
+```
+- 含关键词: "最新" "latest" "对比" "compare" "方案" "solution" "根因" "root cause"
+- 含关键词: "多平台" "cross-platform" "兼容" "compatibility"
+- 约束数 >= 3（通过 AND/且/并且 计数）
+- topic 长度 > 100 字符
+- 含版本号对比（如 "v1 vs v2"）
+```
+
+### 难度判定输出示例
+
+```yaml
+difficulty_assessment:
+  level: HARD
+  reasoning:
+    - "Contains keyword: 最新"
+    - "Contains keyword: 对比"
+    - "Constraint count: 4"
+  queries_count: 6
+  results_per_query: 10
+  concurrency: 3
+```
+
+---
+
+## E) NSFW Gate（核心）
+
+### 检测触发
+
+当搜索结果或 topic 包含以下模式时触发 NSFW 检测：
+- 明显的成人内容描述
+- 色情网站域名
+- 露骨的性相关词汇
+
+### 处理流程
+
+```
+IF nsfw_detected AND allow_nsfw = false:
+    RETURN {
+        status: "NSFW_FLAGGED"
+        message: "检测到疑似 NSFW 内容，需要用户确认"
+        action: "由调用方封装 envelope: ERROR / NSFW_CONTENT"
+    }
+    # 不生成任何公开摘要与 sources
+
+ELIF nsfw_detected AND allow_nsfw = true:
+    # 允许继续，无内容限制
+    # 原始响应写入私有隔离目录
+    raw_response:
+      location: ".claude/state/private/websearch/<request_id>/"
+      access: "仅调用方可见"
+    # 标记输出
+    status: "NSFW_ACKNOWLEDGED"
+    nsfw_isolated: true
+    isolated_path: "<private 目录路径>"
+```
+
+### NSFW_FLAGGED 响应结构
+
+```yaml
+websearch_result:
+  status: NSFW_FLAGGED
+  topic: "<原始 topic>"
+  nsfw_indicators:
+    - "<检测到的 NSFW 指标 1>"
+    - "<检测到的 NSFW 指标 2>"
+  action_required: "用户确认或添加 --allow-nsfw"
+  # 无 sources/themes/summary
+```
+
+---
+
+## F) Secret Leak Gate
+
+### 检测模式
+
+检测以下敏感信息模式：
+```regex
+# API Key 参数
+[?&](api_key|apikey|token|access_token|tavilyApiKey|BRAVE_API_KEY)=[^&\s]+
+
+# Bearer Token
+Authorization:\s*Bearer\s+[A-Za-z0-9_-]{20,}
+
+# 常见 Token 格式
+(tvly-|sk-|ghp_|gho_)[A-Za-z0-9_-]{20,}
+
+# 完整 API URL（含 secret 参数）
+https?://[^\s"]+[?&](api_key|token|key)=[^&\s"]+
+```
+
+### allow_secret_isolation 判定规则（确定性）
+
+```
+allow_secret_isolation = (args 含 --allow-secret-isolation)
+                      OR (topic 文本中包含以下任一 marker，大小写不敏感):
+                         "API key", "token", "credential", "secret", "密钥", "凭证"
+```
+
+**规则说明**：当用户明确在搜索与密钥/凭证相关的主题时，自动允许隔离处理。
+
+### 处理流程
+
+```
+IF secret_leak_detected AND allow_secret_isolation = false:
+    RETURN {
+        status: "SECRET_LEAK"
+        error_code: "SECRET_LEAK"
+        message: "检测到敏感信息，需要用户确认"
+        leaked_pattern: "<匹配的模式类型，不输出实值>"
+        action_required: "用户确认或添加 --allow-secret-isolation"
+        next: "<command> --allow-secret-isolation"
+    }
+    # STOP - 等待用户确认
+
+ELIF secret_leak_detected AND allow_secret_isolation = true:
+    # 允许继续，但隔离敏感内容
+    processing_rules:
+      - 原始响应（含敏感信息）→ 写入私有隔离目录
+      - 公开摘要 → 脱敏版本（secret 替换为 <REDACTED>）
+      - 标记 SECRET_ISOLATED
+
+    RETURN {
+        status: "OK"  # 或 "SECRET_ISOLATED" 作为 warning
+        secret_isolated: true
+        isolated_path: "<private 目录路径>"
+        # 公开内容已脱敏
+    }
+```
+
+### 输出约束
+
+- **env 只写 SET/UNSET**：绝不输出环境变量实值
+- **URL 脱敏**：公开输出的 URL 不得包含 query string 中的 secret 参数
+- **日志脱敏**：所有公开日志输出在写入前扫描并替换敏感模式
+- **私有隔离**：原始未脱敏内容仅写入私有目录，路径记录在 envelope.artifacts_written_private
+
+---
+
+## G) 输出约定（供调用方复用）
+
+### 返回结构协议
+
+```yaml
+websearch_result:
+  # 状态（必需）
+  status: OK|NSFW_FLAGGED|SEARCH_FAILED|SECRET_LEAK
+
+  # 难度评估（status=OK 时）
+  difficulty: EASY|MEDIUM|HARD
+  difficulty_reasoning: ["<判定依据 1>", "<判定依据 2>"]
+
+  # 使用的工具（status=OK 时）
+  used_tools: [brave|tavily_remote|freebird|qwen|websearch]
+
+  # 查询记录
+  queries:
+    - query: "<搜索词>"
+      tool_used: "<工具名>"
+      results_count: <N>
+      fallback_chain: ["<尝试过的工具列表>"]  # 如有 fallback
+
+  # 来源（status=OK 时）
+  sources:
+    - url: "<URL，已脱敏>"
+      title: "<标题>"
+      credibility: OFFICIAL|MAINTAINER|COMMUNITY|BLOG
+      key_facts:
+        - fact: "<关键事实>"
+          relevance: HIGH|MEDIUM|LOW
+
+  # 主题分组（status=OK 时）
+  themes:
+    - theme: "<主题名>"
+      bullets:
+        - "<要点 1>"
+        - "<要点 2>"
+      sources: ["<来源 URL 1>", "<来源 URL 2>"]
+
+  # 约束/限制（status=OK 时）
+  constraints:
+    - "<约束 1>"
+    - "<约束 2>"
+
+  # 潜在陷阱（status=OK 时）
+  pitfalls:
+    - "<陷阱 1>"
+    - "<陷阱 2>"
+
+  # 推荐步骤（status=OK 时）
+  recommended_steps:
+    - "<步骤 1>"
+    - "<步骤 2>"
+
+  # NSFW 标记（如适用）
+  nsfw_acknowledged: true|false  # 仅当 allow_nsfw=true 且有 NSFW 内容时
+```
+
+### 错误状态响应
+
+```yaml
+# SEARCH_FAILED
+websearch_result:
+  status: SEARCH_FAILED
+  error_code: ALL_TOOLS_FAILED
+  tried_tools: [brave, tavily_remote, freebird, qwen, websearch]
+  failure_reasons:
+    brave: "<失败原因或 N/A>"
+    tavily_remote: "<失败原因或 N/A>"
+    # ...
+
+# SECRET_LEAK (需用户确认)
+websearch_result:
+  status: SECRET_LEAK
+  error_code: SECRET_LEAK
+  message: "检测到敏感信息，需要用户确认"
+  leaked_pattern: "<模式类型>"
+  action_required: "用户确认或添加 --allow-secret-isolation"
+  next: "<command> --allow-secret-isolation"
+
+# SECRET_ISOLATED (用户已同意，内容已隔离)
+websearch_result:
+  status: OK
+  warnings:
+    - code: SECRET_ISOLATED
+      detail: "敏感内容已隔离到私有目录"
+  secret_isolated: true
+  isolated_path: ".claude/state/private/..."
+  # 公开 sources/themes 已脱敏
+
+# NSFW_FLAGGED
+websearch_result:
+  status: NSFW_FLAGGED
+  nsfw_indicators: ["<指标 1>", "<指标 2>"]
+  action_required: "用户确认或添加 --allow-nsfw"
+  # 无 sources/themes
+```
+
+---
+
+## 与其他模块的协同
+
+| 调用方 | 集成方式 |
+|--------|----------|
+| `/thingking_web` | 调用 websearch 获取研究结果，传入 topic |
+| `/voteplan` | 调用 websearch 获取候选方案依据 |
+| `/thinking` | 路由到 websearch 进行外部研究 |
+
+---
+
+## 验收检查
+
+```powershell
+# 确认 Skill 文件存在
+Test-Path ".claude/skills/websearch/SKILL.md"
+
+# 确认 frontmatter 格式正确
+Get-Content ".claude/skills/websearch/SKILL.md" -TotalCount 5
+# 预期: 以 --- 开头的 YAML frontmatter
+
+# 确认无硬编码 secret
+rg -n '(api_key|token|apikey)\s*[:=]\s*[^$\s"<]+' .claude/skills/websearch/
+# 预期: 无输出
+```
+
+---
+
+*创建时间: 2025-12-30*
+*优先级: HIGH - 搜索模块核心*
+*状态: ACTIVE*

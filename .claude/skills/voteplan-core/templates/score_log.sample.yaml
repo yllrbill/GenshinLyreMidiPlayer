@@ -1,0 +1,152 @@
+# Score Log Sample - Voteplan Skill
+# 此文件为 score_log.yaml 模板，展示评分日志的完整结构
+
+envelope:
+  command: voteplan
+  vote_id: 251228153042-a7f3
+  timestamp: 2025-12-28T15:30:42Z
+  status: OK
+
+# 评分算法说明（锁死）
+scoring_formula:
+  formula: "total = 3 * success + 2 * evidence + 1 * conciseness + 2 * risk_score"
+  max_score: 40
+  weights:
+    success: 3
+    evidence: 2
+    conciseness: 1
+    risk_score: 2
+  tiebreak_order:
+    - field: risk_score
+      direction: DESC
+      reason: "更安全优先"
+    - field: evidence
+      direction: DESC
+      reason: "证据更强优先"
+    - field: steps_count
+      direction: ASC
+      reason: "更简洁优先"
+    - field: plan_index
+      direction: ASC
+      reason: "先生成者优先"
+
+# 候选计划评分
+candidates:
+  - plan_index: 1
+    plan_file: candidates/plan_1.yaml
+    description: "使用 CryptoAPI Hook 方案"
+    scores:
+      success: 4       # 0-5: 成功可能性
+      evidence: 5      # 0-5: 证据强度
+      conciseness: 3   # 0-5: 简洁性
+      risk_score: 4    # 0-5: 安全性（越高越安全）
+    total: 34          # 3*4 + 2*5 + 1*3 + 2*4 = 12+10+3+8
+    steps_count: 7
+    evidence_refs:
+      - path: summary.md
+        section: "Section 1: CryptoAPI Analysis"
+        line_range: "15-28"
+      - path: summary.md
+        section: "Section 2: Hook Implementation"
+        line_range: "42-55"
+    hashes:
+      plan_sha256: "a1b2c3d4e5f6..."
+
+  - plan_index: 2
+    plan_file: candidates/plan_2.yaml
+    description: "使用 Frida inline hook 方案"
+    scores:
+      success: 5
+      evidence: 4
+      conciseness: 4
+      risk_score: 3
+    total: 34          # 3*5 + 2*4 + 1*4 + 2*3 = 15+8+4+6
+    steps_count: 5
+    evidence_refs:
+      - path: summary.md
+        section: "Section 3: Frida Approach"
+        line_range: "60-75"
+    hashes:
+      plan_sha256: "b2c3d4e5f6a1..."
+
+  - plan_index: 3
+    plan_file: candidates/plan_3.yaml
+    description: "使用静态分析 + 模式匹配方案"
+    scores:
+      success: 3
+      evidence: 4
+      conciseness: 5
+      risk_score: 5
+    total: 32          # 3*3 + 2*4 + 1*5 + 2*5 = 9+8+5+10
+    steps_count: 4
+    evidence_refs:
+      - path: summary.md
+        section: "Section 4: Static Analysis"
+        line_range: "80-92"
+    hashes:
+      plan_sha256: "c3d4e5f6a1b2..."
+
+  - plan_index: 4
+    plan_file: candidates/plan_4.yaml
+    description: "使用调试器断点捕获方案"
+    scores:
+      success: 4
+      evidence: 3
+      conciseness: 3
+      risk_score: 2
+    total: 26          # 3*4 + 2*3 + 1*3 + 2*2 = 12+6+3+4
+    steps_count: 8
+    evidence_refs:
+      - path: summary.md
+        section: "Section 5: Debugger Approach"
+        line_range: "95-110"
+    hashes:
+      plan_sha256: "d4e5f6a1b2c3..."
+
+# 排名结果
+ranking:
+  - rank: 1
+    plan_index: 1
+    total: 34
+    tiebreak_applied: true
+    tiebreak_field: risk_score
+    tiebreak_reason: "risk_score (4 > 3)"
+
+  - rank: 2
+    plan_index: 2
+    total: 34
+    tiebreak_applied: true
+    tiebreak_field: risk_score
+    tiebreak_reason: "Tied on total, lost on risk_score"
+
+  - rank: 3
+    plan_index: 3
+    total: 32
+    tiebreak_applied: false
+    tiebreak_reason: null
+
+  - rank: 4
+    plan_index: 4
+    total: 26
+    tiebreak_applied: false
+    tiebreak_reason: null
+
+# 最终胜出
+winner:
+  plan_index: 1
+  plan_file: candidates/plan_1.yaml
+  description: "使用 CryptoAPI Hook 方案"
+  total: 34
+  tiebreak_applied: true
+  tiebreak_field: risk_score
+  tiebreak_value: 4
+
+# 工件哈希（可审计）
+artifact_hashes:
+  summary_md_sha256: "e5f6a1b2c3d4..."
+  query_results:
+    brave:
+      query1_results_md: "f6a1b2c3d4e5..."
+      query2_results_md: "a1b2c3d4e5f6..."
+    tavily_remote:
+      query1_results_md: "b2c3d4e5f6a1..."

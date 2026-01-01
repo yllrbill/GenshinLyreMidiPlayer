@@ -1,0 +1,57 @@
+# Template: Session Summary
+# Location: .claude/state/modelrouter/session.latest.yaml
+
+envelope:
+  command: modelrouter
+  timestamp: 2025-12-30T12:00:00Z
+  status: OK
+
+session:
+  session_id: "example-session-001"
+  started_at: 2025-12-30T10:00:00Z
+  project_dir: "d:/dw11"
+
+tasks:
+  - task_id: "T-251230-0001"
+    timestamp: 2025-12-30T10:05:00Z
+    prompt_preview: "Reverse engineer the encryption..."
+    complexity:
+      level: HARD
+      score: 70
+    model:
+      selected: opus
+      override: null
+    status: completed
+
+  - task_id: "T-251230-0002"
+    timestamp: 2025-12-30T10:15:00Z
+    prompt_preview: "Analyze the error handling in..."
+    complexity:
+      level: MEDIUM
+      score: 35
+    model:
+      selected: sonnet
+      override: null
+    status: completed
+
+  - task_id: "T-251230-0003"
+    timestamp: 2025-12-30T10:25:00Z
+    prompt_preview: "What is the file structure..."
+    complexity:
+      level: EASY
+      score: 10
+    model:
+      selected: haiku
+      override: null
+    status: completed
+
+summary:
+  total_tasks: 3
+  models_used:
+    haiku: 1
+    sonnet: 1
+    opus: 1
+  complexity_distribution:
+    EASY: 1
+    MEDIUM: 1
+    HARD: 1

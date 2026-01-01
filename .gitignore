@@ -349,3 +349,28 @@ healthchecksdb
 MigrationBackup/
 
 .idea/
+
+# ============================================
+# Dual-Agent Workflow - Byproduct Management
+# ============================================
+
+# Task scratch folders (never commit - temporary files)
+ops/ai/tasks/**/scratch/
+
+# Evidence files that may contain secrets (never commit)
+ops/ai/tasks/**/evidence/*.raw
+ops/ai/tasks/**/evidence/*secret*
+ops/ai/tasks/**/evidence/*token*
+ops/ai/tasks/**/evidence/*credential*
+ops/ai/tasks/**/evidence/*password*
+
+# Private isolation zone (keep folder structure, ignore contents)
+private/*
+!private/.gitignore
+!private/README.md
+!private/tasks/
+private/tasks/*
+
+# Claude Code runtime state
+.claude/state/
+.claude/private/

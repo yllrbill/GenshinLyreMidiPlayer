@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "language": "简体中文",
+  "root_note": 60,
+  "octave_shift": 0,
+  "octave_range": {
+    "min": 12,
+    "max": 108
+  },
+  "octave_range_auto": false,
+  "transpose": 0,
+  "speed": 1.0,
+  "press_ms": 25,
+  "countdown_sec": 2,
+  "keyboard_preset": "36-key",
+  "use_midi_duration": true,
+  "play_sound": false,
+  "velocity": 90,
+  "input_style": "natural",
+  "enable_diagnostics": false,
+  "soundfont_path": "D:\\dw11\\piano\\LyreAutoPlayer\\FluidR3_GM.sf2",
+  "last_midi_path": "D:/dw11/piano/LyreAutoPlayer/midi/Flower-Dance-花之舞-花舞-Dj-Okawari-原神风物之诗琴谱-原琴谱.mid",
+  "input_manager": {},
+  "error_config": {
+    "enabled": false,
+    "errors_per_8bars": 1,
+    "wrong_note": true,
+    "miss_note": true,
+    "extra_note": true,
+    "pause_error": true,
+    "pause_min_ms": 200,
+    "pause_max_ms": 500
+  },
+  "eight_bar_config": {
+    "enabled": false,
+    "mode": "beat_lock",
+    "pattern": "continuous",
+    "speed_min": 85,
+    "speed_max": 103,
+    "timing_min": 85,
+    "timing_max": 103,
+    "duration_min": 85,
+    "duration_max": 103,
+    "clamp_enabled": true,
+    "clamp_min": 85,
+    "clamp_max": 115,
+    "show_indicator": true
+  },
+  "custom_styles": [
+    {
+      "name": "arpeggio_soft",
+      "timing_offset_ms": [
+        -6,
+        8
+      ],
+      "stagger_ms": 18,
+      "duration_variation": 0.08,
+      "description_en": "Soft arpeggio: gentle chord staggering",
+      "description_zh": "柔和琶音化：和弦轻微错开"
+    },
+    {
+      "name": "classical_upbeat",
+      "timing_offset_ms": [
+        -10,
+        5
+      ],
+      "stagger_ms": 22,
+      "duration_variation": 0.18,
+      "description_en": "Classical upbeat: subtle anacrusis emphasis",
+      "description_zh": "古典弱起：强调前奏小节的细腻处理"
+    },
+    {
+      "name": "dreamy",
+      "timing_offset_ms": [
+        -18,
+        12
+      ],
+      "stagger_ms": 28,
+      "duration_variation": 0.22,
+      "description_en": "Dreamy: ethereal, floating timing",
+      "description_zh": "梦幻风格：飘渺轻柔的节奏"
+    },
+    {
+      "name": "tiktok_rhythm",
+      "timing_offset_ms": [
+        0,
+        12
+      ],
+      "stagger_ms": 5,
+      "duration_variation": -0.15,
+      "description_en": "TikTok style: punchy, catchy rhythm",
+      "description_zh": "抖音节奏：有力且洗脑的节拍"
+    },
+    {
+      "name": "半机械",
+      "timing_offset_ms": [
+        -5,
+        5
+      ],
+      "stagger_ms": 5,
+      "duration_variation": 0.05,
+      "description_en": "半机械",
+      "description_zh": "半机械"
+    }
+  ]
+}

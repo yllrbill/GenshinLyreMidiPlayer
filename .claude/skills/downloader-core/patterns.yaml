@@ -1,0 +1,566 @@
+# URL Classification Patterns
+# 唯一事实源: .claude/skills/downloader-core/SKILL.md
+
+# 匹配优先级: 从上到下，先匹配先使用
+
+# ============================================
+# Auto-Trigger Patterns (自动触发模式)
+# ============================================
+# 当用户消息中包含以下 URL 模式时，自动触发 downloader skill
+
+auto_trigger_patterns:
+  # 视频平台
+  video:
+    - regex: 'youtube\.com/watch\?v=|youtu\.be/'
+      description: "YouTube 视频"
+    - regex: 'yewtu\.be/watch\?v='
+      description: "Invidious (YouTube 前端)"
+    - regex: 'invidious\.(snopyta|kavin|fdn|osi)\.rocks?/watch\?v='
+      description: "Invidious 实例"
+    - regex: 'piped\.(video|kavin\.rocks)/watch\?v='
+      description: "Piped (YouTube 前端)"
+    - regex: 'bilibili\.com/video/'
+      description: "Bilibili 视频"
+    - regex: 'vimeo\.com/'
+      description: "Vimeo 视频"
+    - regex: 'twitch\.tv/videos/'
+      description: "Twitch 视频回放"
+    - regex: 'v\.douyin\.com/'
+      description: "抖音短视频"
+
+  # 图片画廊
+  gallery:
+    - regex: 'pixiv\.net/(artworks|users)/'
+      description: "Pixiv 作品/用户"
+    - regex: '(twitter|x)\.com/\w+/(status|media)/'
+      description: "Twitter/X 媒体/状态"
+    - regex: 'deviantart\.com/\w+/art/'
+      description: "DeviantArt 作品"
+    - regex: 'artstation\.com/artwork/'
+      description: "ArtStation 作品"
+    - regex: 'weibo\.(com|cn)/\d+/\w+'
+      description: "微博图片/视频"
+
+  # 文件托管/网盘
+  filehost:
+    - regex: 'mega\.nz|mediafire\.com'
+      description: "Mega/MediaFire 文件托管"
+    - regex: 'pan\.baidu\.com|lanzou[a-z]\.com'
+      description: "百度网盘/蓝奏云"
+    - regex: '115\.com/s/'
+      description: "115网盘分享"
+    - regex: 'drive\.google\.com/(file|drive)'
+      description: "Google Drive"
+    - regex: '(onedrive\.live\.com|1drv\.ms)/'
+      description: "OneDrive"
+    - regex: 'dropbox\.com/s(h|l)/'
+      description: "Dropbox 分享"
+
+  # 直接文件链接
+  direct:
+    - regex: '\.(zip|rar|7z|tar\.gz|exe|msi|dmg|iso)(\?|$)'
+      description: "常见压缩包/安装包/镜像文件"
+    - regex: 'github\.com/.+/releases/download/'
+      description: "GitHub Release 下载"
+    - regex: '\.(pdf|doc|docx|ppt|pptx|xls|xlsx)(\?|$)'
+      description: "办公文档"
+    - regex: '\.(apk|ipa)(\?|$)'
+      description: "移动应用安装包"
+
+  # Torrent/磁力
+  torrent:
+    - regex: '^magnet:\?'
+      description: "磁力链接"
+    - regex: '\.torrent(\?|$)'
+      description: "Torrent 文件"
+
+# 自动触发的关键词（与 URL 同时出现时触发）
+# 这些关键词必须与 URL 在同一段对话中出现
+trigger_keywords:
+  - '下载'
+  - '获取'
+  - '保存'
+  - 'download'
+  - 'get'
+  - 'fetch'
+  - 'save'
+
+# 批量下载触发阈值（对话中出现多少个下载链接时自动批量处理）
+batch_threshold: 3
+
+categories:
+  # ============================================
+  # FILEHOST - 网盘/文件托管 (jdownloader)
+  # ============================================
+  FILEHOST:
+    tool: jdownloader
+    fallback:
+      - aria2c  # 部分直链可用
+    patterns:
+      # Mega
+      - pattern: "^https?://(www\\.)?mega\\.(nz|co\\.nz)/"
+        name: mega
+        example: "https://mega.nz/file/xxx"
+
+      # MediaFire
+      - pattern: "^https?://(www\\.)?mediafire\\.com/"
+        name: mediafire
+        example: "https://www.mediafire.com/file/xxx"
+
+      # Uploaded.net
+      - pattern: "^https?://(www\\.)?(uploaded\\.net|uploaded\\.to|ul\\.to)/"
+        name: uploaded
+
+      # Rapidgator
+      - pattern: "^https?://(www\\.)?rapidgator\\.net/"
+        name: rapidgator
+
+      # 1fichier
+      - pattern: "^https?://(www\\.)?1fichier\\.com/"
+        name: 1fichier
+
+      # Turbobit
+      - pattern: "^https?://(www\\.)?turbobit\\.net/"
+        name: turbobit
+
+      # Nitroflare
+      - pattern: "^https?://(www\\.)?nitroflare\\.com/"
+        name: nitroflare
+
+      # Katfile
+      - pattern: "^https?://(www\\.)?katfile\\.com/"
+        name: katfile
+
+      # Hitfile
+      - pattern: "^https?://(www\\.)?hitfile\\.net/"
+        name: hitfile
+
+      # 百度网盘
+      - pattern: "^https?://(pan|yun)\\.baidu\\.com/"
+        name: baidu_pan
+        auth_required: true
+        note: "需要百度账号"
+
+      # 115网盘
+      - pattern: "^https?://(www\\.)?115\\.com/"
+        name: 115
+        auth_required: true
+
+      # 蓝奏云 (多个域名)
+      - pattern: "^https?://(www\\.)?(lanzou[a-z]?\\.(com|me)|lanzoui\\.com|lanzoux\\.com)/"
+        name: lanzou
+        example: "https://lanzoux.com/xxx"
+
+      # 城通网盘
+      - pattern: "^https?://(www\\.)?ctfile\\.com/"
+        name: ctfile
+
+      # Google Drive
+      - pattern: "^https?://drive\\.google\\.com/"
+        name: google_drive
+        note: "公开链接可直接下载，私有链接需账号"
+
+      # OneDrive
+      - pattern: "^https?://(www\\.)?(onedrive\\.live\\.com|1drv\\.ms)/"
+        name: onedrive
+
+      # Dropbox
+      - pattern: "^https?://(www\\.)?dropbox\\.com/"
+        name: dropbox
+
+  # ============================================
+  # VIDEO - 视频网站 (yt-dlp)
+  # ============================================
+  VIDEO:
+    tool: yt-dlp
+    fallback: null
+    patterns:
+      # YouTube
+      - pattern: "^https?://(www\\.)?(youtube\\.com|youtu\\.be)/"
+        name: youtube
+        example: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+
+      # Bilibili (页面链接)
+      - pattern: "^https?://(www\\.)?bilibili\\.com/"
+        name: bilibili
+        example: "https://www.bilibili.com/video/BV1xx411c7mD"
+        note: "yt-dlp 原生支持，可直接下载"
+
+      # Bilibili 直播 m4s 分片 (从 SnapAny 提取)
+      - pattern: ".*\\.bilivideo\\.(com|cn).*/live-bvc/.*m4s"
+        name: bilibili_live_m4s
+        tool_override: aria2c
+        post_process: ffmpeg_merge
+        note: "直播流分片，需要 ffmpeg 合并"
+
+      # Vimeo
+      - pattern: "^https?://(www\\.)?vimeo\\.com/"
+        name: vimeo
+
+      # Twitch
+      - pattern: "^https?://(www\\.)?twitch\\.tv/"
+        name: twitch
+
+      # TikTok
+      - pattern: "^https?://(www\\.)?(tiktok\\.com|vm\\.tiktok\\.com)/"
+        name: tiktok
+
+      # Twitter/X Video
+      - pattern: "^https?://(www\\.)?(twitter\\.com|x\\.com)/[^/]+/status/\\d+.*video"
+        name: twitter_video
+
+      # Instagram Video/Reel
+      - pattern: "^https?://(www\\.)?instagram\\.com/(reel|p)/[^/]+/"
+        name: instagram
+
+      # Pornhub (NSFW)
+      - pattern: "^https?://(www\\.)?pornhub\\.com/"
+        name: pornhub
+        nsfw: true
+
+      # XVideos (NSFW)
+      - pattern: "^https?://(www\\.)?xvideos\\.com/"
+        name: xvideos
+        nsfw: true
+
+      # Niconico
+      - pattern: "^https?://(www\\.)?nicovideo\\.jp/"
+        name: niconico
+
+      # Dailymotion
+      - pattern: "^https?://(www\\.)?dailymotion\\.com/"
+        name: dailymotion
+
+      # Generic video extensions
+      - pattern: "\\.(mp4|mkv|avi|mov|wmv|flv|webm|m3u8)$"
+        name: video_file
+        tool_override: aria2c
+
+  # ============================================
+  # GALLERY - 图片画廊 (gallery-dl)
+  # ============================================
+  GALLERY:
+    tool: gallery-dl
+    fallback: null
+    patterns:
+      # Pixiv
+      - pattern: "^https?://(www\\.)?pixiv\\.net/"
+        name: pixiv
+        auth_required: true
+        example: "https://www.pixiv.net/artworks/12345678"
+
+      # Twitter/X Media
+      - pattern: "^https?://(www\\.)?(twitter\\.com|x\\.com)/[^/]+/(media|status)"
+        name: twitter
+        example: "https://twitter.com/username/media"
+
+      # DeviantArt
+      - pattern: "^https?://(www\\.)?deviantart\\.com/"
+        name: deviantart
+
+      # ArtStation
+      - pattern: "^https?://(www\\.)?artstation\\.com/"
+        name: artstation
+
+      # Danbooru
+      - pattern: "^https?://(www\\.)?danbooru\\.donmai\\.us/"
+        name: danbooru
+
+      # Gelbooru
+      - pattern: "^https?://(www\\.)?gelbooru\\.com/"
+        name: gelbooru
+
+      # E-Hentai (NSFW)
+      - pattern: "^https?://(www\\.)?(e-hentai\\.org|exhentai\\.org)/"
+        name: ehentai
+        nsfw: true
+
+      # Kemono
+      - pattern: "^https?://(www\\.)?kemono\\.(party|su)/"
+        name: kemono
+
+      # Fanbox
+      - pattern: "^https?://(www\\.)?fanbox\\.cc/"
+        name: fanbox
+        auth_required: true
+
+      # Patreon
+      - pattern: "^https?://(www\\.)?patreon\\.com/"
+        name: patreon
+        auth_required: true
+
+      # Tumblr
+      - pattern: "^https?://[^/]+\\.tumblr\\.com/"
+        name: tumblr
+
+      # Flickr
+      - pattern: "^https?://(www\\.)?flickr\\.com/"
+        name: flickr
+
+      # Pinterest
+      - pattern: "^https?://(www\\.)?pinterest\\.(com|co\\.uk|ca)/"
+        name: pinterest
+
+      # Reddit galleries
+      - pattern: "^https?://(www\\.)?reddit\\.com/gallery/"
+        name: reddit_gallery
+
+      # Imgur
+      - pattern: "^https?://(www\\.|i\\.)?imgur\\.com/"
+        name: imgur
+
+  # ============================================
+  # TORRENT - BT/磁力 (aria2c)
+  # ============================================
+  TORRENT:
+    tool: aria2c
+    fallback: null
+    patterns:
+      # Magnet links
+      - pattern: "^magnet:\\?"
+        name: magnet
+        example: "magnet:?xt=urn:btih:..."
+
+      # .torrent files
+      - pattern: "\\.torrent$"
+        name: torrent_file
+
+  # ============================================
+  # DIRECT - 直接下载文件 (aria2c)
+  # ============================================
+  DIRECT:
+    tool: aria2c
+    fallback:
+      - wget2
+      - curl
+    patterns:
+      # Archives
+      - pattern: "\\.(zip|rar|7z|tar|tar\\.gz|tar\\.bz2|tar\\.xz|tgz)$"
+        name: archive
+
+      # Executables
+      - pattern: "\\.(exe|msi|dmg|pkg|deb|rpm|AppImage)$"
+        name: executable
+
+      # Disk images
+      - pattern: "\\.(iso|img|bin|cue)$"
+        name: disk_image
+
+      # Documents
+      - pattern: "\\.(pdf|doc|docx|xls|xlsx|ppt|pptx)$"
+        name: document
+
+      # Audio files
+      - pattern: "\\.(mp3|flac|wav|aac|ogg|m4a|wma)$"
+        name: audio
+
+      # Image files (single)
+      - pattern: "\\.(jpg|jpeg|png|gif|bmp|webp|svg|ico)$"
+        name: image
+
+      # Game/Software
+      - pattern: "\\.(apk|ipa|xap)$"
+        name: mobile_app
+
+      # Data files
+      - pattern: "\\.(json|xml|csv|sql|db|sqlite)$"
+        name: data
+
+  # ============================================
+  # WEBSITE - 网站镜像 (wget2)
+  # ============================================
+  WEBSITE:
+    tool: wget2
+    fallback:
+      - httrack
+    trigger: "--mirror flag or explicit request"
+    patterns:
+      # Any URL with mirror flag
+      - pattern: ".*"
+        condition: "mirror_mode == true"
+        name: website_mirror
+
+  # ============================================
+  # GENERIC - 通用 HTTP/HTTPS (aria2c)
+  # ============================================
+  GENERIC:
+    tool: aria2c
+    fallback:
+      - wget2
+      - curl
+    patterns:
+      # Any HTTP/HTTPS URL not matched above
+      - pattern: "^https?://"
+        name: generic_http
+
+# ============================================
+# Tool Priority (全局优先级)
+# ============================================
+tool_priority:
+  - aria2c
+  - yt-dlp
+  - gallery-dl
+  - wget2
+  - curl
+
+# ============================================
+# Authentication (从 SnapAny 提取的验证逻辑)
+# ============================================
+# 来源: C:/Program Files/SnapAny/resources/app_extracted/out/main/main.js
+# 函数: AuthService.verifyLogin()
+
+auth_verification:
+  # YouTube 登录验证 Cookie
+  youtube:
+    domains:
+      - youtube.com
+      - youtu.be
+    cookies:
+      - LOGIN_INFO    # 登录信息
+      - APISID        # API Session ID
+      - SID           # Session ID
+    any_required: true  # 任一存在即为已登录
+
+  # Instagram 登录验证 Cookie
+  instagram:
+    domains:
+      - instagram.com
+    cookies:
+      - sessionid     # 会话 ID
+      - ds_user_id    # 用户 ID
+    any_required: true
+
+  # Twitter/X 登录验证 Cookie
+  twitter:
+    domains:
+      - twitter.com
+      - x.com
+    cookies:
+      - auth_token    # 认证 Token
+      - twid          # Twitter ID
+    any_required: true
+
+  # Pixiv 登录验证 (OAuth)
+  pixiv:
+    domains:
+      - pixiv.net
+      - fanbox.cc
+    auth_method: oauth
+    oauth_command: "gallery-dl oauth:pixiv"
+
+# ============================================
+# Domain Extraction (tldjs 方法)
+# ============================================
+# 来源: SnapAny getTopLevelMainDomain()
+# 方法: tldjs.getDomain(url).split(".")[0]
+#
+# 示例:
+#   https://www.youtube.com/watch?v=xxx → youtube
+#   https://twitter.com/user/status/123 → twitter
+#   https://www.pixiv.net/artworks/12345 → pixiv
+
+domain_extraction:
+  method: "tldjs"  # 或 regex fallback
+  regex_fallback: "https?://(?:www\\.)?([^./]+)\\."
+
+# ============================================
+# yt-dlp 参数 (从 SnapAny 提取)
+# ============================================
+ytdlp_defaults:
+  common_args:
+    - "--no-check-certificates"
+    - "--no-warnings"
+    - "--no-playlist"
+    - "--ignore-errors"
+    - "--ignore-config"
+    - "--no-cache-dir"
+    - "--prefer-insecure"
+    - "--retries"
+    - "3"
+    - "--socket-timeout"
+    - "10"
+  headers:
+    User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+    Accept-Language: "zh-CN,zh;q=0.9,en;q=0.8"
+  format_sort: "res,ext:mp4:m4a"
+
+# ============================================
+# Cookie 文件格式 (Netscape)
+# ============================================
+# SnapAny 使用 Netscape 格式:
+# domain\tTRUE\tpath\tsecure\texpiration\tname\tvalue
+#
+# 格式头:
+# # Netscape HTTP Cookie File
+# # This file is generated by yt-dlp.  Do not edit.
+
+cookie_format:
+  type: netscape
+  header: |
+    # Netscape HTTP Cookie File
+    # This file is generated by downloader-core.  Do not edit.
+  line_template: "{domain}\tTRUE\t{path}\t{secure}\t{expiration}\t{name}\t{value}"
+
+# ============================================
+# Bilibili 特殊处理 (从 SnapAny 提取)
+# ============================================
+bilibili:
+  # 直播 m4s 分片模式
+  live_stream:
+    pattern: ".*\\.bilivideo\\.(com|cn).*/live-bvc/.*m4s"
+    mime_type: "application/m4s"
+    requires_merge: true
+    merge_tool: ffmpeg
+
+  # m4s 分片下载后合并
+  post_process:
+    # 视频+音频分片 → mp4
+    merge_command: |
+      ffmpeg -i video.m4s -i audio.m4s -c:v copy -c:a copy output.mp4
+
+    # 单文件转换
+    convert_command: |
+      ffmpeg -i input.m4s -c:v copy -c:a copy output.mp4
+
+  # 支持的 MIME 类型 (从 SnapAny defaultTypeFilters)
+  mime_filters:
+    - "application/m4s"
+    - "application/dash+xml"
+
+  # 文件扩展名
+  ext_filters:
+    - ext: "m4s"
+      minSize: 0
+
+# ============================================
+# FFmpeg 合并配置 (从 SnapAny FFmpegService)
+# ============================================
+ffmpeg_merge:
+  # 输出选项
+  output_options:
+    mkv:
+      - "-c:v copy"
+      - "-c:a copy"
+      - "-c:s srt"
+    mp4:
+      - "-c:s mov_text"
+      # 根据需要转码
+      video_codec_copy: ["h264", "hevc"]
+      audio_codec_copy: ["aac", "mp3"]
+      video_codec_fallback: "libx264"
+      audio_codec_fallback: "aac"
+
+  # 字幕转换
+  subtitle_convert: "-c:s srt"
+
+# ============================================
+# Default Parameters
+# ============================================
+defaults:
+  output_dir: "./downloads"
+  parallel: 4
+  timeout: 3600  # 1 hour
+  retry: 3
+  verify_size: true
+  verify_hash: false

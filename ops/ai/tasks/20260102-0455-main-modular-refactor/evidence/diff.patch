@@ -1,0 +1,51 @@
+# Diff Summary - 20260102-0251-main-modular-refactor
+# Note: LyreAutoPlayer is an untracked directory, so git diff is not available.
+# This file documents the structural changes made.
+
+## Files Created (New Modules)
+
+### player/ module (1316 lines total)
+- LyreAutoPlayer/player/__init__.py     (55 lines)
+- LyreAutoPlayer/player/thread.py       (~600 lines) - PlayerThread
+- LyreAutoPlayer/player/config.py       (~50 lines)  - PlayerConfig
+- LyreAutoPlayer/player/midi_parser.py  (~100 lines) - NoteEvent, midi_to_events_with_duration
+- LyreAutoPlayer/player/scheduler.py    (~60 lines)  - KeyEvent
+- LyreAutoPlayer/player/errors.py       (~80 lines)  - ErrorConfig, ErrorType
+- LyreAutoPlayer/player/quantize.py     (~150 lines) - quantize_note, get_octave_shift
+- LyreAutoPlayer/player/bar_utils.py    (~50 lines)  - calculate_bar_*
+
+### ui/ module (447 lines total)
+- LyreAutoPlayer/ui/__init__.py         (~10 lines)
+- LyreAutoPlayer/ui/floating.py         (~320 lines) - FloatingController
+- LyreAutoPlayer/ui/constants.py        (~10 lines)  - ROOT_CHOICES
+
+### i18n/ module (250 lines total)
+- LyreAutoPlayer/i18n/__init__.py       (~200 lines) - tr, TRANSLATIONS
+- LyreAutoPlayer/i18n/translations.py   (~50 lines)
+
+### core/ module (465 lines total)
+- LyreAutoPlayer/core/__init__.py
+- LyreAutoPlayer/core/config.py
+- LyreAutoPlayer/core/events.py
+
+## Files Modified
+
+### LyreAutoPlayer/main.py
+- Before: 3834 lines
+- After:  2271 lines
+- Delta:  -1563 lines (-40.8%)
+
+Changes:
+- L29-37: Added imports from player/ module
+- L39-40: Added imports from ui/ module
+- L157-162: Added timing constants (DEFAULT_TEMPO_US, etc.)
+- L173-178: Added preset constants (PRESET_COMBO_ITEMS)
+- Deleted: PlayerThread class (~600 lines)
+- Deleted: Data classes (PlayerConfig, ErrorConfig, NoteEvent, KeyEvent, etc.)
+- Deleted: FloatingController class (~320 lines)
+- Deleted: Utility functions (quantize_note, calculate_bar_*, etc.)
+
+## Summary
+- New modules created: 2478 lines
+- main.py reduced: 1563 lines
+- Net change: main.py is now 40.8% smaller

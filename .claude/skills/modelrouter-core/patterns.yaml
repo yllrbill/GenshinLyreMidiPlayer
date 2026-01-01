@@ -1,0 +1,201 @@
+# Modelrouter Complexity Detection Patterns
+# 唯一事实源: .claude/skills/modelrouter-core/SKILL.md
+
+version: "1.0"
+updated: "2025-12-30"
+
+# =============================================================================
+# HARD Keywords (score >= 50 → opus)
+# =============================================================================
+hard_keywords:
+  # Architecture / Design
+  - pattern: "(?i)\\b(refactor|re-factor)\\b"
+    weight: 30
+    category: architecture
+  - pattern: "(?i)\\b(architect|architecture)\\b"
+    weight: 30
+    category: architecture
+  - pattern: "(?i)\\b(redesign|re-design)\\b"
+    weight: 30
+    category: architecture
+  - pattern: "(?i)(system.*design|design.*system)"
+    weight: 35
+    category: architecture
+
+  # Security / Crypto
+  - pattern: "(?i)\\b(security.*audit|audit.*security)\\b"
+    weight: 35
+    category: security
+  - pattern: "(?i)\\b(vulnerability|vulnerabilities|exploit)\\b"
+    weight: 35
+    category: security
+  - pattern: "(?i)\\b(cryptograph|encrypt|decrypt|aes|des|rsa)\\b"
+    weight: 30
+    category: crypto
+
+  # Reverse Engineering
+  - pattern: "(?i)(reverse.*engineer|reverse-engineer)"
+    weight: 40
+    category: reverse_engineering
+  - pattern: "(?i)\\b(decompil|disassembl)\\b"
+    weight: 35
+    category: reverse_engineering
+  - pattern: "(?i)\\b(binary.*analysis|malware)\\b"
+    weight: 35
+    category: reverse_engineering
+
+  # Complex Debugging
+  - pattern: "(?i)(debug.*complex|complex.*debug)"
+    weight: 30
+    category: debugging
+  - pattern: "(?i)\\b(memory.*leak|race.*condition|deadlock)\\b"
+    weight: 30
+    category: debugging
+  - pattern: "(?i)\\b(root.*cause|root-cause)\\b"
+    weight: 25
+    category: debugging
+
+  # Performance / Optimization
+  - pattern: "(?i)(optimize.*performance|performance.*optim)"
+    weight: 30
+    category: performance
+  - pattern: "(?i)\\b(profil|bottleneck)\\b"
+    weight: 25
+    category: performance
+
+  # Multi-step / Comprehensive
+  - pattern: "(?i)\\b(comprehensive|thorough|in-depth)\\b"
+    weight: 20
+    category: scope
+  - pattern: "(?i)\\b(multi-step|multiple.*steps)\\b"
+    weight: 20
+    category: scope
+
+# =============================================================================
+# MEDIUM Keywords (score 25-49 → sonnet)
+# =============================================================================
+medium_keywords:
+  # Analysis
+  - pattern: "(?i)\\b(analyze|analyse|analysis)\\b"
+    weight: 15
+    category: analysis
+  - pattern: "(?i)\\b(investigate|investigation)\\b"
+    weight: 15
+    category: analysis
+  - pattern: "(?i)\\b(troubleshoot|troubleshooting)\\b"
+    weight: 15
+    category: analysis
+
+  # Debugging (simple)
+  - pattern: "(?i)\\b(debug|debugging)\\b"
+    weight: 15
+    category: debugging
+  - pattern: "(?i)(fix.*bug|bug.*fix)"
+    weight: 15
+    category: debugging
+  - pattern: "(?i)\\b(trace|tracing)\\b"
+    weight: 15
+    category: debugging
+
+  # Code Review
+  - pattern: "(?i)\\b(review|reviewing)\\b"
+    weight: 15
+    category: review
+  - pattern: "(?i)\\b(compare|comparison)\\b"
+    weight: 15
+    category: review
+  - pattern: "(?i)(explain.*how|how.*work)"
+    weight: 15
+    category: explanation
+
+  # Implementation
+  - pattern: "(?i)\\b(implement|implementation)\\b"
+    weight: 10
+    category: implementation
+  - pattern: "(?i)\\b(create|creating)\\b"
+    weight: 10
+    category: implementation
+  - pattern: "(?i)\\b(build|building)\\b"
+    weight: 10
+    category: implementation
+  - pattern: "(?i)\\b(develop|developing)\\b"
+    weight: 10
+    category: implementation
+
+  # Modification
+  - pattern: "(?i)\\b(modify|modifying|update|updating)\\b"
+    weight: 10
+    category: modification
+  - pattern: "(?i)\\b(change|changing)\\b"
+    weight: 10
+    category: modification
+  - pattern: "(?i)\\b(add|adding)\\b"
+    weight: 10
+    category: modification
+
+# =============================================================================
+# EASY Indicators (score < 25 → haiku)
+# =============================================================================
+# Note: EASY is the default when no HARD/MEDIUM keywords match
+easy_indicators:
+  # Simple queries
+  - pattern: "(?i)^(what|where|which|who|when)\\s"
+    weight: -5  # Reduces score
+    category: query
+  - pattern: "(?i)\\b(list|show|display)\\b"
+    weight: -5
+    category: query
+  - pattern: "(?i)\\b(find|search|look.*for)\\b"
+    weight: -5
+    category: query
+
+  # Status checks
+  - pattern: "(?i)\\b(status|check)\\b"
+    weight: -5
+    category: status
+  - pattern: "(?i)\\b(version|info)\\b"
+    weight: -5
+    category: status
+
+# =============================================================================
+# Thresholds
+# =============================================================================
+thresholds:
+  hard: 50      # score >= 50 → HARD → opus
+  medium: 25    # 25 <= score < 50 → MEDIUM → sonnet
+  easy: 0       # score < 25 → EASY → haiku
+
+# =============================================================================
+# Context Weights
+# =============================================================================
+context_weights:
+  # Prompt length multipliers
+  length:
+    short: 0       # <= 200 chars
+    medium: 10     # 201-500 chars
+    long: 20       # > 500 chars
+
+  # Context file count
+  files:
+    few: 0         # 0-1 files
+    some: 10       # 2-4 files
+    many: 20       # 5+ files
+
+# =============================================================================
+# Model Mapping
+# =============================================================================
+model_mapping:
+  HARD: opus
+  MEDIUM: sonnet
+  EASY: haiku
+
+# =============================================================================
+# Skill Defaults (override by skill frontmatter)
+# =============================================================================
+skill_defaults:
+  thinking: opus
+  voteplan: sonnet
+  reflectloop: sonnet
+  bootstrap: haiku
+  websearch: haiku
+  modelrouter: haiku  # Router itself uses haiku

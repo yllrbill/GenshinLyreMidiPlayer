@@ -1,0 +1,2960 @@
+EOPmidi.exe sub_4A7F05 Analysis
+============================================================
+Target: D:\dw11\EveryonePiano\EOPmidi.exe
+Base: 0x00400000
+
+============================================================
+Function: sub_4A7F05 @ 0x004A7F05
+Size: 29686 bytes
+Range: 0x004A7F05 - 0x004AF2FB
+============================================================
+
+--- Marker Byte Locations ---
+  0x004A8BEC: push    34h ; '4'; nIndex [TIMING 0x34]
+  0x004A8DC6: mov     byte ptr [ebp+var_4], 34h ; '4' [TIMING 0x34]
+  0x004A8ED6: mov     byte ptr [ebp+var_4], 38h ; '8' [TIMING 0x38]
+  0x004AB0C0: mov     byte ptr [ebp+var_4], 0BDh [MARKER 0xBD]
+  0x004AB761: mov     byte ptr [ebp+var_4], 0D8h [MARKER 0xD8]
+  0x004AB8D9: mov     byte ptr [ebp+var_4], 0DEh [MARKER 0xDE]
+  0x004ABA0E: mov     byte ptr [ebp+var_4], 0E2h [MARKER 0xE2]
+  0x004ABB1F: mov     byte ptr [ebp+var_4], 0E6h [MARKER 0xE6]
+  0x004ABC46: mov     byte ptr [ebp+var_4], 0E6h [MARKER 0xE6]
+  0x004ABDD4: mov     byte ptr [ebp+var_4], 0F2h [MARKER 0xF2]
+  0x004ABE75: mov     byte ptr [ebp+var_4], 0F4h [MARKER 0xF4]
+  0x004ABF39: mov     byte ptr [ebp+var_4], 0F6h [MARKER 0xF6]
+  0x004ABF8B: mov     byte ptr [ebp+var_4], 0E6h [MARKER 0xE6]
+  0x004ACCAF: mov     byte ptr [ebp+var_4], 34h ; '4' [TIMING 0x34]
+  0x004ACD83: mov     byte ptr [ebp+var_4], 38h ; '8' [TIMING 0x38]
+  0x004AE91E: mov     byte ptr [ebp+var_4], 0BDh [MARKER 0xBD]
+  0x004AEAD6: mov     byte ptr [ebp+var_4], 0BDh [MARKER 0xBD]
+  0x004AEF91: mov     byte ptr [ebp+var_4], 0D8h [MARKER 0xD8]
+  0x004AF0C5: mov     byte ptr [ebp+var_4], 0DEh [MARKER 0xDE]
+  0x004AF19B: mov     byte ptr [ebp+var_4], 0E2h [MARKER 0xE2]
+
+--- Decompiled Pseudocode ---
+int __thiscall sub_4A7F05(_DWORD *this)
+{
+  int result; // eax
+  bool v3; // bl
+  int v4; // eax
+  int *v5; // edi
+  int v6; // eax
+  int v7; // eax
+  bool v8; // zf
+  int v9; // edi
+  int v10; // edi
+  int v11; // edi
+  bool v12; // bl
+  int v13; // eax
+  char *v14; // ecx
+  int SystemMetrics; // ebx
+  int v16; // ebx
+  wchar_t *v17; // eax
+  int v18; // edi
+  _DWORD *v19; // edi
+  int v20; // eax
+  int v21; // eax
+  int v22; // eax
+  int v23; // eax
+  int v24; // edi
+  int j; // edi
+  unsigned int v26; // eax
+  COLORREF *v27; // edi
+  int v28; // ebx
+  COLORREF v29; // eax
+  int v30; // eax
+  int v31; // eax
+  COLORREF *v32; // ebx
+  int v33; // ecx
+  int v34; // eax
+  _DWORD *v35; // ebx
+  unsigned int v36; // eax
+  int v37; // eax
+  int v38; // eax
+  int v39; // ebx
+  void *v40; // ebx
+  int v41; // eax
+  void *v42; // ebx
+  int v43; // eax
+  int v44; // ebx
+  int v45; // ebx
+  int v46; // ebx
+  int v47; // ebx
+  int v48; // ecx
+  int v49; // eax
+  unsigned int v50; // ecx
+  bool v51; // bl
+  int v52; // eax
+  int *v53; // ebx
+  _DWORD *v54; // edi
+  int v55; // eax
+  int v56; // eax
+  int v57; // eax
+  int v58; // eax
+  unsigned int *v59; // edi
+  DWORD SysColor; // eax
+  unsigned int v61; // eax
+  int v62; // eax
+  int v63; // [esp-8h] [ebp-430h]
+  int v64; // [esp-4h] [ebp-42Ch]
+  const WCHAR *v65; // [esp+4h] [ebp-424h]
+  const WCHAR *v66; // [esp+4h] [ebp-424h]
+  const WCHAR *v67; // [esp+4h] [ebp-424h]
+  const WCHAR *v68; // [esp+4h] [ebp-424h]
+  int v69; // [esp+4h] [ebp-424h]
+  int v70; // [esp+4h] [ebp-424h]
+  const WCHAR *v71; // [esp+8h] [ebp-420h]
+  int v72; // [esp+8h] [ebp-420h]
+  int v73; // [esp+8h] [ebp-420h]
+  void *v74; // [esp+Ch] [ebp-41Ch]
+  int v75; // [esp+Ch] [ebp-41Ch]
+  int v76; // [esp+Ch] [ebp-41Ch]
+  int v77; // [esp+Ch] [ebp-41Ch]
+  int v78; // [esp+Ch] [ebp-41Ch]
+  void *v79; // [esp+Ch] [ebp-41Ch]
+  void *v80; // [esp+Ch] [ebp-41Ch]
+  void *v81; // [esp+Ch] [ebp-41Ch]
+  void *v82; // [esp+Ch] [ebp-41Ch]
+  const WCHAR *v83; // [esp+Ch] [ebp-41Ch]
+  const WCHAR *v84; // [esp+Ch] [ebp-41Ch]
+  void *v85; // [esp+Ch] [ebp-41Ch]
+  void *v86; // [esp+Ch] [ebp-41Ch]
+  void *v87; // [esp+Ch] [ebp-41Ch]
+  void *v88; // [esp+Ch] [ebp-41Ch]
+  void *v89; // [esp+Ch] [ebp-41Ch]
+  void *v90; // [esp+Ch] [ebp-41Ch]
+  const WCHAR *v91; // [esp+Ch] [ebp-41Ch]
+  const WCHAR *v92; // [esp+Ch] [ebp-41Ch]
+  void *v93; // [esp+Ch] [ebp-41Ch]
+  void *v94; // [esp+Ch] [ebp-41Ch]
+  void *v95; // [esp+Ch] [ebp-41Ch]
+  void *v96; // [esp+Ch] [ebp-41Ch]
+  void *v97; // [esp+Ch] [ebp-41Ch]
+  const WCHAR *v98; // [esp+Ch] [ebp-41Ch]
+  const WCHAR *v99; // [esp+Ch] [ebp-41Ch]
+  const WCHAR *v100; // [esp+Ch] [ebp-41Ch]
+  void *v101; // [esp+Ch] [ebp-41Ch]
+  void *v102; // [esp+Ch] [ebp-41Ch]
+  const WCHAR *v103; // [esp+Ch] [ebp-41Ch]
+  const WCHAR *v104; // [esp+Ch] [ebp-41Ch]
+  void *v105; // [esp+Ch] [ebp-41Ch]
+  void *v106; // [esp+Ch] [ebp-41Ch]
+  int v107; // [esp+Ch] [ebp-41Ch]
+  int v108; // [esp+Ch] [ebp-41Ch]
+  void *v109; // [esp+Ch] [ebp-41Ch]
+  void *v110; // [esp+Ch] [ebp-41Ch]
+  void *v111; // [esp+Ch] [ebp-41Ch]
+  void *v112; // [esp+Ch] [ebp-41Ch]
+  void *v113; // [esp+Ch] [ebp-41Ch]
+  void *v114; // [esp+Ch] [ebp-41Ch]
+  void *v115; // [esp+Ch] [ebp-41Ch]
+  void *v116; // [esp+Ch] [ebp-41Ch]
+  const WCHAR *v117; // [esp+Ch] [ebp-41Ch]
+  const WCHAR *v118; // [esp+Ch] [ebp-41Ch]
+  void *v119; // [esp+Ch] [ebp-41Ch]
+  void *v120; // [esp+Ch] [ebp-41Ch]
+  void *v121; // [esp+Ch] [ebp-41Ch]
+  void *v122; // [esp+Ch] [ebp-41Ch]
+  void *v123; // [esp+Ch] [ebp-41Ch]
+  void *v124; // [esp+Ch] [ebp-41Ch]
+  void *v125; // [esp+Ch] [ebp-41Ch]
+  void *v126; // [esp+Ch] [ebp-41Ch]
+  void *v127; // [esp+Ch] [ebp-41Ch]
+  void *v128; // [esp+Ch] [ebp-41Ch]
+  void *v129; // [esp+Ch] [ebp-41Ch]
+  void *v130; // [esp+Ch] [ebp-41Ch]
+  void *v131; // [esp+Ch] [ebp-41Ch]
+  void *v132; // [esp+Ch] [ebp-41Ch]
+  void *v133; // [esp+Ch] [ebp-41Ch]
+  const WCHAR *v134; // [esp+Ch] [ebp-41Ch]
+  void *v135; // [esp+Ch] [ebp-41Ch]
+  void *v136; // [esp+Ch] [ebp-41Ch]
+  void *v137; // [esp+Ch] [ebp-41Ch]
+  void *v138; // [esp+Ch] [ebp-41Ch]
+  void *v139; // [esp+Ch] [ebp-41Ch]
+  void *v140; // [esp+Ch] [ebp-41Ch]
+  void *v141; // [esp+Ch] [ebp-41Ch]
+  void *v142; // [esp+Ch] [ebp-41Ch]
+  void *v143; // [esp+Ch] [ebp-41Ch]
+  void *v144; // [esp+Ch] [ebp-41Ch]
+  void *v145; // [esp+Ch] [ebp-41Ch]
+  void *v146; // [esp+Ch] [ebp-41Ch]
+  void *v147; // [esp+Ch] [ebp-41Ch]
+  void *v148; // [esp+Ch] [ebp-41Ch]
+  void *v149; // [esp+Ch] [ebp-41Ch]
+  void *v150; // [esp+Ch] [ebp-41Ch]
+  void *v151; // [esp+Ch] [ebp-41Ch]
+  void *v152; // [esp+Ch] [ebp-41Ch]
+  void *v153; // [esp+Ch] [ebp-41Ch]
+  void *v154; // [esp+Ch] [ebp-41Ch]
+  void *v155; // [esp+Ch] [ebp-41Ch]
+  void *v156; // [esp+Ch] [ebp-41Ch]
+  void *v157; // [esp+Ch] [ebp-41Ch]
+  void *v158; // [esp+Ch] [ebp-41Ch]
+  void *v159; // [esp+Ch] [ebp-41Ch]
+  void *v160; // [esp+Ch] [ebp-41Ch]
+  void *v161; // [esp+Ch] [ebp-41Ch]
+  void *v162; // [esp+Ch] [ebp-41Ch]
+  void *v163; // [esp+Ch] [ebp-41Ch]
+  void *v164; // [esp+Ch] [ebp-41Ch]
+  void *v165; // [esp+Ch] [ebp-41Ch]
+  void *v166; // [esp+Ch] [ebp-41Ch]
+  void *v167; // [esp+Ch] [ebp-41Ch]
+  _BYTE v168[4]; // [esp+20h] [ebp-408h] BYREF
+  _BYTE v169[4]; // [esp+70h] [ebp-3B8h] BYREF
+  _BYTE v170[4]; // [esp+C0h] [ebp-368h] BYREF
+  _BYTE v171[4]; // [esp+110h] [ebp-318h] BYREF
+  int v172; // [esp+160h] [ebp-2C8h] BYREF
+  _BYTE v173[4]; // [esp+164h] [ebp-2C4h] BYREF
+  _BYTE v174[4]; // [esp+168h] [ebp-2C0h] BYREF
+  _BYTE v175[4]; // [esp+16Ch] [ebp-2BCh] BYREF
+  _BYTE v176[4]; // [esp+170h] [ebp-2B8h] BYREF
+  _BYTE v177[4]; // [esp+174h] [ebp-2B4h] BYREF
+  int v178; // [esp+178h] [ebp-2B0h] BYREF
+  bool v179; // [esp+17Fh] [ebp-2A9h]
+  HINSTANCE v180; // [esp+180h] [ebp-2A8h]
+  _BYTE v181[4]; // [esp+184h] [ebp-2A4h] BYREF
+  int v182; // [esp+188h] [ebp-2A0h]
+  _BYTE v183[4]; // [esp+194h] [ebp-294h] BYREF
+  int v184; // [esp+198h] [ebp-290h] BYREF
+  int v185; // [esp+19Ch] [ebp-28Ch]
+  _DWORD v186[5]; // [esp+1A0h] [ebp-288h]
+  int v187; // [esp+1B4h] [ebp-274h] BYREF
+  int v188; // [esp+1B8h] [ebp-270h] BYREF
+  int v189; // [esp+1BCh] [ebp-26Ch] BYREF
+  int v190; // [esp+1C0h] [ebp-268h] BYREF
+  int v191; // [esp+1C4h] [ebp-264h] BYREF
+  void *Source; // [esp+1C8h] [ebp-260h] BYREF
+  int v193; // [esp+1CCh] [ebp-25Ch] BYREF
+  int v194; // [esp+1D0h] [ebp-258h]
+  int v195; // [esp+1D4h] [ebp-254h] BYREF
+  COLORREF v196; // [esp+1D8h] [ebp-250h] BYREF
+  COLORREF v197; // [esp+1DCh] [ebp-24Ch] BYREF
+  int v198; // [esp+1E0h] [ebp-248h] BYREF
+  _BYTE v199[8]; // [esp+1ECh] [ebp-23Ch] BYREF
+  void *v200; // [esp+1F4h] [ebp-234h] BYREF
+  int v201; // [esp+1F8h] [ebp-230h] BYREF
+  int v202; // [esp+1FCh] [ebp-22Ch] BYREF
+  int v203; // [esp+200h] [ebp-228h] BYREF
+  COLORREF i; // [esp+204h] [ebp-224h] BYREF
+  _BYTE v205[8]; // [esp+208h] [ebp-220h] BYREF
+  int v206; // [esp+210h] [ebp-218h] BYREF
+  void *v207; // [esp+214h] [ebp-214h] BYREF
+  int v208; // [esp+218h] [ebp-210h] BYREF
+  COLORREF color; // [esp+21Ch] [ebp-20Ch] BYREF
+  struct tagNONCLIENTMETRICSW v210; // [esp+220h] [ebp-208h] BYREF
+  int v211; // [esp+424h] [ebp-4h]
+
+  i = 0;
+  (*(void (__thiscall **)(_DWORD *))(*this + 780))(this);
+  result = sub_507CC8(this);
+  if ( dword_5F5E30 )
+  {
+    result = sub_47E072(&unk_5F5CB8);
+    if ( !result && dword_5F5E50 > 8 )
+    {
+      *(this + 47) = 1;
+      v180 = 0;
+      if ( dword_5F6D0C || (sub_4A7E83(0, 0), dword_5F6D0C) )
+      {
+        v180 = (HINSTANCE)*((_DWORD *)AfxGetModuleState() + 3);
+        AfxSetResourceHandle(dword_5F6D0C);
+      }
+      sub_5209BD(0);
+      v211 = 0;
+      v71 = *(const WCHAR **)sub_4A7DDF(&color, dword_5F6D08);
+      LOBYTE(v211) = 1;
+      v3 = CTagManager::LoadFromResource((CTagManager *)v181, v71, L"STYLE_XML") == 0;
+      LOBYTE(v211) = 0;
+      sub_40A920(color - 16);
+      if ( v3 )
+      {
+        if ( v180 )
+          AfxSetResourceHandle(v180);
+      }
+      else
+      {
+        sub_40A940(&v197);
+        LOBYTE(v211) = 2;
+        sub_5209F4((wchar_t *)L"STYLE", (int)&v197, 0);
+        sub_5208B2((void *)v197);
+        sub_40A920(v197 - 16);
+        sub_40A940(&Source);
+        v4 = v182;
+        v5 = this + 11033;
+        *(this + 11033) = 20;
+        v6 = *(_DWORD *)(v4 - 12);
+        LOBYTE(v211) = 3;
+        if ( v6 )
+        {
+          v196 = 0;
+          if ( sub_5209F4((wchar_t *)L"VERSION", (int)&Source, 0) )
+          {
+            sub_5209BD(Source);
+            LOBYTE(v211) = 4;
+            sub_40A2F0(L"NUMBER");
+            LOBYTE(v211) = 5;
+            sub_5217C5(&v207, &v196);
+            LOBYTE(v211) = 4;
+            sub_40A920((char *)v207 - 16);
+            if ( v196 == 2007 )
+            {
+              sub_40A2F0(&off_585388);
+              LOBYTE(v211) = 6;
+              sub_5217C5(&v207, this + 11033);
+              LOBYTE(v211) = 4;
+              sub_40A920((char *)v207 - 16);
+              if ( *v5 < 10 )
+                *v5 *= 10;
+              *(this + 135) = 1;
+            }
+            if ( *(this + 135) && sub_5209F4((wchar_t *)L"ID_PREFIX", (int)&Source, 0) )
+            {
+              v7 = sub_413370(&Source);
+              sub_4133C0(v7);
+              sub_409D10(&Source);
+            }
+            LOBYTE(v211) = 3;
+            sub_52071C(v205);
+          }
+        }
+        if ( *(this + 135) )
+        {
+          if ( sub_5209F4((wchar_t *)L"GLOBALS", (int)&Source, 0) )
+          {
+            sub_5209BD(Source);
+            LOBYTE(v211) = 7;
+            sub_40A2F0(L"BarText");
+            LOBYTE(v211) = 8;
+            sub_5218DA(&v207, &dword_5F5D14);
+            LOBYTE(v211) = 7;
+            sub_40A920((char *)v207 - 16);
+            sub_40A2F0(L"BarFace");
+            LOBYTE(v211) = 9;
+            v9 = sub_5218DA(&v207, &dword_5F5D00);
+            LOBYTE(v211) = 7;
+            sub_40A920((char *)v207 - 16);
+            if ( v9 )
+            {
+              CGdiObject::DeleteObject((CGdiObject *)&stru_5F5D74);
+              sub_409490(dword_5F5D00);
+              *(this + 48) = dword_5F5D00;
+            }
+            sub_40A2F0(L"ActiveCaption");
+            LOBYTE(v211) = 10;
+            v10 = sub_5218DA(&v207, &dword_5F5D28);
+            LOBYTE(v211) = 7;
+            sub_40A920((char *)v207 - 16);
+            if ( v10 )
+            {
+              dword_5F5D2C = dword_5F5D28;
+              CGdiObject::DeleteObject((CGdiObject *)&stru_5F5D5C);
+              sub_409490(dword_5F5D28);
+            }
+            sub_40A2F0(L"CaptionText");
+            LOBYTE(v211) = 11;
+            v11 = sub_5218DA(&v207, &dword_5F5D20);
+            LOBYTE(v211) = 7;
+            sub_40A920((char *)v207 - 16);
+            if ( v11 )
+              dword_5F5D30 = dword_5F5D20;
+            sub_40A2F0(L"InactiveCaption");
+            LOBYTE(v211) = 12;
+            sub_5218DA(&v207, &dword_5F5D2C);
+            LOBYTE(v211) = 7;
+            sub_40A920((char *)v207 - 16);
+            CGdiObject::DeleteObject((CGdiObject *)&unk_5F5D64);
+            sub_409490(dword_5F5D2C);
+            sub_40A2F0(L"InactiveCaptionText");
+            LOBYTE(v211) = 13;
+            sub_5218DA(&v207, &dword_5F5D30);
+            LOBYTE(v211) = 7;
+            sub_40A920((char *)v207 - 16);
+            sub_40A2F0(L"BarShadow");
+            LOBYTE(v211) = 14;
+            sub_5218DA(&v207, &dword_5F5D04);
+            LOBYTE(v211) = 7;
+            sub_40A920((char *)v207 - 16);
+            sub_40A2F0(L"BarDkShadow");
+            LOBYTE(v211) = 15;
+            sub_5218DA(&v207, &dword_5F5D0C);
+            LOBYTE(v211) = 7;
+            sub_40A920((char *)v207 - 16);
+            sub_40A2F0(L"BarLight");
+            LOBYTE(v211) = 16;
+            sub_5218DA(&v207, &dword_5F5D10);
+            LOBYTE(v211) = 7;
+            sub_40A920((char *)v207 - 16);
+            sub_40A2F0(L"FloatToolBarBorder");
+            LOBYTE(v211) = 17;
+            sub_5218DA(&v207, &color);
+            LOBYTE(v211) = 7;
+            sub_40A920((char *)v207 - 16);
+            CGdiObject::DeleteObject((CGdiObject *)(this + 81));
+            sub_409490(color);
+            sub_40A2F0(L"HighlightGradientDark");
+            LOBYTE(v211) = 18;
+            sub_5218DA(&v207, this + 105);
+            LOBYTE(v211) = 7;
+            sub_40A920((char *)v207 - 16);
+            sub_40A2F0(L"HighlightGradientLight");
+            LOBYTE(v211) = 19;
+            sub_5218DA(&v207, this + 104);
+            LOBYTE(v211) = 7;
+            sub_40A920((char *)v207 - 16);
+            *(this + 107) = *(this + 104);
+            *(this + 106) = *(this + 105);
+            sub_40A2F0(L"HighlightDnGradientDark");
+            LOBYTE(v211) = 20;
+            sub_5218DA(&v207, this + 107);
+            LOBYTE(v211) = 7;
+            sub_40A920((char *)v207 - 16);
+            sub_40A2F0(L"HighlightDnGradientLight");
+            LOBYTE(v211) = 21;
+            sub_5218DA(&v207, this + 106);
+            LOBYTE(v211) = 7;
+            sub_40A920((char *)v207 - 16);
+            *(this + 109) = *(this + 106);
+            *(this + 108) = *(this + 107);
+            sub_40A2F0(L"HighlightCheckedGradientDark");
+            LOBYTE(v211) = 22;
+            sub_5218DA(&v207, this + 109);
+            LOBYTE(v211) = 7;
+            sub_40A920((char *)v207 - 16);
+            sub_40A2F0(L"HighlightCheckedGradientLight");
+            LOBYTE(v211) = 23;
+            sub_5218DA(&v207, this + 108);
+            LOBYTE(v211) = 7;
+            sub_40A920((char *)v207 - 16);
+            sub_40A2F0(L"PressedButtonBorder");
+            LOBYTE(v211) = 24;
+            sub_5218DA(&v207, this + 57);
+            LOBYTE(v211) = 7;
+            sub_40A920((char *)v207 - 16);
+            v197 = dword_5F5CE8;
+            v200 = (void *)dword_5F5CEC;
+            sub_40A2F0(L"Highlight");
+            LOBYTE(v211) = 25;
+            i = 1;
+            v12 = 0;
+            if ( sub_5218DA(&v196, &v197) )
+            {
+              sub_40A2F0(L"HighlightText");
+              v211 = 26;
+              i = 3;
+              if ( sub_5218DA(&v207, &v200) )
+                v12 = 1;
+            }
+            if ( (i & 2) != 0 )
+            {
+              i &= ~2u;
+              sub_40A920((char *)v207 - 16);
+            }
+            v211 = 7;
+            if ( (i & 1) != 0 )
+              sub_40A920(v196 - 16);
+            if ( v12 )
+            {
+              dword_5F5CE8 = v197;
+              CGdiObject::DeleteObject((CGdiObject *)&stru_5F5D44);
+              sub_409490(v197);
+              dword_5F5CEC = (int)v200;
+            }
+            sub_40A2F0(L"MenuShadowColor");
+            LOBYTE(v211) = 27;
+            sub_5218DA(&v207, this + 48);
+            LOBYTE(v211) = 7;
+            sub_40A920((char *)v207 - 16);
+            sub_40A2F0(L"TOOLTIP");
+            LOBYTE(v211) = 28;
+            v13 = sub_5224EE(&v207, this + 11034);
+            v14 = (char *)v207 - 16;
+            *(this + 138) = v13;
+            sub_40A920(v14);
+            LOBYTE(v211) = 3;
+            sub_52071C(v199);
+          }
+          if ( sub_5209F4((wchar_t *)L"MAINWND", (int)&Source, 0) )
+          {
+            sub_5209BD(Source);
+            sub_40A940(&v207);
+            LOBYTE(v211) = 30;
+            if ( sub_5209F4((wchar_t *)L"CAPTION", (int)&v207, 0) )
+            {
+              sub_5209BD(v207);
+              LOBYTE(v211) = 31;
+              if ( AFX_GLOBAL_DATA::GetNonClientMetrics((AFX_GLOBAL_DATA *)&unk_5F5CB8, &v210) )
+              {
+                sub_40A2F0(L"FONT");
+                LOBYTE(v211) = 32;
+                sub_522388(&v200, &v210.lfCaptionFont);
+                LOBYTE(v211) = 31;
+                sub_40A920((char *)v200 - 16);
+                CGdiObject::DeleteObject((CGdiObject *)(this + 8199));
+                sub_409650(&v210.lfCaptionFont);
+              }
+              sub_40A2F0(L"ActiveStart");
+              LOBYTE(v211) = 33;
+              sub_5218DA(&v200, this + 8205);
+              LOBYTE(v211) = 31;
+              sub_40A920((char *)v200 - 16);
+              sub_40A2F0(L"ActiveFinish");
+              LOBYTE(v211) = 34;
+              sub_5218DA(&v200, this + 8206);
+              LOBYTE(v211) = 31;
+              sub_40A920((char *)v200 - 16);
+              sub_40A2F0(L"InactiveStart");
+              LOBYTE(v211) = 35;
+              sub_5218DA(&v200, this + 8207);
+              LOBYTE(v211) = 31;
+              sub_40A920((char *)v200 - 16);
+              sub_40A2F0(L"InactiveFinish");
+              LOBYTE(v211) = 36;
+              sub_5218DA(&v200, this + 8208);
+              LOBYTE(v211) = 31;
+              sub_40A920((char *)v200 - 16);
+              sub_40A2F0(L"ActiveText");
+              LOBYTE(v211) = 37;
+              sub_5218DA(&v200, this + 8209);
+              LOBYTE(v211) = 31;
+              sub_40A920((char *)v200 - 16);
+              sub_40A2F0(L"InactiveText");
+              LOBYTE(v211) = 38;
+              sub_5218DA(&v200, this + 8210);
+              LOBYTE(v211) = 31;
+              sub_40A920((char *)v200 - 16);
+              sub_40A2F0(L"ActiveTitleText");
+              LOBYTE(v211) = 39;
+              sub_5218DA(&v200, this + 8211);
+              LOBYTE(v211) = 31;
+              sub_40A920((char *)v200 - 16);
+              sub_40A2F0(L"InactiveTitleText");
+              LOBYTE(v211) = 40;
+              sub_5218DA(&v200, this + 8212);
+              LOBYTE(v211) = 31;
+              sub_40A920((char *)v200 - 16);
+              sub_40A2F0(L"TextCenter");
+              LOBYTE(v211) = 41;
+              sub_521766(&v200, this + 136);
+              LOBYTE(v211) = 31;
+              sub_40A920((char *)v200 - 16);
+              sub_40A2F0(L"BORDER");
+              LOBYTE(v211) = 42;
+              v74 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_MAINBORDER_CAPTION");
+              LOBYTE(v211) = 43;
+              sub_522493((int)&v200, (int)(this + 2055), v74);
+              sub_40A920(color - 16);
+              sub_40A920((char *)v200 - 16);
+              SystemMetrics = GetSystemMetrics(31);
+              *(this + 139) = GetSystemMetrics(30);
+              *(this + 140) = SystemMetrics;
+              v16 = GetSystemMetrics(53);
+              *(this + 141) = GetSystemMetrics(52);
+              *(this + 142) = v16;
+              sub_40A940(&v196);
+              LOBYTE(v211) = 44;
+              if ( sub_5209F4((wchar_t *)L"BUTTONS", (int)&v196, 0) )
+              {
+                sub_5209BD((void *)v196);
+                for ( i = 0; (int)i < 2; ++i )
+                {
+                  sub_40A940(&v200);
+                  sub_40A940(&v197);
+                  LOBYTE(v211) = 47;
+                  if ( i == 1 )
+                    sub_40A880(L"_S");
+                  v17 = (wchar_t *)L"NORMAL";
+                  if ( i )
+                    v17 = L"SMALL";
+                  if ( sub_5209F4(v17, (int)&v200, 0) )
+                  {
+                    sub_5209BD(v200);
+                    LOBYTE(v211) = 48;
+                    sub_40A2F0(L"ConstSize");
+                    LOBYTE(v211) = 49;
+                    sub_52182A(&v189, this + 2 * i + 139);
+                    LOBYTE(v211) = 48;
+                    sub_40A920(v189 - 16);
+                    v193 = 0;
+                    v194 = 0;
+                    sub_40A2F0(L"IconSize");
+                    LOBYTE(v211) = 50;
+                    v18 = sub_52182A(&v190, &v193);
+                    LOBYTE(v211) = 48;
+                    sub_40A920(v190 - 16);
+                    if ( v18 )
+                    {
+                      v19 = this + 62 * i;
+                      sub_4830EF(v19 + 391);
+                      v20 = v193;
+                      v19[405] = 1;
+                      v19[411] = v20;
+                      v19[412] = v194;
+                      v75 = *(_DWORD *)sub_45D608((int)&v202, L"IDB_OFFICE2007_SYS_BTN_CLOSE", (int)&v197);
+                      LOBYTE(v211) = 51;
+                      v65 = *(const WCHAR **)sub_4A7D77(&color, v75);
+                      LOBYTE(v211) = 52;
+                      sub_483D41(v65, 0, 0);
+                      sub_40A920(color - 16);
+                      LOBYTE(v211) = 48;
+                      sub_40A920(v202 - 16);
+                      sub_4830EF(v19 + 515);
+                      v21 = v193;
+                      v19[529] = 1;
+                      v19[535] = v21;
+                      v19[536] = v194;
+                      v76 = *(_DWORD *)sub_45D608((int)&v206, L"IDB_OFFICE2007_SYS_BTN_RESTORE", (int)&v197);
+                      LOBYTE(v211) = 53;
+                      v66 = *(const WCHAR **)sub_4A7D77(&v208, v76);
+                      LOBYTE(v211) = 54;
+                      sub_483D41(v66, 0, 0);
+                      sub_40A920(v208 - 16);
+                      LOBYTE(v211) = 48;
+                      sub_40A920(v206 - 16);
+                      sub_4830EF(v19 + 639);
+                      v22 = v193;
+                      v19[653] = 1;
+                      v19[659] = v22;
+                      v19[660] = v194;
+                      v77 = *(_DWORD *)sub_45D608((int)&v201, L"IDB_OFFICE2007_SYS_BTN_MAXIMIZE", (int)&v197);
+                      LOBYTE(v211) = 55;
+                      v67 = *(const WCHAR **)sub_4A7D77(&v203, v77);
+                      LOBYTE(v211) = 56;
+                      sub_483D41(v67, 0, 0);
+                      sub_40A920(v203 - 16);
+                      LOBYTE(v211) = 48;
+                      sub_40A920(v201 - 16);
+                      sub_4830EF(v19 + 763);
+                      v23 = v193;
+                      v19[777] = 1;
+                      v19[783] = v23;
+                      v19[784] = v194;
+                      v78 = *(_DWORD *)sub_45D608((int)&v184, L"IDB_OFFICE2007_SYS_BTN_MINIMIZE", (int)&v197);
+                      LOBYTE(v211) = 57;
+                      v68 = *(const WCHAR **)sub_4A7D77(&v198, v78);
+                      LOBYTE(v211) = 58;
+                      sub_483D41(v68, 0, 0);
+                      sub_40A920(v198 - 16);
+                      LOBYTE(v211) = 48;
+                      sub_40A920(v184 - 16);
+                    }
+                    sub_40A2F0((void *)v188);
+                    LOBYTE(v211) = 59;
+                    v79 = *(void **)sub_4A7D77(&v191, L"IDB_OFFICE2007_SYS_BTN_BACK");
+                    LOBYTE(v211) = 60;
+                    sub_52205D((int)&v195, (int)(this + 84 * i + 1635), v79);
+                    sub_40A920(v191 - 16);
+                    sub_40A920(v195 - 16);
+                    LOBYTE(v211) = 47;
+                    sub_52071C(&v187);
+                  }
+                  sub_40A920(v197 - 16);
+                  sub_40A920((char *)v200 - 16);
+                }
+                LOBYTE(v211) = 44;
+                sub_52071C(v177);
+              }
+              sub_40A920(v196 - 16);
+              LOBYTE(v211) = 30;
+              sub_52071C(v199);
+            }
+            sub_40A2F0(L"BORDER");
+            LOBYTE(v211) = 61;
+            v80 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_MAINBORDER");
+            LOBYTE(v211) = 62;
+            sub_522493((int)&v195, (int)(this + 1887), v80);
+            sub_40A920(color - 16);
+            LOBYTE(v211) = 30;
+            sub_40A920(v195 - 16);
+            sub_40A2F0(L"BORDER_MDICHILD");
+            LOBYTE(v211) = 63;
+            v81 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_MDICHILDBORDER");
+            LOBYTE(v211) = 64;
+            sub_522493((int)&v190, (int)(this + 1971), v81);
+            sub_40A920(color - 16);
+            LOBYTE(v211) = 30;
+            sub_40A920(v190 - 16);
+            sub_40A2F0(L"MainClientArea");
+            LOBYTE(v211) = 65;
+            color = sub_5218DA(&v189, this + 8213);
+            LOBYTE(v211) = 30;
+            sub_40A920(v189 - 16);
+            if ( color )
+            {
+              CGdiObject::DeleteObject((CGdiObject *)(this + 8201));
+              sub_409490(*(this + 8213));
+            }
+            sub_40A920((char *)v207 - 16);
+            LOBYTE(v211) = 3;
+            sub_52071C(v205);
+          }
+          if ( sub_5209F4((wchar_t *)L"MENU", (int)&Source, 0) )
+          {
+            sub_5209BD(Source);
+            LOBYTE(v211) = 66;
+            sub_40A2F0(L"Light");
+            LOBYTE(v211) = 67;
+            color = sub_5218DA(&v195, this + 52);
+            LOBYTE(v211) = 66;
+            sub_40A920(v195 - 16);
+            if ( color )
+            {
+              CGdiObject::DeleteObject((CGdiObject *)(this + 71));
+              sub_409490(*(this + 52));
+            }
+            *(this + 51) = -16777216;
+            sub_40A2F0(L"Rarely");
+            LOBYTE(v211) = 68;
+            sub_5218DA(&v195, this + 51);
+            LOBYTE(v211) = 66;
+            sub_40A920(v195 - 16);
+            sub_40A2F0(L"Border");
+            LOBYTE(v211) = 69;
+            sub_5218DA(&v190, this + 61);
+            LOBYTE(v211) = 66;
+            sub_40A920(v190 - 16);
+            sub_40A2F0(L"Separator1");
+            LOBYTE(v211) = 70;
+            color = sub_5218DA(&v189, this + 8262);
+            LOBYTE(v211) = 66;
+            sub_40A920(v189 - 16);
+            if ( color )
+            {
+              CGdiObject::DeleteObject((CGdiObject *)(this + 83));
+              CPen::CreatePen((CPen *)(this + 83), 0, 1, *(this + 8262));
+            }
+            sub_40A2F0(L"Separator2");
+            LOBYTE(v211) = 71;
+            color = sub_5218DA(&v195, this + 8263);
+            LOBYTE(v211) = 66;
+            sub_40A920(v195 - 16);
+            if ( color )
+            {
+              CGdiObject::DeleteObject((CGdiObject *)(this + 8195));
+              CPen::CreatePen((CPen *)(this + 8195), 0, 1, *(this + 8263));
+            }
+            v196 = -1;
+            sub_40A2F0(L"GroupBackground");
+            LOBYTE(v211) = 72;
+            v24 = sub_5218DA(&v195, &v196);
+            LOBYTE(v211) = 66;
+            sub_40A920(v195 - 16);
+            if ( v24 )
+            {
+              CGdiObject::DeleteObject((CGdiObject *)(this + 8203));
+              sub_409490(v196);
+            }
+            sub_40A2F0(L"GroupText");
+            LOBYTE(v211) = 73;
+            sub_5218DA(&v195, this + 8264);
+            LOBYTE(v211) = 66;
+            sub_40A920(v195 - 16);
+            sub_40A2F0(L"ItemBorder");
+            LOBYTE(v211) = 74;
+            color = sub_5218DA(&v190, this + 62);
+            LOBYTE(v211) = 66;
+            sub_40A920(v190 - 16);
+            if ( color )
+            {
+              CGdiObject::DeleteObject((CGdiObject *)(this + 85));
+              CPen::CreatePen((CPen *)(this + 85), 0, 1, *(this + 62));
+            }
+            sub_40A2F0(L"BorderSize");
+            LOBYTE(v211) = 75;
+            sub_5217C5(&v195, this + 47);
+            LOBYTE(v211) = 66;
+            sub_40A920(v195 - 16);
+            sub_40A2F0(L"ItemBack");
+            LOBYTE(v211) = 76;
+            v82 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_MENU_ITEM_BACK");
+            LOBYTE(v211) = 77;
+            sub_522493((int)&v190, (int)(this + 2391), v82);
+            sub_40A920(color - 16);
+            LOBYTE(v211) = 66;
+            sub_40A920(v190 - 16);
+            sub_40A2F0(L"ItemCheck");
+            LOBYTE(v211) = 78;
+            v83 = *(const WCHAR **)sub_4A7D77(&color, L"IDB_OFFICE2007_MENU_ITEM_MARKER_C");
+            LOBYTE(v211) = 79;
+            sub_5223E0((int)&v189, (int)(this + 1073), v83);
+            sub_40A920(color - 16);
+            LOBYTE(v211) = 66;
+            sub_40A920(v189 - 16);
+            sub_40A2F0(L"ItemRadio");
+            LOBYTE(v211) = 80;
+            v84 = *(const WCHAR **)sub_4A7D77(&color, L"IDB_OFFICE2007_MENU_ITEM_MARKER_R");
+            LOBYTE(v211) = 81;
+            sub_5223E0((int)&v200, (int)(this + 1135), v84);
+            sub_40A920(color - 16);
+            LOBYTE(v211) = 66;
+            sub_40A920((char *)v200 - 16);
+            sub_40A2F0(L"ItemShowAll");
+            LOBYTE(v211) = 82;
+            v85 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_MENU_ITEM_SHOWALL");
+            LOBYTE(v211) = 83;
+            sub_522493((int)&v197, (int)(this + 2475), v85);
+            sub_40A920(color - 16);
+            LOBYTE(v211) = 66;
+            sub_40A920(v197 - 16);
+            sub_40A2F0(L"Highlighted");
+            LOBYTE(v211) = 84;
+            v86 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_MENU_BTN");
+            LOBYTE(v211) = 85;
+            sub_522493((int)&v178, (int)(this + 2559), v86);
+            sub_40A920(color - 16);
+            LOBYTE(v211) = 66;
+            sub_40A920(v178 - 16);
+            sub_40A2F0(L"HighlightedDisabled");
+            LOBYTE(v211) = 86;
+            v87 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_MENU_BTN_DISABLED");
+            LOBYTE(v211) = 87;
+            sub_522493((int)&v191, (int)(this + 2643), v87);
+            sub_40A920(color - 16);
+            LOBYTE(v211) = 66;
+            sub_40A920(v191 - 16);
+            sub_40A2F0(L"ButtonBorder");
+            LOBYTE(v211) = 88;
+            v88 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_MENU_BTN_VERT_SEPARATOR");
+            LOBYTE(v211) = 89;
+            sub_522493((int)&v184, (int)(this + 2727), v88);
+            sub_40A920(color - 16);
+            LOBYTE(v211) = 66;
+            sub_40A920(v184 - 16);
+            sub_40A2F0(L"ScrollBtn_T");
+            LOBYTE(v211) = 90;
+            v89 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_MENU_BTN_SCROLL_T");
+            LOBYTE(v211) = 91;
+            sub_522493((int)&v198, (int)(this + 2811), v89);
+            sub_40A920(color - 16);
+            LOBYTE(v211) = 66;
+            sub_40A920(v198 - 16);
+            sub_40A2F0(L"ScrollBtn_B");
+            LOBYTE(v211) = 92;
+            v90 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_MENU_BTN_SCROLL_B");
+            LOBYTE(v211) = 93;
+            sub_522493((int)&v201, (int)(this + 2895), v90);
+            sub_40A920(color - 16);
+            LOBYTE(v211) = 66;
+            sub_40A920(v201 - 16);
+            sub_40A2F0(L"TextNormal");
+            LOBYTE(v211) = 94;
+            sub_5218DA(&v203, this + 8224);
+            LOBYTE(v211) = 66;
+            sub_40A920(v203 - 16);
+            sub_40A2F0(L"TextHighlighted");
+            LOBYTE(v211) = 95;
+            sub_5218DA(&v206, this + 8225);
+            LOBYTE(v211) = 66;
+            sub_40A920(v206 - 16);
+            sub_40A2F0(L"TextDisabled");
+            LOBYTE(v211) = 96;
+            sub_5218DA(&v208, this + 8226);
+            sub_40A920(v208 - 16);
+            i = *(this + 8224);
+            sub_40A940(&v207);
+            LOBYTE(v211) = 97;
+            if ( sub_5209F4((wchar_t *)L"COLORS", (int)&v207, 0) )
+            {
+              sub_5209BD(v207);
+              LOBYTE(v211) = 98;
+              sub_40A2F0(L"Black");
+              LOBYTE(v211) = 99;
+              sub_5218DA(&v208, &i);
+              LOBYTE(v211) = 98;
+              sub_40A920(v208 - 16);
+              sub_4AF60D(0, i);
+              sub_40A2F0(L"Black2");
+              LOBYTE(v211) = 100;
+              sub_5218DA(&v206, &i);
+              LOBYTE(v211) = 98;
+              sub_40A920(v206 - 16);
+              sub_4AF60D(5, i);
+              v185 = 1;
+              v186[0] = L"Gray";
+              v186[1] = 2;
+              v186[2] = L"LtGray";
+              v186[3] = 3;
+              v186[4] = L"White";
+              v187 = 4;
+              v188 = (int)L"DkGray";
+              for ( j = 0; j < 4; ++j )
+              {
+                sub_40A2F0((void *)v186[2 * j]);
+                LOBYTE(v211) = 101;
+                color = sub_5218DA(&v208, &i);
+                LOBYTE(v211) = 98;
+                sub_40A920(v208 - 16);
+                if ( color )
+                  sub_4AF60D(v186[2 * j - 1], i);
+              }
+              LOBYTE(v211) = 97;
+              sub_52071C(v205);
+            }
+            else
+            {
+              sub_40A2F0(L"ImagesColor");
+              LOBYTE(v211) = 102;
+              sub_5218DA(&v208, &i);
+              LOBYTE(v211) = 97;
+              sub_40A920(v208 - 16);
+              sub_4AF60D(0, i);
+              sub_4AF60D(5, i);
+            }
+            sub_40A920((char *)v207 - 16);
+            LOBYTE(v211) = 3;
+            sub_52071C(v199);
+          }
+          if ( sub_5209F4((wchar_t *)L"BARS", (int)&Source, 0) )
+          {
+            sub_5209BD(Source);
+            sub_40A940(&i);
+            LOBYTE(v211) = 104;
+            if ( sub_5209F4((wchar_t *)L"DEFAULT", (int)&i, 0) )
+            {
+              sub_5209BD((void *)i);
+              LOBYTE(v211) = 105;
+              sub_40A2F0(L"Bkgnd");
+              LOBYTE(v211) = 106;
+              color = sub_5218DA(&v208, this + 50);
+              LOBYTE(v211) = 105;
+              sub_40A920(v208 - 16);
+              if ( color )
+              {
+                CGdiObject::DeleteObject((CGdiObject *)(this + 67));
+                sub_409490(*(this + 50));
+              }
+              sub_40A2F0(L"GradientLight");
+              LOBYTE(v211) = 107;
+              sub_5218DA(&v208, this + 92);
+              LOBYTE(v211) = 105;
+              sub_40A920(v208 - 16);
+              *(this + 91) = *(this + 92);
+              sub_40A2F0(L"GradientDark");
+              LOBYTE(v211) = 108;
+              sub_5218DA(&v206, this + 91);
+              sub_40A920(v206 - 16);
+              LOBYTE(v211) = 104;
+              sub_52071C(v205);
+            }
+            if ( sub_5209F4((wchar_t *)L"TOOLBAR", (int)&i, 0) )
+            {
+              sub_5209BD((void *)i);
+              v64 = *(this + 92);
+              v63 = *(this + 91);
+              LOBYTE(v211) = 109;
+              *(this + 94) = v64;
+              *(this + 93) = v63;
+              *(this + 95) = sub_4F30DA(v63, v64, 1.0, 1, 1);
+              sub_40A2F0(L"GradientLight");
+              LOBYTE(v211) = 110;
+              sub_5218DA(&v208, this + 94);
+              LOBYTE(v211) = 109;
+              sub_40A920(v208 - 16);
+              sub_40A2F0(L"GradientDark");
+              LOBYTE(v211) = 111;
+              sub_5218DA(&v206, this + 93);
+              LOBYTE(v211) = 109;
+              sub_40A920(v206 - 16);
+              *(this + 96) = *(this + 94);
+              *(this + 97) = *(this + 93);
+              sub_40A2F0(L"GradientVertLight");
+              LOBYTE(v211) = 112;
+              sub_5218DA(&v203, this + 96);
+              LOBYTE(v211) = 109;
+              sub_40A920(v203 - 16);
+              sub_40A2F0(L"GradientVertDark");
+              LOBYTE(v211) = 113;
+              sub_5218DA(&v201, this + 97);
+              LOBYTE(v211) = 109;
+              sub_40A920(v201 - 16);
+              sub_40A2F0(L"CustomizeButtonGradientLight");
+              LOBYTE(v211) = 114;
+              sub_5218DA(&v198, this + 99);
+              LOBYTE(v211) = 109;
+              sub_40A920(v198 - 16);
+              sub_40A2F0(L"CustomizeButtonGradientDark");
+              LOBYTE(v211) = 115;
+              sub_5218DA(&v184, this + 98);
+              LOBYTE(v211) = 109;
+              sub_40A920(v184 - 16);
+              sub_40A2F0(L"GRIPPER");
+              LOBYTE(v211) = 116;
+              v91 = *(const WCHAR **)sub_4A7D77(&color, L"IDB_OFFICE2007_GRIPPER");
+              LOBYTE(v211) = 117;
+              sub_5223E0((int)&v191, (int)(this + 143), v91);
+              sub_40A920(color - 16);
+              LOBYTE(v211) = 109;
+              sub_40A920(v191 - 16);
+              sub_40A2F0(L"TEAR");
+              LOBYTE(v211) = 118;
+              v92 = *(const WCHAR **)sub_4A7D77(&color, L"IDB_OFFICE2007_TEAR");
+              LOBYTE(v211) = 119;
+              sub_5223E0((int)&v178, (int)(this + 205), v92);
+              sub_40A920(color - 16);
+              LOBYTE(v211) = 109;
+              sub_40A920(v178 - 16);
+              sub_40A2F0((void *)L"BUTTON");
+              LOBYTE(v211) = 120;
+              v93 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_TOOLBAR_BTN");
+              LOBYTE(v211) = 121;
+              sub_522493((int)&v195, (int)(this + 2979), v93);
+              sub_40A920(color - 16);
+              LOBYTE(v211) = 109;
+              sub_40A920(v195 - 16);
+              sub_40A2F0(L"BORDER");
+              LOBYTE(v211) = 122;
+              v94 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_TOOLBAR_BORDER");
+              LOBYTE(v211) = 123;
+              sub_522493((int)&v190, (int)(this + 1383), v94);
+              sub_40A920(color - 16);
+              LOBYTE(v211) = 109;
+              sub_40A920(v190 - 16);
+              v26 = dword_5F5D14;
+              *(this + 8221) = dword_5F5D14;
+              *(this + 8222) = v26;
+              sub_40A2F0(L"TextNormal");
+              LOBYTE(v211) = 124;
+              sub_5218DA(&v189, this + 8221);
+              LOBYTE(v211) = 109;
+              sub_40A920(v189 - 16);
+              sub_40A2F0(L"TextHighlighted");
+              LOBYTE(v211) = 125;
+              sub_5218DA(&v207, this + 8222);
+              LOBYTE(v211) = 109;
+              sub_40A920((char *)v207 - 16);
+              sub_40A2F0(L"TextDisabled");
+              LOBYTE(v211) = 126;
+              sub_5218DA(&v196, this + 8223);
+              LOBYTE(v211) = 109;
+              sub_40A920(v196 - 16);
+              sub_40A2F0(L"BottomLineColor");
+              v27 = this + 100;
+              LOBYTE(v211) = 127;
+              v28 = sub_5218DA(&v200, this + 100);
+              LOBYTE(v211) = 109;
+              sub_40A920((char *)v200 - 16);
+              if ( v28 )
+              {
+                CGdiObject::DeleteObject((CGdiObject *)(this + 124));
+                CPen::CreatePen((CPen *)(this + 124), 0, 1, *v27);
+              }
+              CGdiObject::DeleteObject((CGdiObject *)(this + 8197));
+              v29 = CDrawingManager::PixelAlpha(*v27, (unsigned int)&unk_FFFFFF, 95);
+              CPen::CreatePen((CPen *)(this + 8197), 0, 1, v29);
+              CGdiObject::DeleteObject((CGdiObject *)(this + 126));
+              CPen::CreatePen((CPen *)(this + 126), 0, 1, (COLORREF)&unk_FFFFFF);
+              LOBYTE(v211) = 104;
+              sub_52071C(v199);
+            }
+            if ( sub_5209F4((wchar_t *)L"MENUBAR", (int)&i, 0) )
+            {
+              sub_5209BD((void *)i);
+              *(this + 8214) = *(this + 94);
+              v30 = *(this + 93);
+              LOBYTE(v211) = 0x80;
+              *(this + 8215) = v30;
+              sub_40A2F0(L"GradientLight");
+              LOBYTE(v211) = -127;
+              sub_5218DA(&v208, this + 8214);
+              LOBYTE(v211) = 0x80;
+              sub_40A920(v208 - 16);
+              sub_40A2F0(L"GradientDark");
+              LOBYTE(v211) = -126;
+              sub_5218DA(&v206, this + 8215);
+              LOBYTE(v211) = 0x80;
+              sub_40A920(v206 - 16);
+              *(this + 8216) = *(this + 8214);
+              *(this + 8217) = *(this + 8215);
+              sub_40A2F0(L"GradientVertLight");
+              LOBYTE(v211) = -125;
+              sub_5218DA(&v203, this + 8216);
+              LOBYTE(v211) = 0x80;
+              sub_40A920(v203 - 16);
+              sub_40A2F0(L"GradientVertDark");
+              LOBYTE(v211) = -124;
+              sub_5218DA(&v201, this + 8217);
+              LOBYTE(v211) = 0x80;
+              sub_40A920(v201 - 16);
+              *(this + 8218) = *(this + 8221);
+              *(this + 8219) = *(this + 8222);
+              *(this + 8220) = *(this + 8223);
+              sub_40A2F0(L"TextNormal");
+              LOBYTE(v211) = -123;
+              sub_5218DA(&v198, this + 8218);
+              LOBYTE(v211) = 0x80;
+              sub_40A920(v198 - 16);
+              sub_40A2F0(L"TextHighlighted");
+              LOBYTE(v211) = -122;
+              sub_5218DA(&v184, this + 8219);
+              LOBYTE(v211) = 0x80;
+              sub_40A920(v184 - 16);
+              sub_40A2F0(L"TextDisabled");
+              LOBYTE(v211) = -121;
+              sub_5218DA(&v191, this + 8220);
+              LOBYTE(v211) = 0x80;
+              sub_40A920(v191 - 16);
+              sub_40A2F0((void *)L"BUTTON");
+              LOBYTE(v211) = -120;
+              v95 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_MENUBAR_BTN");
+              LOBYTE(v211) = -119;
+              sub_522493((int)&v178, (int)(this + 2307), v95);
+              sub_40A920(color - 16);
+              sub_40A920(v178 - 16);
+              LOBYTE(v211) = 104;
+              sub_52071C(&v193);
+            }
+            if ( sub_5209F4((wchar_t *)L"POPUPBAR", (int)&i, 0) )
+            {
+              sub_5209BD((void *)i);
+              LOBYTE(v211) = -118;
+              sub_40A2F0(L"BORDER");
+              LOBYTE(v211) = -117;
+              v96 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_POPUPMENU_BORDER");
+              LOBYTE(v211) = -116;
+              sub_522493((int)&v208, (int)(this + 2139), v96);
+              sub_40A920(color - 16);
+              sub_40A920(v208 - 16);
+              sub_40A940(&v207);
+              LOBYTE(v211) = -115;
+              if ( sub_5209F4((wchar_t *)L"RESIZEBAR", (int)&v207, 0) )
+              {
+                sub_5209BD(v207);
+                LOBYTE(v211) = -114;
+                sub_40A2F0((void *)L"BACK");
+                LOBYTE(v211) = -113;
+                v97 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_POPUPMENU_RESIZEBAR");
+                LOBYTE(v211) = -112;
+                sub_522493((int)&v208, (int)(this + 2223), v97);
+                sub_40A920(color - 16);
+                LOBYTE(v211) = -114;
+                sub_40A920(v208 - 16);
+                sub_40A2F0(L"ICON_HV");
+                LOBYTE(v211) = -111;
+                v98 = *(const WCHAR **)sub_4A7D77(&color, L"IDB_OFFICE2007_POPUPMENU_RESIZEBAR_ICON_HV");
+                LOBYTE(v211) = -110;
+                sub_5223E0((int)&v206, (int)(this + 887), v98);
+                sub_40A920(color - 16);
+                LOBYTE(v211) = -114;
+                sub_40A920(v206 - 16);
+                sub_40A2F0(L"ICON_HVT");
+                LOBYTE(v211) = -109;
+                v99 = *(const WCHAR **)sub_4A7D77(&color, L"IDB_OFFICE2007_POPUPMENU_RESIZEBAR_ICON_HVT");
+                LOBYTE(v211) = -108;
+                sub_5223E0((int)&v203, (int)(this + 949), v99);
+                sub_40A920(color - 16);
+                LOBYTE(v211) = -114;
+                sub_40A920(v203 - 16);
+                sub_40A2F0(L"ICON_V");
+                LOBYTE(v211) = -107;
+                v100 = *(const WCHAR **)sub_4A7D77(&color, L"IDB_OFFICE2007_POPUPMENU_RESIZEBAR_ICON_V");
+                LOBYTE(v211) = -106;
+                sub_5223E0((int)&v201, (int)(this + 1011), v100);
+                sub_40A920(color - 16);
+                sub_40A920(v201 - 16);
+                LOBYTE(v211) = -115;
+                sub_52071C(v205);
+              }
+              sub_40A920((char *)v207 - 16);
+              LOBYTE(v211) = 104;
+              sub_52071C(&v193);
+            }
+            if ( sub_5209F4((wchar_t *)L"STATUSBAR", (int)&i, 0) )
+            {
+              sub_5209BD((void *)i);
+              LOBYTE(v211) = -105;
+              sub_40A2F0((void *)L"BACK");
+              LOBYTE(v211) = -104;
+              v101 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_STATUSBAR_BACK");
+              LOBYTE(v211) = -103;
+              sub_522493((int)&v208, (int)(this + 1467), v101);
+              sub_40A920(color - 16);
+              LOBYTE(v211) = -105;
+              sub_40A920(v208 - 16);
+              sub_40A2F0(L"BACK_EXT");
+              LOBYTE(v211) = -102;
+              v102 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_STATUSBAR_BACK_EXT");
+              LOBYTE(v211) = -101;
+              sub_522493((int)&v206, (int)(this + 1551), v102);
+              sub_40A920(color - 16);
+              LOBYTE(v211) = -105;
+              sub_40A920(v206 - 16);
+              sub_40A2F0(L"PANEBORDER");
+              LOBYTE(v211) = -100;
+              v103 = *(const WCHAR **)sub_4A7D77(&color, L"IDB_OFFICE2007_STATUSBAR_PANEBORDER");
+              LOBYTE(v211) = -99;
+              sub_5223E0((int)&v203, (int)(this + 267), v103);
+              sub_40A920(color - 16);
+              LOBYTE(v211) = -105;
+              sub_40A920(v203 - 16);
+              sub_40A2F0(L"SIZEBOX");
+              LOBYTE(v211) = -98;
+              v104 = *(const WCHAR **)sub_4A7D77(&color, L"IDB_OFFICE2007_STATUSBAR_SIZEBOX");
+              LOBYTE(v211) = -97;
+              sub_5223E0((int)&v201, (int)(this + 329), v104);
+              sub_40A920(color - 16);
+              LOBYTE(v211) = -105;
+              sub_40A920(v201 - 16);
+              *(this + 8227) = *(this + 8218);
+              v31 = *(this + 8220);
+              *(this + 8228) = v31;
+              *(this + 8229) = v31;
+              sub_40A2F0(L"TextNormal");
+              LOBYTE(v211) = -96;
+              sub_5218DA(&v198, this + 8227);
+              LOBYTE(v211) = -105;
+              sub_40A920(v198 - 16);
+              sub_40A2F0(L"TextDisabled");
+              LOBYTE(v211) = -95;
+              sub_5218DA(&v184, this + 8228);
+              LOBYTE(v211) = -105;
+              sub_40A920(v184 - 16);
+              sub_40A2F0(L"TextExtendedDisabled");
+              LOBYTE(v211) = -94;
+              sub_5218DA(&v191, this + 8229);
+              sub_40A920(v191 - 16);
+              LOBYTE(v211) = 104;
+              sub_52071C(v205);
+            }
+            if ( sub_5209F4((wchar_t *)L"CAPTIONBAR", (int)&i, 0) )
+            {
+              sub_5209BD((void *)i);
+              LOBYTE(v211) = -93;
+              sub_40A2F0(L"GradientLight");
+              LOBYTE(v211) = -92;
+              sub_5218DA(&v208, this + 111);
+              LOBYTE(v211) = -93;
+              sub_40A920(v208 - 16);
+              sub_40A2F0(L"GradientDark");
+              LOBYTE(v211) = -91;
+              sub_5218DA(&v206, this + 112);
+              LOBYTE(v211) = -93;
+              sub_40A920(v206 - 16);
+              sub_40A2F0(L"TextNormal");
+              LOBYTE(v211) = -90;
+              sub_5218DA(&v203, this + 8265);
+              sub_40A920(v203 - 16);
+              LOBYTE(v211) = 104;
+              sub_52071C(v205);
+            }
+            sub_40A920(i - 16);
+            LOBYTE(v211) = 3;
+            sub_52071C(&v187);
+          }
+          v32 = this + 51;
+          if ( *(this + 51) == -16777216 )
+            *v32 = *(this + 50);
+          CGdiObject::DeleteObject((CGdiObject *)(this + 69));
+          sub_409490(*v32);
+          *(this + 8230) = dword_5F5D18;
+          *(this + 8231) = dword_5F5CCC;
+          *(this + 8232) = *(this + 62);
+          *(this + 8233) = dword_5F5CE8;
+          if ( sub_5209F4((wchar_t *)L"EDIT", (int)&Source, 0) )
+          {
+            sub_5209BD(Source);
+            LOBYTE(v211) = -89;
+            sub_40A2F0(L"BorderNormal");
+            LOBYTE(v211) = -88;
+            sub_5218DA(&v208, this + 8230);
+            LOBYTE(v211) = -89;
+            sub_40A920(v208 - 16);
+            sub_40A2F0(L"BorderHighlighted");
+            LOBYTE(v211) = -87;
+            sub_5218DA(&v206, this + 8232);
+            LOBYTE(v211) = -89;
+            sub_40A920(v206 - 16);
+            sub_40A2F0(L"BorderDisabled");
+            LOBYTE(v211) = -86;
+            sub_5218DA(&v203, this + 8231);
+            LOBYTE(v211) = -89;
+            sub_40A920(v203 - 16);
+            sub_40A2F0(L"Selection");
+            LOBYTE(v211) = -85;
+            sub_5218DA(&v201, this + 8233);
+            sub_40A920(v201 - 16);
+            LOBYTE(v211) = 3;
+            sub_52071C(v205);
+          }
+          *(this + 8234) = dword_5F5D18;
+          v33 = *(this + 8234);
+          *(this + 8235) = dword_5F5CCC;
+          v34 = *(this + 62);
+          *(this + 8237) = v34;
+          *(this + 8236) = v34;
+          *(this + 8246) = v34;
+          *(this + 8240) = v33;
+          v35 = this + 8249;
+          *(this + 8249) = v34;
+          *(this + 8250) = dword_5F5CE8;
+          *(this + 8238) = *(this + 93);
+          *(this + 8239) = *(this + 94);
+          v36 = dword_5F5CC8;
+          *(this + 8242) = dword_5F5CC8;
+          *(this + 8241) = v36;
+          *(this + 8247) = *(this + 105);
+          *(this + 8248) = *(this + 104);
+          *(this + 8244) = *(this + 107);
+          *(this + 8245) = *(this + 106);
+          if ( sub_5209F4((wchar_t *)L"COMBO", (int)&Source, 0) )
+          {
+            sub_5209BD(Source);
+            LOBYTE(v211) = -84;
+            sub_40A2F0(L"BorderNormal");
+            LOBYTE(v211) = -83;
+            sub_5218DA(&v208, this + 8234);
+            LOBYTE(v211) = -84;
+            sub_40A920(v208 - 16);
+            sub_40A2F0(L"BorderHighlighted");
+            LOBYTE(v211) = -82;
+            sub_5218DA(&v206, this + 8237);
+            LOBYTE(v211) = -84;
+            sub_40A920(v206 - 16);
+            sub_40A2F0(L"BorderDisabled");
+            LOBYTE(v211) = -81;
+            sub_5218DA(&v203, this + 8235);
+            LOBYTE(v211) = -84;
+            sub_40A920(v203 - 16);
+            *(this + 8236) = *(this + 8237);
+            sub_40A2F0(L"BorderPressed");
+            LOBYTE(v211) = -80;
+            sub_5218DA(&v201, this + 8236);
+            LOBYTE(v211) = -84;
+            sub_40A920(v201 - 16);
+            sub_40A2F0(L"Selection");
+            LOBYTE(v211) = -79;
+            sub_5218DA(&v198, this + 8250);
+            sub_40A920(v198 - 16);
+            sub_40A940(&v207);
+            LOBYTE(v211) = -78;
+            if ( sub_5209F4((wchar_t *)L"BUTTON", (int)&v207, 0) )
+            {
+              sub_5209BD(v207);
+              LOBYTE(v211) = -77;
+              sub_40A2F0(L"GradientStartNormal");
+              LOBYTE(v211) = -76;
+              sub_5218DA(&v208, this + 8238);
+              LOBYTE(v211) = -77;
+              sub_40A920(v208 - 16);
+              sub_40A2F0(L"GradientFinishNormal");
+              LOBYTE(v211) = -75;
+              sub_5218DA(&v206, this + 8239);
+              LOBYTE(v211) = -77;
+              sub_40A920(v206 - 16);
+              sub_40A2F0(L"BtnBorderNormal");
+              LOBYTE(v211) = -74;
+              sub_5218DA(&v203, this + 8240);
+              LOBYTE(v211) = -77;
+              sub_40A920(v203 - 16);
+              sub_40A2F0(L"IMAGE");
+              LOBYTE(v211) = -73;
+              v105 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_COMBOBOX_BTN");
+              LOBYTE(v211) = -72;
+              v179 = sub_522493((int)&v201, (int)(this + 1803), v105) == 0;
+              sub_40A920(color - 16);
+              LOBYTE(v211) = -77;
+              sub_40A920(v201 - 16);
+              if ( v179 )
+              {
+                sub_40A2F0(L"GradientStartHighlighted");
+                LOBYTE(v211) = -71;
+                sub_5218DA(&v208, this + 8247);
+                LOBYTE(v211) = -77;
+                sub_40A920(v208 - 16);
+                sub_40A2F0(L"GradientFinishHighlighted");
+                LOBYTE(v211) = -70;
+                sub_5218DA(&v206, this + 8248);
+                LOBYTE(v211) = -77;
+                sub_40A920(v206 - 16);
+                sub_40A2F0(L"GradientStartDisabled");
+                LOBYTE(v211) = -69;
+                sub_5218DA(&v203, this + 8241);
+                LOBYTE(v211) = -77;
+                sub_40A920(v203 - 16);
+                sub_40A2F0(L"GradientFinishDisabled");
+                LOBYTE(v211) = -68;
+                sub_5218DA(&v201, this + 8242);
+                LOBYTE(v211) = -77;
+                sub_40A920(v201 - 16);
+                sub_40A2F0(L"GradientStartPressed");
+                LOBYTE(v211) = -67;
+                sub_5218DA(&v198, this + 8244);
+                LOBYTE(v211) = -77;
+                sub_40A920(v198 - 16);
+                sub_40A2F0(L"GradientFinishPressed");
+                LOBYTE(v211) = -66;
+                sub_5218DA(&v184, this + 8245);
+                LOBYTE(v211) = -77;
+                sub_40A920(v184 - 16);
+                sub_40A2F0(L"BtnBorderHighlighted");
+                LOBYTE(v211) = -65;
+                sub_5218DA(&v191, this + 8249);
+                LOBYTE(v211) = -77;
+                sub_40A920(v191 - 16);
+                sub_40A2F0(L"BtnBorderDisabled");
+                LOBYTE(v211) = -64;
+                sub_5218DA(&v178, this + 8243);
+                LOBYTE(v211) = -77;
+                sub_40A920(v178 - 16);
+                *(this + 8246) = *v35;
+                sub_40A2F0(L"BtnBorderPressed");
+                LOBYTE(v211) = -63;
+                sub_5218DA(&v195, this + 8246);
+                sub_40A920(v195 - 16);
+              }
+              LOBYTE(v211) = -78;
+              sub_52071C(v199);
+            }
+            sub_40A920((char *)v207 - 16);
+            LOBYTE(v211) = 3;
+            sub_52071C(v205);
+          }
+          *(this + 8295) = *(this + 8230);
+          *(this + 8296) = *(this + 8231);
+          v37 = *(this + 8232);
+          *(this + 8297) = v37;
+          *(this + 8298) = v37;
+          *(this + 8299) = *(this + 8233);
+          *(this + 8302) = *(this + 8240);
+          *(this + 8311) = *v35;
+          *(this + 8308) = *(this + 8246);
+          *(this + 8300) = *(this + 8238);
+          *(this + 8301) = *(this + 8239);
+          *(this + 8303) = *(this + 8241);
+          *(this + 8304) = *(this + 8242);
+          *(this + 8309) = *(this + 8247);
+          *(this + 8310) = *(this + 8248);
+          *(this + 8306) = *(this + 8244);
+          *(this + 8307) = *(this + 8245);
+          v38 = *(this + 92);
+          *(this + 113) = v38;
+          *(this + 114) = v38;
+          if ( sub_5209F4((wchar_t *)L"TASK", (int)&Source, 0) )
+          {
+            sub_5209BD(Source);
+            LOBYTE(v211) = -62;
+            sub_40A2F0(L"GradientDark");
+            LOBYTE(v211) = -61;
+            sub_5218DA(&v208, this + 113);
+            LOBYTE(v211) = -62;
+            sub_40A920(v208 - 16);
+            sub_40A2F0(L"GradientLight");
+            LOBYTE(v211) = -60;
+            sub_5218DA(&v206, this + 114);
+            sub_40A920(v206 - 16);
+            sub_40A940(&v207);
+            LOBYTE(v211) = -59;
+            if ( sub_5209F4((wchar_t *)L"GROUP", (int)&v207, 0) )
+            {
+              sub_5209BD(v207);
+              sub_40A940(&i);
+              LOBYTE(v211) = -57;
+              if ( sub_5209F4((wchar_t *)L"NORMAL", (int)&i, 0) )
+              {
+                sub_5209BD((void *)i);
+                sub_40A940(&v197);
+                LOBYTE(v211) = -55;
+                if ( sub_5209F4((wchar_t *)L"CAPTION", (int)&v197, 0) )
+                {
+                  sub_5209BD((void *)v197);
+                  LOBYTE(v211) = -54;
+                  sub_40A2F0(L"DarkNormal");
+                  LOBYTE(v211) = -53;
+                  sub_5218DA(&v208, this + 115);
+                  LOBYTE(v211) = -54;
+                  sub_40A920(v208 - 16);
+                  sub_40A2F0(L"LightNormal");
+                  LOBYTE(v211) = -52;
+                  sub_5218DA(&v206, this + 116);
+                  LOBYTE(v211) = -54;
+                  sub_40A920(v206 - 16);
+                  sub_40A2F0(L"DarkHighlighted");
+                  LOBYTE(v211) = -51;
+                  sub_5218DA(&v203, this + 8266);
+                  LOBYTE(v211) = -54;
+                  sub_40A920(v203 - 16);
+                  sub_40A2F0(L"LightHighlighted");
+                  LOBYTE(v211) = -50;
+                  sub_5218DA(&v201, this + 8267);
+                  LOBYTE(v211) = -54;
+                  sub_40A920(v201 - 16);
+                  sub_40A2F0(L"TextNormal");
+                  LOBYTE(v211) = -49;
+                  sub_5218DA(&v198, this + 8272);
+                  LOBYTE(v211) = -54;
+                  sub_40A920(v198 - 16);
+                  sub_40A2F0(L"TextHighlighted");
+                  LOBYTE(v211) = -48;
+                  sub_5218DA(&v184, this + 8273);
+                  sub_40A920(v184 - 16);
+                  LOBYTE(v211) = -55;
+                  sub_52071C(v205);
+                }
+                if ( sub_5209F4((wchar_t *)L"AREA", (int)&v197, 0) )
+                {
+                  sub_5209BD((void *)v197);
+                  LOBYTE(v211) = -47;
+                  sub_40A2F0(L"DarkNormal");
+                  LOBYTE(v211) = -46;
+                  sub_5218DA(&v208, this + 120);
+                  LOBYTE(v211) = -47;
+                  sub_40A920(v208 - 16);
+                  sub_40A2F0(L"LightNormal");
+                  LOBYTE(v211) = -45;
+                  sub_5218DA(&v206, this + 119);
+                  sub_40A920(v206 - 16);
+                  LOBYTE(v211) = -55;
+                  sub_52071C(v205);
+                }
+                sub_40A920(v197 - 16);
+                LOBYTE(v211) = -57;
+                sub_52071C(&v187);
+              }
+              if ( sub_5209F4((wchar_t *)L"SPECIAL", (int)&i, 0) )
+              {
+                sub_5209BD((void *)i);
+                sub_40A940(&v197);
+                LOBYTE(v211) = -43;
+                if ( sub_5209F4((wchar_t *)L"CAPTION", (int)&v197, 0) )
+                {
+                  sub_5209BD((void *)v197);
+                  LOBYTE(v211) = -42;
+                  sub_40A2F0(L"DarkNormal");
+                  LOBYTE(v211) = -41;
+                  sub_5218DA(&v208, this + 117);
+                  LOBYTE(v211) = -42;
+                  sub_40A920(v208 - 16);
+                  sub_40A2F0(L"LightNormal");
+                  LOBYTE(v211) = -40;
+                  sub_5218DA(&v206, this + 118);
+                  LOBYTE(v211) = -42;
+                  sub_40A920(v206 - 16);
+                  sub_40A2F0(L"DarkHighlighted");
+                  LOBYTE(v211) = -39;
+                  sub_5218DA(&v203, this + 8268);
+                  LOBYTE(v211) = -42;
+                  sub_40A920(v203 - 16);
+                  sub_40A2F0(L"LightHighlighted");
+                  LOBYTE(v211) = -38;
+                  sub_5218DA(&v201, this + 8269);
+                  LOBYTE(v211) = -42;
+                  sub_40A920(v201 - 16);
+                  sub_40A2F0(L"TextNormal");
+                  LOBYTE(v211) = -37;
+                  sub_5218DA(&v198, this + 8270);
+                  LOBYTE(v211) = -42;
+                  sub_40A920(v198 - 16);
+                  sub_40A2F0(L"TextHighlighted");
+                  LOBYTE(v211) = -36;
+                  sub_5218DA(&v184, this + 8271);
+                  sub_40A920(v184 - 16);
+                  LOBYTE(v211) = -43;
+                  sub_52071C(v205);
+                }
+                if ( sub_5209F4((wchar_t *)L"AREA", (int)&v197, 0) )
+                {
+                  sub_5209BD((void *)v197);
+                  LOBYTE(v211) = -35;
+                  sub_40A2F0(L"DarkNormal");
+                  LOBYTE(v211) = -34;
+                  sub_5218DA(&v208, this + 122);
+                  LOBYTE(v211) = -35;
+                  sub_40A920(v208 - 16);
+                  sub_40A2F0(L"LightNormal");
+                  LOBYTE(v211) = -33;
+                  sub_5218DA(&v206, this + 121);
+                  sub_40A920(v206 - 16);
+                  LOBYTE(v211) = -43;
+                  sub_52071C(v205);
+                }
+                sub_40A920(v197 - 16);
+                LOBYTE(v211) = -57;
+                sub_52071C(&v187);
+              }
+              sub_40A2F0(L"BORDER");
+              LOBYTE(v211) = -32;
+              v39 = sub_5218DA(&v208, this + 123);
+              LOBYTE(v211) = -57;
+              sub_40A920(v208 - 16);
+              if ( v39 )
+              {
+                CGdiObject::DeleteObject((CGdiObject *)(this + 128));
+                CPen::CreatePen((CPen *)(this + 128), 0, 1, *(this + 123));
+              }
+              sub_40A920(i - 16);
+              LOBYTE(v211) = -59;
+              sub_52071C(v199);
+            }
+            sub_40A2F0(L"SCROLL_BUTTON");
+            LOBYTE(v211) = -31;
+            v106 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_TASKPANE_SCROLL_BTN");
+            LOBYTE(v211) = -30;
+            sub_522493((int)&v208, (int)(this + 3063), v106);
+            sub_40A920(color - 16);
+            sub_40A920(v208 - 16);
+            sub_40A920((char *)v207 - 16);
+            LOBYTE(v211) = 3;
+            sub_52071C(&v193);
+          }
+          if ( sub_5209F4((wchar_t *)L"TABS", (int)&Source, 0) )
+          {
+            sub_5209BD(Source);
+            LOBYTE(v211) = -29;
+            sub_40A2F0(L"TextColorActive");
+            LOBYTE(v211) = -28;
+            sub_5218DA(&v208, this + 8276);
+            LOBYTE(v211) = -29;
+            sub_40A920(v208 - 16);
+            sub_40A2F0(L"TextColorInactive");
+            LOBYTE(v211) = -27;
+            sub_5218DA(&v206, this + 8277);
+            sub_40A920(v206 - 16);
+            sub_40A940(&v197);
+            LOBYTE(v211) = -26;
+            if ( sub_5209F4((wchar_t *)L"3D", (int)&v197, 0) )
+            {
+              sub_5209BD((void *)v197);
+              sub_40A940(&v207);
+              LOBYTE(v211) = -24;
+              if ( sub_5209F4((wchar_t *)L"BUTTON", (int)&v207, 0) )
+              {
+                v40 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_TAB_3D");
+                LOBYTE(v211) = -23;
+                v107 = sub_409C50(0, 0, 0, 0);
+                v72 = sub_409C50(0, 0, 0, 0);
+                v69 = sub_409C50(0, 0, 0, 0);
+                v41 = sub_409C50(0, 0, 0, 0);
+                sub_51ABAC(v40, v41, v69, v72, v107);
+                LOBYTE(v211) = -21;
+                sub_40A920(color - 16);
+                if ( sub_521E5B(&v207, v171) )
+                {
+                  (*(void (__thiscall **)(_DWORD *, _BYTE *, _DWORD))(*(this + 3147) + 12))(this + 3147, v171, 0);
+                  (*(void (__thiscall **)(_DWORD *, _BYTE *, int))(*(this + 3231) + 12))(this + 3231, v171, 1);
+                }
+                LOBYTE(v211) = -24;
+                sub_51A85A(v171);
+              }
+              sub_40A920((char *)v207 - 16);
+              LOBYTE(v211) = -26;
+              sub_52071C(v205);
+            }
+            if ( sub_5209F4((wchar_t *)L"FLAT", (int)&v197, 0) )
+            {
+              sub_5209BD((void *)v197);
+              sub_40A940(&v207);
+              LOBYTE(v211) = -19;
+              if ( sub_5209F4((wchar_t *)L"BUTTON", (int)&v207, 0) )
+              {
+                v42 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_TAB_FLAT");
+                LOBYTE(v211) = -18;
+                v108 = sub_409C50(0, 0, 0, 0);
+                v73 = sub_409C50(0, 0, 0, 0);
+                v70 = sub_409C50(0, 0, 0, 0);
+                v43 = sub_409C50(0, 0, 0, 0);
+                sub_51ABAC(v42, v43, v70, v73, v108);
+                LOBYTE(v211) = -16;
+                sub_40A920(color - 16);
+                if ( sub_521E5B(&v207, v171) )
+                {
+                  (*(void (__thiscall **)(_DWORD *, _BYTE *, _DWORD))(*(this + 3315) + 12))(this + 3315, v171, 0);
+                  (*(void (__thiscall **)(_DWORD *, _BYTE *, int))(*(this + 3399) + 12))(this + 3399, v171, 1);
+                }
+                LOBYTE(v211) = -19;
+                sub_51A85A(v171);
+              }
+              sub_40A2F0(L"Black");
+              LOBYTE(v211) = -15;
+              sub_5218DA(&v208, this + 8274);
+              LOBYTE(v211) = -19;
+              sub_40A920(v208 - 16);
+              sub_40A2F0(L"Highlight");
+              LOBYTE(v211) = -14;
+              sub_5218DA(&v206, this + 8275);
+              LOBYTE(v211) = -19;
+              sub_40A920(v206 - 16);
+              sub_40A2F0(L"BorderInnerNormal");
+              LOBYTE(v211) = -13;
+              v44 = sub_5218DA(&v203, &i);
+              LOBYTE(v211) = -19;
+              sub_40A920(v203 - 16);
+              if ( v44 )
+              {
+                CGdiObject::DeleteObject((CGdiObject *)(this + 8187));
+                CPen::CreatePen((CPen *)(this + 8187), 0, 1, i);
+              }
+              sub_40A2F0(L"BorderInnerActive");
+              LOBYTE(v211) = -12;
+              v45 = sub_5218DA(&v208, &i);
+              LOBYTE(v211) = -19;
+              sub_40A920(v208 - 16);
+              if ( v45 )
+              {
+                CGdiObject::DeleteObject((CGdiObject *)(this + 8189));
+                CPen::CreatePen((CPen *)(this + 8189), 0, 1, i);
+              }
+              sub_40A2F0(L"BorderOuterNormal");
+              LOBYTE(v211) = -11;
+              v46 = sub_5218DA(&v208, &i);
+              LOBYTE(v211) = -19;
+              sub_40A920(v208 - 16);
+              if ( v46 )
+              {
+                CGdiObject::DeleteObject((CGdiObject *)(this + 0x1FFF));
+                CPen::CreatePen((CPen *)(this + 0x1FFF), 0, 1, i);
+              }
+              sub_40A2F0(L"BorderOuterActive");
+              LOBYTE(v211) = -10;
+              v47 = sub_5218DA(&v208, &i);
+              LOBYTE(v211) = -19;
+              sub_40A920(v208 - 16);
+              if ( v47 )
+              {
+                CGdiObject::DeleteObject((CGdiObject *)(this + 8193));
+                CPen::CreatePen((CPen *)(this + 8193), 0, 1, i);
+              }
+              sub_40A920((char *)v207 - 16);
+              LOBYTE(v211) = -26;
+              sub_52071C(v205);
+            }
+            sub_40A920(v197 - 16);
+            LOBYTE(v211) = 3;
+            sub_52071C(&v193);
+          }
+          if ( sub_5209F4((wchar_t *)L"HEADER", (int)&Source, 0) )
+          {
+            sub_5209BD(Source);
+            LOBYTE(v211) = -9;
+            sub_40A2F0(L"NormalStart");
+            LOBYTE(v211) = -8;
+            sub_5218DA(&v208, this + 8251);
+            LOBYTE(v211) = -9;
+            sub_40A920(v208 - 16);
+            sub_40A2F0(L"NormalFinish");
+            LOBYTE(v211) = -7;
+            sub_5218DA(&v206, this + 8252);
+            LOBYTE(v211) = -9;
+            sub_40A920(v206 - 16);
+            sub_40A2F0(L"NormalBorder");
+            LOBYTE(v211) = -6;
+            sub_5218DA(&v203, this + 8253);
+            LOBYTE(v211) = -9;
+            sub_40A920(v203 - 16);
+            sub_40A2F0(L"HighlightedStart");
+            LOBYTE(v211) = -5;
+            sub_5218DA(&v201, this + 8254);
+            LOBYTE(v211) = -9;
+            sub_40A920(v201 - 16);
+            sub_40A2F0(L"HighlightedFinish");
+            LOBYTE(v211) = -4;
+            sub_5218DA(&v198, this + 8255);
+            LOBYTE(v211) = -9;
+            sub_40A920(v198 - 16);
+            sub_40A2F0(L"HighlightedBorder");
+            LOBYTE(v211) = -3;
+            sub_5218DA(&v184, this + 8256);
+            LOBYTE(v211) = -9;
+            sub_40A920(v184 - 16);
+            sub_40A2F0(L"PressedStart");
+            LOBYTE(v211) = -2;
+            sub_5218DA(&v191, this + 8257);
+            LOBYTE(v211) = -9;
+            sub_40A920(v191 - 16);
+            sub_40A2F0(L"PressedFinish");
+            LOBYTE(v211) = -1;
+            sub_5218DA(&v178, this + 8258);
+            LOBYTE(v211) = -9;
+            sub_40A920(v178 - 16);
+            sub_40A2F0(L"PressedBorder");
+            v211 = 256;
+            sub_5218DA(&v195, this + 8259);
+            v211 = 247;
+            sub_40A920(v195 - 16);
+            LOBYTE(v211) = 3;
+            sub_52071C(&v193);
+          }
+          v48 = *(this + 8222);
+          *(this + 8282) = *(this + 8218);
+          *(this + 8283) = *(this + 8219);
+          *(this + 8284) = *(this + 8220);
+          v49 = *(this + 8221);
+          *(this + 8285) = v49;
+          *(this + 8287) = v49;
+          *(this + 8286) = v48;
+          *(this + 8288) = v48;
+          *(this + 8291) = dword_5F5D10;
+          v50 = dword_5F5D18;
+          *(this + 8293) = dword_5F5D18;
+          *(this + 8294) = v50;
+          *(this + 8292) = dword_5F5CC8;
+          if ( sub_5209F4((wchar_t *)L"RIBBON", (int)&Source, 0) )
+          {
+            sub_5209BD(Source);
+            v211 = 257;
+            sub_40A940(&i);
+            LOBYTE(v211) = 2;
+            if ( sub_5209F4((wchar_t *)L"CATEGORY", (int)&i, 0) )
+            {
+              sub_5209BD((void *)i);
+              LOBYTE(v211) = 3;
+              sub_40A2F0((void *)L"BACK");
+              LOBYTE(v211) = 4;
+              v109 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_RIBBON_CATEGORY_BACK");
+              LOBYTE(v211) = 5;
+              sub_522493((int)&v208, (int)(this + 3819), v109);
+              sub_40A920(color - 16);
+              sub_40A920(v208 - 16);
+              sub_40A940(&v207);
+              LOBYTE(v211) = 6;
+              if ( sub_5209F4((wchar_t *)L"TAB", (int)&v207, 0) )
+              {
+                sub_5209BD(v207);
+                LOBYTE(v211) = 7;
+                sub_40A2F0((void *)L"BUTTON");
+                LOBYTE(v211) = 8;
+                v110 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_RIBBON_CATEGORY_TAB");
+                LOBYTE(v211) = 9;
+                sub_522493((int)&v208, (int)(this + 3903), v110);
+                sub_40A920(color - 16);
+                LOBYTE(v211) = 7;
+                sub_40A920(v208 - 16);
+                sub_40A2F0(L"TextNormal");
+                LOBYTE(v211) = 10;
+                sub_5218DA(&v206, this + 8282);
+                LOBYTE(v211) = 7;
+                sub_40A920(v206 - 16);
+                sub_40A2F0(L"TextHighlighted");
+                LOBYTE(v211) = 11;
+                sub_5218DA(&v203, this + 8283);
+                LOBYTE(v211) = 7;
+                sub_40A920(v203 - 16);
+                sub_40A2F0(L"TextDisabled");
+                LOBYTE(v211) = 12;
+                sub_5218DA(&v201, this + 8284);
+                sub_40A920(v201 - 16);
+                LOBYTE(v211) = 6;
+                sub_52071C(v199);
+              }
+              sub_40A2F0(L"TAB_SEPARATOR");
+              LOBYTE(v211) = 13;
+              v111 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_RIBBON_CATEGORY_TAB_SEP");
+              LOBYTE(v211) = 14;
+              sub_522493((int)&v208, (int)(this + 3987), v111);
+              sub_40A920(color - 16);
+              LOBYTE(v211) = 6;
+              sub_40A920(v208 - 16);
+              sub_40A2F0(L"BUTTON_PAGE_L");
+              LOBYTE(v211) = 15;
+              v112 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_RIBBON_BTN_PAGE_L");
+              LOBYTE(v211) = 16;
+              sub_522493((int)&v206, (int)(this + 4071), v112);
+              sub_40A920(color - 16);
+              LOBYTE(v211) = 6;
+              sub_40A920(v206 - 16);
+              sub_40A2F0(L"BUTTON_PAGE_R");
+              LOBYTE(v211) = 17;
+              v113 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_RIBBON_BTN_PAGE_R");
+              LOBYTE(v211) = 18;
+              sub_522493((int)&v203, (int)(this + 4155), v113);
+              sub_40A920(color - 16);
+              sub_40A920(v203 - 16);
+              sub_40A920((char *)v207 - 16);
+              LOBYTE(v211) = 2;
+              sub_52071C(v205);
+            }
+            if ( sub_5209F4((wchar_t *)L"PANEL", (int)&i, 0) )
+            {
+              sub_5209BD((void *)i);
+              sub_40A940(&v207);
+              LOBYTE(v211) = 20;
+              if ( sub_5209F4((wchar_t *)L"BACK", (int)&v207, 0) )
+              {
+                sub_5209BD(v207);
+                LOBYTE(v211) = 21;
+                sub_40A2F0(L"TOP");
+                LOBYTE(v211) = 22;
+                v114 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_RIBBON_PANEL_BACK_T");
+                LOBYTE(v211) = 23;
+                sub_522493((int)&v208, (int)(this + 4239), v114);
+                sub_40A920(color - 16);
+                LOBYTE(v211) = 21;
+                sub_40A920(v208 - 16);
+                sub_40A2F0(L"BOTTOM");
+                LOBYTE(v211) = 24;
+                v115 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_RIBBON_PANEL_BACK_B");
+                LOBYTE(v211) = 25;
+                sub_522493((int)&v206, (int)(this + 4323), v115);
+                sub_40A920(color - 16);
+                sub_40A920(v206 - 16);
+                LOBYTE(v211) = 20;
+                sub_52071C(v199);
+              }
+              sub_40A920((char *)v207 - 16);
+              sub_40A940(&v196);
+              LOBYTE(v211) = 26;
+              if ( sub_5209F4((wchar_t *)L"CAPTION", (int)&v196, 0) )
+              {
+                sub_5209BD((void *)v196);
+                LOBYTE(v211) = 27;
+                sub_40A2F0(L"LAUNCH_BTN");
+                LOBYTE(v211) = 28;
+                v116 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_RIBBON_BTN_LAUNCH");
+                LOBYTE(v211) = 29;
+                sub_522493((int)&v208, (int)(this + 6087), v116);
+                sub_40A920(color - 16);
+                LOBYTE(v211) = 27;
+                sub_40A920(v208 - 16);
+                sub_40A2F0(L"LAUNCH_ICON");
+                LOBYTE(v211) = 30;
+                v117 = *(const WCHAR **)sub_4A7D77(&color, L"IDB_OFFICE2007_RIBBON_BTN_LAUNCH_ICON");
+                LOBYTE(v211) = 31;
+                sub_5223E0((int)&v206, (int)(this + 1259), v117);
+                sub_40A920(color - 16);
+                LOBYTE(v211) = 27;
+                sub_40A920(v206 - 16);
+                sub_40A2F0(L"TextNormal");
+                LOBYTE(v211) = 32;
+                sub_5218DA(&v203, this + 8287);
+                LOBYTE(v211) = 27;
+                sub_40A920(v203 - 16);
+                sub_40A2F0(L"TextHighlighted");
+                LOBYTE(v211) = 33;
+                sub_5218DA(&v201, this + 8288);
+                sub_40A920(v201 - 16);
+                LOBYTE(v211) = 26;
+                sub_52071C(v199);
+              }
+              LOBYTE(v211) = 19;
+              sub_40A920(v196 - 16);
+              sub_40A2F0(L"SEPARATOR");
+              LOBYTE(v211) = 34;
+              v118 = *(const WCHAR **)sub_4A7D77(&color, L"IDB_OFFICE2007_RIBBON_PANEL_SEPARATOR");
+              LOBYTE(v211) = 35;
+              sub_5223E0((int)&v208, (int)(this + 1197), v118);
+              sub_40A920(color - 16);
+              LOBYTE(v211) = 19;
+              sub_40A920(v208 - 16);
+              sub_40A2F0(L"QAT");
+              LOBYTE(v211) = 36;
+              v119 = *(void **)sub_4A7D77(&color, L"IDB_OFFICE2007_RIBBON_PANEL_QAT");
+              LOBYTE(v211) = 37;
+              sub_522493((int)&v206, (int)(this + 4407), v119);
+              sub_40A920(color - 16);
+              sub_40A920(v206 - 16);
+              sub_40A940(&v207);
+              LOBYTE(v211) = 38;
+              if ( sub_5209F4((wchar_t *)L"BUTTONS", (int)&v207, 0) )
+              {
+                sub_5209BD(v207);
+                LOBYTE(v211) = 39;
+                sub_40A2F0(L"BUTTON_GROUP_F");
+                LOBYTE(v211) = 40;
+                v120 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_GROUP_F");
+                LOBYTE(v211) = 41;
+                sub_522493((int)&v208, (int)(this + 4827), v120);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920(v208 - 16);
+                sub_40A2F0(L"BUTTON_GROUP_M");
+                LOBYTE(v211) = 42;
+                v121 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_GROUP_M");
+                LOBYTE(v211) = 43;
+                sub_522493((int)&v206, (int)(this + 4911), v121);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920(v206 - 16);
+                sub_40A2F0(L"BUTTON_GROUP_L");
+                LOBYTE(v211) = 44;
+                v122 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_GROUP_L");
+                LOBYTE(v211) = 45;
+                sub_522493((int)&v203, (int)(this + 4995), v122);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920(v203 - 16);
+                sub_40A2F0(L"BUTTON_GROUP_S");
+                LOBYTE(v211) = 46;
+                v123 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_GROUP_S");
+                LOBYTE(v211) = 47;
+                sub_522493((int)&v201, (int)(this + 4743), v123);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920(v201 - 16);
+                sub_40A2F0(L"BUTTON_GROUPMENU_F_C");
+                LOBYTE(v211) = 48;
+                v124 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_GROUPMENU_F_C");
+                LOBYTE(v211) = 49;
+                sub_522493((int)&v198, (int)(this + 5079), v124);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920(v198 - 16);
+                sub_40A2F0(L"BUTTON_GROUPMENU_F_M");
+                LOBYTE(v211) = 50;
+                v125 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_GROUPMENU_F_M");
+                LOBYTE(v211) = 51;
+                sub_522493((int)&v184, (int)(this + 5163), v125);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920(v184 - 16);
+                sub_40A2F0(L"BUTTON_GROUPMENU_M_C");
+                LOBYTE(v211) = 52;
+                v126 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_GROUPMENU_M_C");
+                LOBYTE(v211) = 53;
+                sub_522493((int)&v191, (int)(this + 5247), v126);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920(v191 - 16);
+                sub_40A2F0(L"BUTTON_GROUPMENU_M_M");
+                LOBYTE(v211) = 54;
+                v127 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_GROUPMENU_M_M");
+                LOBYTE(v211) = 55;
+                sub_522493((int)&v178, (int)(this + 5331), v127);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920(v178 - 16);
+                sub_40A2F0(L"BUTTON_GROUPMENU_L_C");
+                LOBYTE(v211) = 56;
+                v128 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_GROUPMENU_L_C");
+                LOBYTE(v211) = 57;
+                sub_522493((int)&v195, (int)(this + 5415), v128);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920(v195 - 16);
+                sub_40A2F0(L"BUTTON_GROUPMENU_L_M");
+                LOBYTE(v211) = 58;
+                v129 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_GROUPMENU_L_M");
+                LOBYTE(v211) = 59;
+                sub_522493((int)&v190, (int)(this + 5499), v129);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920(v190 - 16);
+                sub_40A2F0(L"BUTTON_NORMAL_S");
+                LOBYTE(v211) = 60;
+                v130 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_NORMAL_S");
+                LOBYTE(v211) = 61;
+                sub_522493((int)&v189, (int)(this + 5583), v130);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920(v189 - 16);
+                sub_40A2F0(L"BUTTON_NORMAL_B");
+                LOBYTE(v211) = 62;
+                v131 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_NORMAL_B");
+                LOBYTE(v211) = 63;
+                sub_522493((int)&v196, (int)(this + 5667), v131);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920(v196 - 16);
+                sub_40A2F0(L"BUTTON_DEFAULT");
+                LOBYTE(v211) = 64;
+                v132 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_DEFAULT");
+                LOBYTE(v211) = 65;
+                sub_522493((int)&v200, (int)(this + 6255), v132);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920((char *)v200 - 16);
+                sub_40A2F0(L"BUTTON_DEFAULT_ICON");
+                LOBYTE(v211) = 66;
+                v133 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_DEFAULT_ICON");
+                LOBYTE(v211) = 67;
+                sub_522493((int)&v197, (int)(this + 6339), v133);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920(v197 - 16);
+                sub_40A2F0(L"BUTTON_DEFAULT_IMAGE");
+                LOBYTE(v211) = 68;
+                v134 = *(const WCHAR **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_DEFAULT_IMAGE");
+                LOBYTE(v211) = 69;
+                sub_5223E0((int)&v202, (int)(this + 1321), v134);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920(v202 - 16);
+                sub_40A2F0(L"BUTTON_DEFAULT_QAT");
+                LOBYTE(v211) = 70;
+                v135 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_DEFAULT_QAT");
+                LOBYTE(v211) = 71;
+                sub_522493((int)&color, (int)(this + 6507), v135);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920(color - 16);
+                if ( !*(this + 6540) )
+                {
+                  sub_40A2F0(L"BUTTON_DEFAULT_QAT_ICON");
+                  LOBYTE(v211) = 72;
+                  v136 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_DEFAULT_QAT_ICON");
+                  LOBYTE(v211) = 73;
+                  sub_522493((int)&color, (int)(this + 6423), v136);
+                  sub_40A920(v188 - 16);
+                  LOBYTE(v211) = 39;
+                  sub_40A920(color - 16);
+                }
+                sub_40A2F0(L"BUTTON_MENU_H_C");
+                LOBYTE(v211) = 74;
+                v137 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_MENU_H_C");
+                LOBYTE(v211) = 75;
+                sub_522493((int)&color, (int)(this + 5751), v137);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920(color - 16);
+                sub_40A2F0(L"BUTTON_MENU_H_M");
+                LOBYTE(v211) = 76;
+                v138 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_MENU_H_M");
+                LOBYTE(v211) = 77;
+                sub_522493((int)&v202, (int)(this + 5835), v138);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920(v202 - 16);
+                sub_40A2F0(L"BUTTON_MENU_V_C");
+                LOBYTE(v211) = 78;
+                v139 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_MENU_V_C");
+                LOBYTE(v211) = 79;
+                sub_522493((int)&v208, (int)(this + 5919), v139);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920(v208 - 16);
+                sub_40A2F0(L"BUTTON_MENU_V_M");
+                LOBYTE(v211) = 80;
+                v140 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_MENU_V_M");
+                LOBYTE(v211) = 81;
+                sub_522493((int)&v206, (int)(this + 6003), v140);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920(v206 - 16);
+                sub_40A2F0(L"BUTTON_CHECK");
+                LOBYTE(v211) = 82;
+                v141 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_CHECK");
+                LOBYTE(v211) = 83;
+                sub_522493((int)&v203, (int)(this + 6591), v141);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920(v203 - 16);
+                sub_40A2F0(L"BUTTON_PNL_T");
+                LOBYTE(v211) = 84;
+                v142 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_PALETTE_T");
+                LOBYTE(v211) = 85;
+                sub_522493((int)&v201, (int)(this + 6675), v142);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920(v201 - 16);
+                sub_40A2F0(L"BUTTON_PNL_M");
+                LOBYTE(v211) = 86;
+                v143 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_PALETTE_M");
+                LOBYTE(v211) = 87;
+                sub_522493((int)&v198, (int)(this + 6759), v143);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = 39;
+                sub_40A920(v198 - 16);
+                sub_40A2F0(L"BUTTON_PNL_B");
+                LOBYTE(v211) = 88;
+                v144 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_PALETTE_B");
+                LOBYTE(v211) = 89;
+                sub_522493((int)&v184, (int)(this + 6843), v144);
+                sub_40A920(v188 - 16);
+                sub_40A920(v184 - 16);
+                LOBYTE(v211) = 38;
+                sub_52071C(v199);
+              }
+              sub_40A920((char *)v207 - 16);
+              sub_40A940(&v196);
+              LOBYTE(v211) = 90;
+              if ( sub_5209F4((wchar_t *)L"EDIT", (int)&v196, 0) )
+              {
+                sub_5209BD((void *)v196);
+                LOBYTE(v211) = 91;
+                sub_40A2F0(L"Normal");
+                LOBYTE(v211) = 92;
+                sub_5218DA(&color, this + 8291);
+                LOBYTE(v211) = 91;
+                sub_40A920(color - 16);
+                sub_40A2F0(L"Highlighted");
+                LOBYTE(v211) = 93;
+                sub_5218DA(&v202, this + 8293);
+                LOBYTE(v211) = 91;
+                sub_40A920(v202 - 16);
+                sub_40A2F0(L"Disabled");
+                LOBYTE(v211) = 94;
+                sub_5218DA(&v208, this + 8292);
+                LOBYTE(v211) = 91;
+                sub_40A920(v208 - 16);
+                sub_40A2F0(L"Pressed");
+                LOBYTE(v211) = 95;
+                sub_5218DA(&v206, this + 8294);
+                LOBYTE(v211) = 91;
+                sub_40A920(v206 - 16);
+                sub_40A2F0(L"BorderNormal");
+                LOBYTE(v211) = 96;
+                sub_5218DA(&v203, this + 8295);
+                LOBYTE(v211) = 91;
+                sub_40A920(v203 - 16);
+                sub_40A2F0(L"BorderHighlighted");
+                LOBYTE(v211) = 97;
+                sub_5218DA(&v201, this + 8297);
+                LOBYTE(v211) = 91;
+                sub_40A920(v201 - 16);
+                sub_40A2F0(L"BorderDisabled");
+                LOBYTE(v211) = 98;
+                sub_5218DA(&v198, this + 8296);
+                LOBYTE(v211) = 91;
+                sub_40A920(v198 - 16);
+                sub_40A2F0(L"BorderPressed");
+                LOBYTE(v211) = 99;
+                sub_5218DA(&v184, this + 8298);
+                LOBYTE(v211) = 91;
+                sub_40A920(v184 - 16);
+                sub_40A2F0(L"Selection");
+                LOBYTE(v211) = 100;
+                sub_5218DA(&v191, this + 8299);
+                sub_40A920(v191 - 16);
+                sub_40A940(&v207);
+                LOBYTE(v211) = 101;
+                if ( sub_5209F4((wchar_t *)L"BUTTON", (int)&v207, 0) )
+                {
+                  sub_5209BD(v207);
+                  LOBYTE(v211) = 102;
+                  sub_40A2F0(L"GradientStartNormal");
+                  LOBYTE(v211) = 103;
+                  sub_5218DA(&color, this + 8300);
+                  LOBYTE(v211) = 102;
+                  sub_40A920(color - 16);
+                  sub_40A2F0(L"GradientFinishNormal");
+                  LOBYTE(v211) = 104;
+                  sub_5218DA(&v202, this + 8301);
+                  LOBYTE(v211) = 102;
+                  sub_40A920(v202 - 16);
+                  sub_40A2F0(L"BtnBorderNormal");
+                  LOBYTE(v211) = 105;
+                  sub_5218DA(&v208, this + 8302);
+                  LOBYTE(v211) = 102;
+                  sub_40A920(v208 - 16);
+                  sub_40A2F0(L"IMAGE");
+                  LOBYTE(v211) = 106;
+                  v145 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_COMBOBOX_BTN");
+                  LOBYTE(v211) = 107;
+                  v51 = sub_522493((int)&v206, (int)(this + 7851), v145) == 0;
+                  sub_40A920(v188 - 16);
+                  LOBYTE(v211) = 102;
+                  sub_40A920(v206 - 16);
+                  if ( v51 )
+                  {
+                    sub_40A2F0(L"GradientStartHighlighted");
+                    LOBYTE(v211) = 108;
+                    sub_5218DA(&color, this + 8309);
+                    LOBYTE(v211) = 102;
+                    sub_40A920(color - 16);
+                    sub_40A2F0(L"GradientFinishHighlighted");
+                    LOBYTE(v211) = 109;
+                    sub_5218DA(&v202, this + 8310);
+                    LOBYTE(v211) = 102;
+                    sub_40A920(v202 - 16);
+                    sub_40A2F0(L"GradientStartDisabled");
+                    LOBYTE(v211) = 110;
+                    sub_5218DA(&v208, this + 8303);
+                    LOBYTE(v211) = 102;
+                    sub_40A920(v208 - 16);
+                    sub_40A2F0(L"GradientFinishDisabled");
+                    LOBYTE(v211) = 111;
+                    sub_5218DA(&v206, this + 8304);
+                    LOBYTE(v211) = 102;
+                    sub_40A920(v206 - 16);
+                    sub_40A2F0(L"GradientStartPressed");
+                    LOBYTE(v211) = 112;
+                    sub_5218DA(&v203, this + 8306);
+                    LOBYTE(v211) = 102;
+                    sub_40A920(v203 - 16);
+                    sub_40A2F0(L"GradientFinishPressed");
+                    LOBYTE(v211) = 113;
+                    sub_5218DA(&v201, this + 8307);
+                    LOBYTE(v211) = 102;
+                    sub_40A920(v201 - 16);
+                    sub_40A2F0(L"BtnBorderHighlighted");
+                    LOBYTE(v211) = 114;
+                    sub_5218DA(&v198, this + 8311);
+                    LOBYTE(v211) = 102;
+                    sub_40A920(v198 - 16);
+                    sub_40A2F0(L"BtnBorderDisabled");
+                    LOBYTE(v211) = 115;
+                    sub_5218DA(&v184, this + 8305);
+                    LOBYTE(v211) = 102;
+                    sub_40A920(v184 - 16);
+                    *(this + 8308) = *(this + 8311);
+                    sub_40A2F0(L"BtnBorderPressed");
+                    LOBYTE(v211) = 116;
+                    sub_5218DA(&v191, this + 8308);
+                    sub_40A920(v191 - 16);
+                  }
+                  LOBYTE(v211) = 101;
+                  sub_52071C(v199);
+                }
+                sub_40A920((char *)v207 - 16);
+                LOBYTE(v211) = 90;
+                sub_52071C(v177);
+              }
+              LOBYTE(v211) = 19;
+              sub_40A920(v196 - 16);
+              sub_40A2F0(L"TextNormal");
+              LOBYTE(v211) = 117;
+              sub_5218DA(&color, this + 8285);
+              LOBYTE(v211) = 19;
+              sub_40A920(color - 16);
+              sub_40A2F0(L"TextHighlighted");
+              LOBYTE(v211) = 118;
+              sub_5218DA(&v202, this + 8286);
+              sub_40A920(v202 - 16);
+              LOBYTE(v211) = 2;
+              sub_52071C(v205);
+            }
+            if ( sub_5209F4((wchar_t *)L"CONTEXT", (int)&i, 0) )
+            {
+              sub_5209BD((void *)i);
+              sub_40A940(&v197);
+              LOBYTE(v211) = 120;
+              if ( sub_5209F4((wchar_t *)L"CATEGORY", (int)&v197, 0) )
+              {
+                sub_5209BD((void *)v197);
+                LOBYTE(v211) = 121;
+                sub_51A842((CMFCControlRendererInfo *)v170);
+                LOBYTE(v211) = 122;
+                sub_51A842((CMFCControlRendererInfo *)v169);
+                LOBYTE(v211) = 123;
+                sub_51A842((CMFCControlRendererInfo *)v168);
+                LOBYTE(v211) = 124;
+                sub_51A842((CMFCControlRendererInfo *)v171);
+                v52 = *(this + 8282);
+                v203 = *(this + 8283);
+                LOBYTE(v211) = 125;
+                v206 = v52;
+                v201 = v52;
+                sub_40A2F0((void *)L"BACK");
+                LOBYTE(v211) = 126;
+                sub_52243B(&color, v170);
+                sub_40A920(color - 16);
+                sub_40A940(&v196);
+                LOBYTE(v211) = 127;
+                if ( sub_5209F4((wchar_t *)L"TAB", (int)&v196, 0) )
+                {
+                  sub_5209BD((void *)v196);
+                  LOBYTE(v211) = 0x80;
+                  sub_40A2F0((void *)L"BUTTON");
+                  LOBYTE(v211) = -127;
+                  sub_52243B(&color, v168);
+                  LOBYTE(v211) = 0x80;
+                  sub_40A920(color - 16);
+                  sub_40A2F0(L"TextNormal");
+                  LOBYTE(v211) = -126;
+                  sub_5218DA(&v202, &v206);
+                  LOBYTE(v211) = 0x80;
+                  sub_40A920(v202 - 16);
+                  sub_40A2F0(L"TextHighlighted");
+                  LOBYTE(v211) = -125;
+                  sub_5218DA(&v208, &v203);
+                  sub_40A920(v208 - 16);
+                  LOBYTE(v211) = 127;
+                  sub_52071C(v199);
+                }
+                sub_40A940(&v207);
+                LOBYTE(v211) = -124;
+                if ( sub_5209F4((wchar_t *)L"CAPTION", (int)&v207, 0) )
+                {
+                  sub_5209BD(v207);
+                  LOBYTE(v211) = -123;
+                  sub_40A2F0((void *)L"BACK");
+                  LOBYTE(v211) = -122;
+                  sub_52243B(&color, v169);
+                  LOBYTE(v211) = -123;
+                  sub_40A920(color - 16);
+                  sub_40A2F0(L"TextNormal");
+                  LOBYTE(v211) = -121;
+                  sub_5218DA(&v202, &v201);
+                  sub_40A920(v202 - 16);
+                  LOBYTE(v211) = -124;
+                  sub_52071C(v199);
+                }
+                sub_40A2F0(L"BUTTON_DEFAULT");
+                LOBYTE(v211) = -120;
+                sub_52243B(&color, v171);
+                LOBYTE(v211) = -124;
+                sub_40A920(color - 16);
+                sub_4A7D77(&v172, L"IDB_OFFICE2007_RIBBON_CONTEXT_R_");
+                LOBYTE(v211) = -119;
+                sub_4A7D77(v173, L"IDB_OFFICE2007_RIBBON_CONTEXT_O_");
+                LOBYTE(v211) = -118;
+                sub_4A7D77(v174, L"IDB_OFFICE2007_RIBBON_CONTEXT_Y_");
+                LOBYTE(v211) = -117;
+                sub_4A7D77(v175, L"IDB_OFFICE2007_RIBBON_CONTEXT_G_");
+                LOBYTE(v211) = -116;
+                sub_4A7D77(v176, L"IDB_OFFICE2007_RIBBON_CONTEXT_B_");
+                LOBYTE(v211) = -115;
+                sub_4A7D77(v177, L"IDB_OFFICE2007_RIBBON_CONTEXT_I_");
+                LOBYTE(v211) = -114;
+                sub_4A7D77(&v178, L"IDB_OFFICE2007_RIBBON_CONTEXT_V_");
+                LOBYTE(v211) = -113;
+                v53 = &v172;
+                v54 = this + 8498;
+                color = 7;
+                do
+                {
+                  v55 = sub_409F90((int)&v188, (int)v53, L"BTN_DEFAULT");
+                  LOBYTE(v211) = -112;
+                  sub_409D90(v55);
+                  LOBYTE(v211) = -113;
+                  sub_40A920(v188 - 16);
+                  v56 = sub_409F90((int)&v202, (int)v53, L"CATEGORY_TAB");
+                  LOBYTE(v211) = -111;
+                  sub_409D90(v56);
+                  LOBYTE(v211) = -113;
+                  sub_40A920(v202 - 16);
+                  v57 = sub_409F90((int)&v208, (int)v53, L"CATEGORY_CAPTION");
+                  LOBYTE(v211) = -110;
+                  sub_409D90(v57);
+                  LOBYTE(v211) = -113;
+                  sub_40A920(v208 - 16);
+                  v58 = sub_409F90((int)&v198, (int)v53, L"CATEGORY_BACK");
+                  LOBYTE(v211) = -109;
+                  sub_409D90(v58);
+                  LOBYTE(v211) = -113;
+                  sub_40A920(v198 - 16);
+                  (*(void (__thiscall **)(_DWORD *, _BYTE *, _DWORD))(v54[84] + 12))(v54 + 84, v171, 0);
+                  (*(void (__thiscall **)(_DWORD *, _BYTE *, _DWORD))(*(v54 - 168) + 12))(v54 - 168, v169, 0);
+                  (*(void (__thiscall **)(_DWORD *, _BYTE *, _DWORD))(*v54 + 12))(v54, v168, 0);
+                  (*(void (__thiscall **)(_DWORD *, _BYTE *, _DWORD))(*(v54 - 84) + 12))(v54 - 84, v170, 0);
+                  v54[169] = v206;
+                  v54[170] = v203;
+                  v54[168] = v201;
+                  v54 += 361;
+                  ++v53;
+                  --color;
+                }
+                while ( color );
+                LOBYTE(v211) = -124;
+                `eh vector destructor iterator'(&v172, 4u, 7, sub_43B550);
+                sub_40A920((char *)v207 - 16);
+                sub_40A920(v196 - 16);
+                LOBYTE(v211) = 124;
+                sub_51A85A(v171);
+                LOBYTE(v211) = 123;
+                sub_51A85A(v168);
+                LOBYTE(v211) = 122;
+                sub_51A85A(v169);
+                LOBYTE(v211) = 121;
+                sub_51A85A(v170);
+                LOBYTE(v211) = 120;
+                sub_52071C(v205);
+              }
+              sub_40A940(&v200);
+              LOBYTE(v211) = -108;
+              if ( sub_5209F4((wchar_t *)L"PANEL", (int)&v200, 0) )
+              {
+                sub_5209BD(v200);
+                sub_40A940(&v196);
+                LOBYTE(v211) = -106;
+                if ( sub_5209F4((wchar_t *)L"BACK", (int)&v196, 0) )
+                {
+                  sub_5209BD((void *)v196);
+                  LOBYTE(v211) = -105;
+                  sub_40A2F0(L"TOP");
+                  LOBYTE(v211) = -104;
+                  v146 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_CONTEXT_PANEL_BACK_T");
+                  LOBYTE(v211) = -103;
+                  sub_522493((int)&color, (int)(this + 7935), v146);
+                  sub_40A920(v188 - 16);
+                  LOBYTE(v211) = -105;
+                  sub_40A920(color - 16);
+                  sub_40A2F0(L"BOTTOM");
+                  LOBYTE(v211) = -102;
+                  v147 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_CONTEXT_PANEL_BACK_B");
+                  LOBYTE(v211) = -101;
+                  sub_522493((int)&v202, (int)(this + 8019), v147);
+                  sub_40A920(v188 - 16);
+                  sub_40A920(v202 - 16);
+                  LOBYTE(v211) = -106;
+                  sub_52071C(v199);
+                }
+                sub_40A940(&v207);
+                LOBYTE(v211) = -100;
+                if ( sub_5209F4((wchar_t *)L"CAPTION", (int)&v207, 0) )
+                {
+                  sub_5209BD(v207);
+                  LOBYTE(v211) = -99;
+                  sub_40A2F0(L"TextNormal");
+                  LOBYTE(v211) = -98;
+                  sub_5218DA(&color, this + 8314);
+                  LOBYTE(v211) = -99;
+                  sub_40A920(color - 16);
+                  sub_40A2F0(L"TextHighlighted");
+                  LOBYTE(v211) = -97;
+                  sub_5218DA(&v202, this + 8315);
+                  sub_40A920(v202 - 16);
+                  LOBYTE(v211) = -100;
+                  sub_52071C(v199);
+                }
+                sub_40A2F0(L"TextNormal");
+                LOBYTE(v211) = -96;
+                sub_5218DA(&color, this + 8312);
+                LOBYTE(v211) = -100;
+                sub_40A920(color - 16);
+                sub_40A2F0(L"TextHighlighted");
+                LOBYTE(v211) = -95;
+                sub_5218DA(&v202, this + 8313);
+                sub_40A920(v202 - 16);
+                sub_40A920((char *)v207 - 16);
+                sub_40A920(v196 - 16);
+                LOBYTE(v211) = -108;
+                sub_52071C(v205);
+              }
+              sub_40A2F0(L"SEPARATOR");
+              LOBYTE(v211) = -94;
+              v148 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_CONTEXT_SEPARATOR");
+              LOBYTE(v211) = -93;
+              sub_522493((int)&color, (int)(this + 8103), v148);
+              sub_40A920(v188 - 16);
+              sub_40A920(color - 16);
+              sub_40A920((char *)v200 - 16);
+              sub_40A920(v197 - 16);
+              LOBYTE(v211) = 2;
+              sub_52071C(v183);
+            }
+            sub_40A2F0(L"MAIN_BUTTON");
+            LOBYTE(v211) = -92;
+            v149 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_MAIN");
+            LOBYTE(v211) = -91;
+            sub_522493((int)&color, (int)(this + 6171), v149);
+            sub_40A920(v188 - 16);
+            LOBYTE(v211) = 2;
+            sub_40A920(color - 16);
+            if ( sub_5209F4((wchar_t *)L"MAIN", (int)&i, 0) )
+            {
+              sub_5209BD((void *)i);
+              LOBYTE(v211) = -90;
+              sub_40A2F0((void *)L"BACK");
+              LOBYTE(v211) = -89;
+              v150 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_PANEL_MAIN");
+              LOBYTE(v211) = -88;
+              sub_522493((int)&color, (int)(this + 4491), v150);
+              sub_40A920(v188 - 16);
+              LOBYTE(v211) = -90;
+              sub_40A920(color - 16);
+              sub_40A2F0(L"BORDER");
+              LOBYTE(v211) = -87;
+              v151 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_PANEL_MAIN_BORDER");
+              LOBYTE(v211) = -86;
+              sub_522493((int)&v202, (int)(this + 4575), v151);
+              sub_40A920(v188 - 16);
+              LOBYTE(v211) = -90;
+              sub_40A920(v202 - 16);
+              sub_40A2F0((void *)L"BUTTON");
+              LOBYTE(v211) = -85;
+              v152 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_PANEL_MAIN");
+              LOBYTE(v211) = -84;
+              sub_522493((int)&v208, (int)(this + 4659), v152);
+              sub_40A920(v188 - 16);
+              sub_40A920(v208 - 16);
+              LOBYTE(v211) = 2;
+              sub_52071C(v205);
+            }
+            if ( sub_5209F4((wchar_t *)L"CAPTION", (int)&i, 0) )
+            {
+              sub_5209BD((void *)i);
+              LOBYTE(v211) = -83;
+              sub_40A2F0(L"QA");
+              LOBYTE(v211) = -82;
+              v153 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_CAPTION_QA");
+              LOBYTE(v211) = -81;
+              sub_522493((int)&color, (int)(this + 3651), v153);
+              sub_40A920(v188 - 16);
+              LOBYTE(v211) = -83;
+              sub_40A920(color - 16);
+              sub_40A2F0(L"QA_GLASS");
+              LOBYTE(v211) = -80;
+              v154 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_CAPTION_QA_GLASS");
+              LOBYTE(v211) = -79;
+              sub_522493((int)&v202, (int)(this + 3735), v154);
+              sub_40A920(v188 - 16);
+              sub_40A920(v202 - 16);
+              LOBYTE(v211) = 2;
+              sub_52071C(v205);
+            }
+            if ( sub_5209F4((wchar_t *)L"STATUS", (int)&i, 0) )
+            {
+              sub_5209BD((void *)i);
+              LOBYTE(v211) = -78;
+              sub_40A2F0(L"PANE_BUTTON");
+              LOBYTE(v211) = -77;
+              v155 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BTN_STATUS_PANE");
+              LOBYTE(v211) = -76;
+              sub_522493((int)&color, (int)(this + 6927), v155);
+              sub_40A920(v188 - 16);
+              sub_40A920(color - 16);
+              sub_40A940(&v196);
+              LOBYTE(v211) = -75;
+              if ( sub_5209F4((wchar_t *)L"SLIDER", (int)&v196, 0) )
+              {
+                sub_5209BD((void *)v196);
+                LOBYTE(v211) = -74;
+                sub_40A2F0(L"THUMB");
+                LOBYTE(v211) = -73;
+                v156 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_SLIDER_THUMB");
+                LOBYTE(v211) = -72;
+                sub_522493((int)&color, (int)(this + 7011), v156);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = -74;
+                sub_40A920(color - 16);
+                sub_40A2F0(L"PLUS");
+                LOBYTE(v211) = -71;
+                v157 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_SLIDER_BTN_PLUS");
+                LOBYTE(v211) = -70;
+                sub_522493((int)&v202, (int)(this + 7095), v157);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = -74;
+                sub_40A920(v202 - 16);
+                sub_40A2F0(L"MINUS");
+                LOBYTE(v211) = -69;
+                v158 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_SLIDER_BTN_MINUS");
+                LOBYTE(v211) = -68;
+                sub_522493((int)&v208, (int)(this + 7179), v158);
+                sub_40A920(v188 - 16);
+                sub_40A920(v208 - 16);
+                LOBYTE(v211) = -75;
+                sub_52071C(v205);
+              }
+              sub_40A940(&v207);
+              LOBYTE(v211) = -67;
+              if ( sub_5209F4((wchar_t *)L"PROGRESS", (int)&v207, 0) )
+              {
+                sub_5209BD(v207);
+                LOBYTE(v211) = -66;
+                sub_40A2F0((void *)L"BACK");
+                LOBYTE(v211) = -65;
+                v159 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_PROGRESS_BACK");
+                LOBYTE(v211) = -64;
+                sub_522493((int)&color, (int)(this + 7263), v159);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = -66;
+                sub_40A920(color - 16);
+                sub_40A2F0((void *)L"NORMAL");
+                LOBYTE(v211) = -63;
+                v160 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_PROGRESS_NORMAL");
+                LOBYTE(v211) = -62;
+                sub_522493((int)&v202, (int)(this + 7347), v160);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = -66;
+                sub_40A920(v202 - 16);
+                sub_40A2F0(L"NORMAL_EXT");
+                LOBYTE(v211) = -61;
+                v161 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_PROGRESS_NORMAL_EXT");
+                LOBYTE(v211) = -60;
+                sub_522493((int)&v208, (int)(this + 7431), v161);
+                sub_40A920(v188 - 16);
+                LOBYTE(v211) = -66;
+                sub_40A920(v208 - 16);
+                sub_40A2F0(L"INFINITY");
+                LOBYTE(v211) = -59;
+                v162 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_PROGRESS_INFINITY");
+                LOBYTE(v211) = -58;
+                sub_522493((int)&v206, (int)(this + 7515), v162);
+                sub_40A920(v188 - 16);
+                sub_40A920(v206 - 16);
+                LOBYTE(v211) = -67;
+                sub_52071C(v205);
+              }
+              sub_40A920((char *)v207 - 16);
+              sub_40A920(v196 - 16);
+              LOBYTE(v211) = 2;
+              sub_52071C(v199);
+            }
+            if ( sub_5209F4((wchar_t *)L"BORDERS", (int)&i, 0) )
+            {
+              sub_5209BD((void *)i);
+              LOBYTE(v211) = -57;
+              sub_40A2F0(L"QAT");
+              LOBYTE(v211) = -56;
+              v163 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BORDER_QAT");
+              LOBYTE(v211) = -55;
+              sub_522493((int)&color, (int)(this + 7599), v163);
+              sub_40A920(v188 - 16);
+              LOBYTE(v211) = -57;
+              sub_40A920(color - 16);
+              sub_40A2F0(L"FLOATY");
+              LOBYTE(v211) = -54;
+              v164 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_BORDER_FLOATY");
+              LOBYTE(v211) = -53;
+              sub_522493((int)&v202, (int)(this + 7683), v164);
+              sub_40A920(v188 - 16);
+              sub_40A920(v202 - 16);
+              LOBYTE(v211) = 2;
+              sub_52071C(v205);
+            }
+            if ( sub_5209F4((wchar_t *)L"KEYTIP", (int)&i, 0) )
+            {
+              sub_5209BD((void *)i);
+              LOBYTE(v211) = -52;
+              sub_40A2F0((void *)L"BACK");
+              LOBYTE(v211) = -51;
+              v165 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_RIBBON_KEYTIP_BACK");
+              LOBYTE(v211) = -50;
+              sub_522493((int)&color, (int)(this + 7767), v165);
+              sub_40A920(v188 - 16);
+              LOBYTE(v211) = -52;
+              sub_40A920(color - 16);
+              sub_40A2F0(L"TextNormal");
+              v59 = this + 8289;
+              LOBYTE(v211) = -49;
+              sub_5218DA(&v202, this + 8289);
+              LOBYTE(v211) = -52;
+              sub_40A920(v202 - 16);
+              v202 = 0;
+              if ( *(this + 8289) == -1 )
+              {
+                if ( !*(this + 138) || (SysColor = *(this + 11045), SysColor == -1) )
+                {
+                  v202 = 1;
+                  SysColor = GetSysColor(23);
+                }
+                *v59 = SysColor;
+              }
+              sub_40A2F0(L"TextDisabled");
+              LOBYTE(v211) = -48;
+              sub_5218DA(&color, this + 8290);
+              LOBYTE(v211) = -52;
+              sub_40A920(color - 16);
+              if ( *(this + 8290) == -1 )
+              {
+                if ( v202 )
+                  v61 = dword_5F5CE4;
+                else
+                  v61 = CDrawingManager::PixelAlpha(*v59, dword_5F5D18, 50);
+                *(this + 8290) = v61;
+              }
+              LOBYTE(v211) = 2;
+              sub_52071C(v205);
+            }
+            if ( sub_5209F4((wchar_t *)aHy, (int)&i, 0) )
+            {
+              sub_5209BD((void *)i);
+              LOBYTE(v211) = -47;
+              sub_40A2F0(L"Inactive");
+              LOBYTE(v211) = -46;
+              sub_5218DA(&color, this + 8326);
+              LOBYTE(v211) = -47;
+              sub_40A920(color - 16);
+              sub_40A2F0(L"Active");
+              LOBYTE(v211) = -45;
+              sub_5218DA(&v202, this + 8327);
+              LOBYTE(v211) = -47;
+              sub_40A920(v202 - 16);
+              sub_40A2F0(L"StatusbarInactive");
+              LOBYTE(v211) = -44;
+              sub_5218DA(&v208, this + 8328);
+              LOBYTE(v211) = -47;
+              sub_40A920(v208 - 16);
+              sub_40A2F0(L"StatusbarActive");
+              LOBYTE(v211) = -43;
+              sub_5218DA(&v206, this + 8329);
+              sub_40A920(v206 - 16);
+              LOBYTE(v211) = 2;
+              sub_52071C(v205);
+            }
+            sub_40A920(i - 16);
+            v211 = 3;
+            sub_52071C(&v193);
+          }
+          v62 = *(this + 8265);
+          *(this + 8281) = v62;
+          *(this + 8278) = v62;
+          *(this + 8279) = v62;
+          *(this + 8280) = *(this + 8278);
+          if ( sub_5209F4((wchar_t *)L"OUTLOOK", (int)&Source, 0) )
+          {
+            sub_5209BD(Source);
+            v211 = 470;
+            sub_40A940(&i);
+            LOBYTE(v211) = -41;
+            if ( sub_5209F4((wchar_t *)L"CAPTION", (int)&i, 0) )
+            {
+              sub_5209BD((void *)i);
+              LOBYTE(v211) = -40;
+              sub_40A2F0(L"TextNormal");
+              LOBYTE(v211) = -39;
+              sub_5218DA(&color, this + 8281);
+              sub_40A920(color - 16);
+              LOBYTE(v211) = -41;
+              sub_52071C(v205);
+            }
+            if ( sub_5209F4((wchar_t *)L"PAGEBUTTON", (int)&i, 0) )
+            {
+              sub_5209BD((void *)i);
+              LOBYTE(v211) = -38;
+              sub_40A2F0((void *)L"BACK");
+              LOBYTE(v211) = -37;
+              v166 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_OUTLOOK_BTN_PAGE");
+              LOBYTE(v211) = -36;
+              sub_522493((int)&color, (int)(this + 3567), v166);
+              sub_40A920(v188 - 16);
+              LOBYTE(v211) = -38;
+              sub_40A920(color - 16);
+              sub_40A2F0(L"TextNormal");
+              LOBYTE(v211) = -35;
+              sub_5218DA(&v202, this + 8278);
+              LOBYTE(v211) = -38;
+              sub_40A920(v202 - 16);
+              sub_40A2F0(L"TextHighlighted");
+              LOBYTE(v211) = -34;
+              sub_5218DA(&v208, this + 8279);
+              LOBYTE(v211) = -38;
+              sub_40A920(v208 - 16);
+              sub_40A2F0(L"TextPressed");
+              LOBYTE(v211) = -33;
+              sub_5218DA(&v206, this + 8280);
+              sub_40A920(v206 - 16);
+              LOBYTE(v211) = -41;
+              sub_52071C(v205);
+            }
+            if ( sub_5209F4((wchar_t *)L"BAR", (int)&i, 0) )
+            {
+              sub_5209BD((void *)i);
+              LOBYTE(v211) = -32;
+              sub_40A2F0((void *)L"BACK");
+              LOBYTE(v211) = -31;
+              v167 = *(void **)sub_4A7D77(&v188, L"IDB_OFFICE2007_OUTLOOK_BAR_BACK");
+              LOBYTE(v211) = -30;
+              sub_522493((int)&color, (int)(this + 3483), v167);
+              sub_40A920(v188 - 16);
+              sub_40A920(color - 16);
+              LOBYTE(v211) = -41;
+              sub_52071C(v205);
+            }
+            sub_40A920(i - 16);
+            v211 = 3;
+            sub_52071C(&v193);
+          }
+          *(this + 8324) = *(this + 92);
+          *(this + 8325) = *(this + 91);
+          if ( sub_5209F4((wchar_t *)L"POPUP", (int)&Source, 0) )
+          {
+            sub_5209BD(Source);
+            v211 = 483;
+            sub_40A2F0(L"GradientFillLight");
+            LOBYTE(v211) = -28;
+            sub_5218DA(&color, this + 8324);
+            LOBYTE(v211) = -29;
+            sub_40A920(color - 16);
+            sub_40A2F0(L"GradientFillDark");
+            LOBYTE(v211) = -27;
+            sub_5218DA(&v202, this + 8325);
+            sub_40A920(v202 - 16);
+            v211 = 3;
+            sub_52071C(v205);
+          }
+          v8 = v180 == 0;
+        }
+        else
+        {
+          v8 = v180 == 0;
+        }
+        if ( !v8 )
+          AfxSetResourceHandle(v180);
+        sub_40A920((char *)Source - 16);
+      }
+      v211 = -1;
+      return sub_52071C(v181);
+    }
+  }
+  return result;
+}
+
+
+--- Callers ---
+
+--- Called Functions ---
+  Calls: __EH_prolog3_GS @ 0x00549A4E
+  Calls: sub_507CC8 @ 0x00507CC8
+  Calls: sub_47E072 @ 0x0047E072
+  Calls: sub_4A7E83 @ 0x004A7E83
+  Calls: ?AfxGetModuleState@@YGPAVAFX_MODULE_STATE@@XZ @ 0x0044B124
+  Calls: ?AfxSetResourceHandle@@YGXPAUHINSTANCE__@@@Z @ 0x0045AC0F
+  Calls: sub_5209BD @ 0x005209BD
+  Calls: sub_4A7DDF @ 0x004A7DDF
+  Calls: ?LoadFromResource@CTagManager@@QAEHPB_W0@Z @ 0x005208D0
+  Calls: sub_40A920 @ 0x0040A920
+  Calls: sub_40A940 @ 0x0040A940
+  Calls: sub_5209F4 @ 0x005209F4
+  Calls: sub_5208B2 @ 0x005208B2
+  Calls: sub_40A2F0 @ 0x0040A2F0
+  Calls: sub_5217C5 @ 0x005217C5
+  Calls: sub_413370 @ 0x00413370
+  Calls: sub_4133C0 @ 0x004133C0
+  Calls: sub_409D10 @ 0x00409D10
+  Calls: sub_52071C @ 0x0052071C
+  Calls: sub_5218DA @ 0x005218DA
+  Calls: ?DeleteObject@CGdiObject@@QAEHXZ @ 0x00452E0E
+  Calls: sub_409490 @ 0x00409490
+  Calls: sub_5224EE @ 0x005224EE
+  Calls: ?GetNonClientMetrics@AFX_GLOBAL_DATA@@QAEHAAUtagNONCLIENTMETRICSW@@@Z @ 0x00463AD1
+  Calls: sub_522388 @ 0x00522388
+  Calls: sub_409650 @ 0x00409650
+  Calls: sub_521766 @ 0x00521766
+  Calls: sub_4A7D77 @ 0x004A7D77
+  Calls: sub_522493 @ 0x00522493
+  Calls: sub_40A880 @ 0x0040A880
+  Calls: sub_52182A @ 0x0052182A
+  Calls: sub_4830EF @ 0x004830EF
+  Calls: sub_45D608 @ 0x0045D608
+  Calls: sub_483D41 @ 0x00483D41
+  Calls: sub_52205D @ 0x0052205D
+  Calls: ?CreatePen@CPen@@QAEHHHK@Z @ 0x00463B8F
+  Calls: sub_5223E0 @ 0x005223E0
+  Calls: sub_4AF60D @ 0x004AF60D
+  Calls: sub_4F30DA @ 0x004F30DA
+  Calls: ?PixelAlpha@CDrawingManager@@SGKKKH@Z @ 0x004F2904
+  Calls: sub_409C50 @ 0x00409C50
+  Calls: sub_51ABAC @ 0x0051ABAC
+  Calls: sub_521E5B @ 0x00521E5B
+  Calls: sub_51A85A @ 0x0051A85A
+  Calls: sub_51A842 @ 0x0051A842
+  Calls: sub_52243B @ 0x0052243B
+  Calls: sub_409F90 @ 0x00409F90
+  Calls: sub_409D90 @ 0x00409D90
+  Calls: ??_M@YGXPAXIHP6EX0@Z@Z @ 0x00547D0D
+  Calls: __EH_epilog3_GS @ 0x00549AD1
+
+============================================================
+MIDI Output Function Analysis
+============================================================
+
+============================================================
+Function: sub_430190 @ 0x00430190
+Size: 114 bytes
+Range: 0x00430190 - 0x00430202
+============================================================
+
+--- Marker Byte Locations ---
+
+--- Decompiled Pseudocode ---
+void __usercall sub_430190(unsigned __int8 a1@<bl>, unsigned __int8 a2, unsigned __int8 a3, unsigned __int8 a4)
+{
+  EnterCriticalSection(&stru_16006E4);
+  if ( dword_5FC300 == (LPCWSTR)1 )
+  {
+    sub_432720(a3, a4, a1);
+    LeaveCriticalSection(&stru_16006E4);
+  }
+  else
+  {
+    if ( hmo )
+      midiOutShortMsg(hmo, a1 + a2 + ((a3 + (a4 << 8)) << 8));
+    LeaveCriticalSection(&stru_16006E4);
+  }
+}
+
+
+--- Callers ---
+  Called from: sub_4318D0 @ 0x004318FD
+  Called from: sub_4318D0 @ 0x00431983
+  Called from: sub_4319C0 @ 0x00431A98
+  Called from: sub_4319C0 @ 0x00431ADE
+  Called from: sub_4319C0 @ 0x00431B00
+  Called from: sub_431B30 @ 0x00431C00
+  Called from: sub_431B30 @ 0x00431C21
+  Called from: sub_431C60 @ 0x00431CB2
+  Called from: sub_431C60 @ 0x00431CD5
+
+--- Called Functions ---
+  Calls: sub_432720 @ 0x00432720
+
+=== Analysis Complete ===

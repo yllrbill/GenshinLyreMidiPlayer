@@ -1,0 +1,77 @@
+{
+  "timestamp": "2026-01-02T21:02:56.218263",
+  "main_py_lines": 1557,
+  "tests": [
+    {
+      "name": "language_switch_en",
+      "passed": true,
+      "details": "w.lang after switch to en"
+    },
+    {
+      "name": "language_switch_zh",
+      "passed": true,
+      "details": "w.lang after switch to zh"
+    },
+    {
+      "name": "hotkey_register",
+      "passed": true,
+      "details": "method exists"
+    },
+    {
+      "name": "hotkey_cleanup",
+      "passed": true,
+      "details": "method exists"
+    },
+    {
+      "name": "config_save_load",
+      "passed": true,
+      "details": "no exception"
+    },
+    {
+      "name": "playback_on_start",
+      "passed": true,
+      "details": "method exists"
+    },
+    {
+      "name": "playback_on_stop",
+      "passed": true,
+      "details": "method exists"
+    },
+    {
+      "name": "playback_on_pause",
+      "passed": true,
+      "details": "method exists"
+    },
+    {
+      "name": "playback_on_toggle_play_pause",
+      "passed": true,
+      "details": "method exists"
+    },
+    {
+      "name": "collect_settings",
+      "passed": true,
+      "details": "method exists"
+    },
+    {
+      "name": "apply_settings",
+      "passed": true,
+      "details": "method exists"
+    },
+    {
+      "name": "settings_has_language",
+      "passed": true,
+      "details": "keys: ['version', 'language', 'root_note', 'octave_shift', 'transpose']..."
+    },
+    {
+      "name": "append_log",
+      "passed": true,
+      "details": "no exception"
+    },
+    {
+      "name": "mro_has_mixins",
+      "passed": true,
+      "details": "MRO: ['MainWindow', 'QWidget', 'QObject', 'wrapper', 'QPaintDevice', 'simplewrapper', 'ConfigMixin', 'PlaybackMixin']"
+    }
+  ],
+  "summary": "14/14 tests passed"
+}
