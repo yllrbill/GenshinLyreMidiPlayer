@@ -2,7 +2,7 @@
 
 ## Latest Task
 - TASK_ID: 20260103-midi-editor-pipeline
-- Status: IN_PROGRESS (Phase 1 + 1.5 DONE, Phase 2-4 PENDING)
+- Status: DONE (Phase 1 + 1.5 + 2 + Timeline优化)
 - Pointer: ops/ai/tasks/20260103-midi-editor-pipeline
 
 ## Previous Task
@@ -11,8 +11,9 @@
 - Pointer: ops/ai/tasks/20260102-2138-main-mixin-refactor
 
 ## Current Focus
-- MIDI 编辑器 Phase 1 + 1.5 完成
-- 待进行 Phase 2：基础编辑 (选择/移动/删除/复制粘贴)
+- MIDI 编辑器 Phase 1 + 1.5 + 2 + Timeline优化 完成
+- 本次优化: 拍子生成性能、音符标签条件显示、网格宽度覆盖、resizeEvent
+- 待进行 Phase 3：高级编辑 (双击添加音符/批量移调/量化/撤销重做)
 
 ## Completed Summary (MIDI Editor Phase 1)
 - **Phase 1 钢琴卷帘骨架完成**: 6 个新文件 (~745 行)
@@ -39,11 +40,10 @@
 
 ## Known Issues / Technical Debt
 1. ~~**Field Drift Risk**: save_settings vs _collect_current_settings 字段结构不同~~ ✅ 已解决
-2. LyreAutoPlayer 目录策略性未纳入 git 跟踪
-   - 若未来要纳入，需先清理外部变更、确认子项目边界
+2. ~~LyreAutoPlayer 目录策略性未纳入 git 跟踪~~ ✅ 已纳入 git 跟踪
 
 ## Pending Tasks
-1. (IN_PROGRESS) 20260103-midi-editor-pipeline - MIDI 编辑管线 Phase 1.5+
+1. (DONE) 20260103-midi-editor-pipeline - MIDI 编辑管线 Phase 1+1.5+2+优化
 
 ## Recent Completions
 - Input Diagnostics 窗口 + 修复审计 (追加到 20260102-2138)
@@ -65,11 +65,10 @@
 ---
 
 ## Next Actions
-1. Phase 2: 实现音符选择 (点击/框选/Ctrl+A)
-2. Phase 2: 实现音符移动 (拖拽改时间/音高)
-3. Phase 2: 实现音符删除 + 复制粘贴 (Delete/Ctrl+C/V)
-4. Phase 3: 高级编辑 (添加音符/批量操作)
-5. Phase 4: 超音域处理预览
+1. Phase 3: 双击创建音符
+2. Phase 3: 批量移调/量化
+3. Phase 3: 撤销/重做 (QUndoStack)
+4. Phase 4: 超音域处理预览
 
 ---
-*Last Updated: 2026-01-03 (MIDI Editor Phase 1 + 1.5 completed)*
+*Last Updated: 2026-01-03 (MIDI Editor Phase 1.5 Timeline 优化修复 completed)*

@@ -1,40 +1,61 @@
-# Context Pack for 20260103-midi-editor-pipeline
+# Context Pack - 20260103-midi-editor-pipeline
 
-## 1. Goal
-实现钢琴卷帘 MIDI 编辑器：可视化 + 可编辑 + 可预听，分 4 阶段渐进实现。
+## Task ID
+20260103-midi-editor-pipeline
 
-## 2. What's Done
-- ui/editor/*.py (6 files, ~745 行): PianoRollWidget, NoteItem, TimelineWidget, KeyboardWidget, EditorWindow
-- main.py: _select_version(), _open_editor() 集成编辑器入口
-- i18n/translations.py: 新增 original_file, select_version, select_version_prompt
-- 保存目录: midi-change/ + index.json 索引
-- 版本选择: last_modified 逆序、默认最新、取消加载最新
+## Status
+DONE - Phase 1 + 1.5 + 2 + Optimization Fixes
 
-## 3. Current Blocker / Decision Needed
-- 无阻塞
-- 需决策: Phase 2 实现顺序
-  - A: 先做选择 (点击/框选/Ctrl+A)
-  - B: 先做移动 (拖拽)
-  - C: 一起做 (选择+移动+删除+复制粘贴)
+## Goal
+实现钢琴卷帘编辑器基础编辑功能 + 时间轴BPM/小节显示
 
-## 4. Evidence Index
-| File | Path | Summary |
-|------|------|---------|
-| execute.log | evidence/ | Phase 1.5 完成，语法检查 OK |
-| tests.log | evidence/ | N/A (无自动测试) |
-| diff.patch | evidence/ | ops/ai 骨架更新 |
+## Key Files (按重要性排序)
+| File | Lines Changed | Purpose |
+|------|---------------|---------|
+| ui/editor/timeline.py | +191 | 时间轴: BPM显示/小节号/拍刻度 (优化可视范围) |
+| ui/editor/piano_roll.py | +34 | 钢琴卷帘: 选择/移动/网格 (scene宽度修复) |
+| ui/editor/note_item.py | +41 | 音符图形: 拖拽/边界/"音符"标签 |
+| ui/editor/editor_window.py | +6 | 主窗口: tempo传递到timeline |
 
-## 5. Minimal Files to Read
-1. ops/ai/tasks/20260103-midi-editor-pipeline/request.md - 任务定义
-2. ops/ai/tasks/20260103-midi-editor-pipeline/handoff.md - 当前进度
-3. LyreAutoPlayer/ui/editor/piano_roll.py - 钢琴卷帘核心
-4. LyreAutoPlayer/ui/editor/note_item.py - 音符图形项
-5. LyreAutoPlayer/ui/editor/editor_window.py - 主窗口
+## Phase 1.5 Timeline Features
+1. BPM显示 (动态字号基于ROW_BAR)
+2. 小节号显示 (基于time_signature)
+3. 拍刻度线 (下拍粗线/其他细线)
+4. 秒刻度保留 (不回归)
 
-## 6. Next Actions Candidates
-- [ ] A: 实现 Phase 2 音符选择 (单击/框选/Ctrl+A)
-- [ ] B: 实现 Phase 2 音符移动 (拖拽改时间/音高)
-- [ ] C: 实现 Phase 2 音符删除 + 复制粘贴 (Delete/Ctrl+C/V)
+## Optimization Fixes (Final Session)
+| Issue | Fix |
+|-------|-----|
+| `_generate_beat_ticks()` 性能 | 直接跳到可视tick范围,不从0迭代 |
+| "音符"标签显示条件 | 仅蓝色普通状态 (非selected/out_of_range) |
+| 网格右侧空白 | scene宽度 = max(content, scroll_offset + viewport) |
+| 窗口大小变化 | 添加resizeEvent()触发网格重绘 |
 
----
-*Generated: 2026-01-03*
+## Key Methods Added
+```python
+# timeline.py
+def _second_to_tick(self, t: float) -> int  # 秒转tick (逆向查tempo_map)
+def _generate_beat_ticks(start, end) -> List[Tuple[int, bool, int]]  # 可视范围拍子
+
+# note_item.py
+def paint(painter, option, widget)  # 自定义绘制+居中"音符"标签
+
+# piano_roll.py
+def _calc_scene_width() -> float  # scroll_offset + viewport_width
+def resizeEvent(event)  # 窗口大小变化时重绘
+```
+
+## Acceptance Checklist
+- [x] 时间轴显示秒数刻度
+- [x] 时间轴显示BPM (默认120)
+- [x] 时间轴显示小节号与拍刻度线
+- [x] MIDI tempo/time_signature正确解析
+- [x] UI高度对齐 (corner = timeline)
+- [x] 拍子生成仅限可视范围 (性能)
+- [x] 音符标签仅普通状态显示
+- [x] 网格覆盖滚动位置+视口
+- [x] 语法检查通过
+
+## Dependencies
+- mido (MIDI解析)
+- PyQt6 (GUI)

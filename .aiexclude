@@ -1,0 +1,75 @@
+# .aiexclude - 最小化 AI 上下文噪音
+# 排除大目录、构建产物、敏感文件
+
+# Python 虚拟环境/缓存
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+
+# Node.js
+node_modules/
+.npm/
+.pnpm-store/
+
+# 构建产物
+dist/
+build/
+.out/
+target/
+bin/
+obj/
+
+# IDE/编辑器
+.idea/
+.vs/
+*.suo
+*.user
+*.swp
+*~
+
+# 缓存
+**/.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# 私密/凭据 (强烈建议)
+**/*.pem
+**/*.key
+**/*.p12
+**/*secret*
+**/*token*
+.env
+.env.*
+.claude/private/
+.claude/settings.local.json
+
+# ops/ai 运行时状态 (可选保留 evidence)
+.claude/state/
+ops/ai/state/private/
+
+# 大型二进制/媒体
+*.dll
+*.exe
+*.so
+*.dylib
+*.i64
+*.idb
+*.dmp
+*.mp3
+*.wav
+*.mid
+*.midi
+
+# 临时文件
+analyzedata/scratch/
+*.tmp
+*.bak
+*.log
+
+# Git
+.git/objects/
+.git/hooks/

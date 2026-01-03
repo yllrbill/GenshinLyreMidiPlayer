@@ -1,414 +1,419 @@
-warning: in the working copy of '.claude/agents/context-packer.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of '.claude/commands/ai-task-pack.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'CLAUDE.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'ops/ai/context/PROMPTS.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'ops/ai/state/STATE.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'ops/ai/templates/context_pack.template.md', LF will be replaced by CRLF the next time Git touches it
-diff --git a/.claude/agents/context-packer.md b/.claude/agents/context-packer.md
-index df134a6..bf471ef 100644
---- a/.claude/agents/context-packer.md
-+++ b/.claude/agents/context-packer.md
-@@ -15,40 +15,49 @@ Generate a minimal, low-token Context Pack that ChatGPT Planner can consume effi
- ## Rules
+diff --git a/LyreAutoPlayer/ui/editor/editor_window.py b/LyreAutoPlayer/ui/editor/editor_window.py
+index 10cfc72..673567a 100644
+--- a/LyreAutoPlayer/ui/editor/editor_window.py
++++ b/LyreAutoPlayer/ui/editor/editor_window.py
+@@ -605,10 +605,10 @@ class EditorWindow(QMainWindow):
+                     if msg.type == 'set_tempo':
+                         tempo_events.append((abs_tick, msg.tempo))
+                     elif msg.type == 'time_signature':
+-                        # mido time_signature: numerator, denominator (as power of 2)
+-                        # denominator 在 MIDI 中是 2^n 的 n，需要转换
++                        # mido time_signature: numerator, denominator
++                        # mido 已将 denominator 转为实际值 (4, 8 等)
+                         num = msg.numerator
+-                        denom = 2 ** msg.denominator
++                        denom = msg.denominator
+                         time_sig_events.append((abs_tick, num, denom))
  
- 1. **No long code blocks** - prefer file paths + line ranges + short bullets
--2. **Always output a "Minimal files to read" list** (3-6 items, sorted)
-+2. **Each section 3-6 lines max** - avoid long paragraphs
- 3. **Log excerpts** - only include failing lines + 10 lines of context max
- 4. **Secret-safe** - never include secrets; mask tokens/keys with `<REDACTED>`
- 5. **Deterministic** - all lists must be sorted
+         # 按 tick 排序
+diff --git a/LyreAutoPlayer/ui/editor/note_item.py b/LyreAutoPlayer/ui/editor/note_item.py
+index 049aad9..a71cd70 100644
+--- a/LyreAutoPlayer/ui/editor/note_item.py
++++ b/LyreAutoPlayer/ui/editor/note_item.py
+@@ -4,7 +4,7 @@ NoteItem - 单个音符的图形表示
+ Phase 2: 支持选择、拖拽移动
+ """
+ from PyQt6.QtWidgets import QGraphicsRectItem, QGraphicsItem
+-from PyQt6.QtGui import QBrush, QPen, QColor
++from PyQt6.QtGui import QBrush, QPen, QColor, QPainter, QFont, QFontMetrics
+ from PyQt6.QtCore import Qt, QPointF
  
--## Output Structure
-+## Output Structure (固定 6 段)
  
- ```markdown
- # Context Pack for <TASK_ID>
+@@ -126,5 +126,44 @@ class NoteItem(QGraphicsRectItem):
+         h = pixels_per_note - 1  # 留 1px 间隙
+         self.setRect(x, y, w, h)
  
--## Task Summary
--(one-line goal from request.md)
--
--## Current Status
--(from STATE.md: DRAFT/IN_PROGRESS/BLOCKED/DONE)
--
--## Key Files (sorted)
--- path/to/file1.py (purpose)
--- path/to/file2.md (purpose)
--
--## Evidence Index
--| File | Exists | Summary |
--|------|--------|---------|
--| execute.log | ✅/❌ | (key result or "N/A") |
--| tests.log | ✅/❌ | (pass/fail count) |
--| diff.patch | ✅/❌ | (N files, +X/-Y lines) |
--
--## Failures (if any)
--(only failing lines, max 20 lines)
--
--## Minimal Files for Planner
--1. ops/ai/tasks/<TASK_ID>/request.md
--2. ops/ai/tasks/<TASK_ID>/evidence/context_pack.md
--3. (2-4 more relevant files, sorted)
-+## 1. Goal
-+(目标一句话，从 request.md 提取)
++    def paint(self, painter: QPainter, option, widget=None):
++        """自定义绘制: 矩形 + 居中 '音符' 文字 (仅蓝色普通状态)"""
++        # 先绘制默认矩形
++        super().paint(painter, option, widget)
 +
-+## 2. What's Done
-+(已完成的工作，列文件路径/函数名，3-6 行)
-+- path/to/file1.py: 实现了 XXX
-+- path/to/file2.md: 更新了 YYY
++        # 仅在普通蓝色状态下绘制 "音符" 标签
++        if self.selected or self.out_of_range:
++            return
 +
-+## 3. Current Blocker / Decision Needed
-+(要 ChatGPT Planner 决策的点，明确写出问题)
-+- 问题 1: ...
-+- 问题 2: ...
-+- 需要决策: A 方案 vs B 方案
++        rect = self.rect()
++        w, h = rect.width(), rect.height()
 +
-+## 4. Evidence Index
-+| File | Path | Summary |
-+|------|------|---------|
-+| execute.log | evidence/ | (关键结果或 N/A) |
-+| tests.log | evidence/ | (pass/fail 数量) |
-+| diff.patch | evidence/ | (N files, +X/-Y lines) |
++        # 字号自适应: 基于高度和宽度估算
++        # 中文 "音符" 两个字，每个字大约是 font_size 宽度
++        # 确保文字不超出矩形
++        font_size_by_height = int(h * 0.7)
++        font_size_by_width = int(w / 2.5)  # 两个中文字约占 2.5 * font_size
++        font_size = min(font_size_by_height, font_size_by_width)
 +
-+## 5. Minimal Files to Read
-+(最多 3-6 个文件，按重要性排序)
-+1. ops/ai/tasks/<TASK_ID>/request.md - 任务定义
-+2. ops/ai/tasks/<TASK_ID>/evidence/diff.patch - 当前改动
-+3. path/to/key_file.py - 核心实现
-+4. ...
++        # 过小则不绘制 (避免挤压)
++        if font_size < 6:
++            return
 +
-+## 6. Next Actions Candidates
-+(你认为的 2-3 条候选路径，让 Planner 选择)
-+- [ ] A: 继续实现 XXX 功能
-+- [ ] B: 先修复 YYY 问题
-+- [ ] C: 需要更多信息才能决定
- 
- ---
- *Generated: YYYY-MM-DD HH:MM*
-diff --git a/.claude/commands/ai-task-pack.md b/.claude/commands/ai-task-pack.md
-index 33c9e0c..bdb495c 100644
---- a/.claude/commands/ai-task-pack.md
-+++ b/.claude/commands/ai-task-pack.md
-@@ -1,109 +1,7 @@
- ---
--description: Generate a minimal Context Pack for Planner (logs/diff/file pointers)
--argument-hint: <TASK_ID>
-+description: (DEPRECATED) Use /ai-end instead
-+argument-hint: "<TASK_ID>"
-+allowed-tools: Read
- ---
- 
--目标：生成 `ops/ai/tasks/<TASK_ID>/evidence/context_pack.md`，供 ChatGPT 决策层使用，尽量少 token 但可复跑。
--
--## 命令参数
--- TASK_ID = `$1`
--
--## 硬规则
--- 输出必须 deterministic（列清单时 sorted）
--- 不要整段复制日志，只提取关键失败行摘要
--- Secret-safe：禁止输出明文密钥/token
--
-----
--
--## Subagent 调用
--
--**Use the `context-packer` subagent to generate context_pack.md, then summarize the minimal file paths for Planner.**
--
--该 subagent 位于 `.claude/agents/context-packer.md`：
--
--| 属性 | 值 |
--|------|-----|
--| tools | Read, Glob, Grep (只读) |
--| permissionMode | plan (不会意外修改文件) |
--| 独立上下文 | 防止日志/代码片段污染主会话 |
--
-----
--
--## 执行步骤
--
--### 1) 验证输入
--
--检查 TASK_ID 是否有效：
--- 若 `$1` 为空：提示用户提供 TASK_ID，然后停止
--- 若 `ops/ai/tasks/<TASK_ID>/request.md` 不存在：报错并停止
--
--### 2) 调用 context-packer subagent
--
--让 subagent 读取以下文件：
--
--| 文件 | 必需 | 用途 |
--|------|------|------|
--| `ops/ai/state/STATE.md` | 是 | 当前状态 |
--| `ops/ai/context/REPO_MAP.md` | 否 | 仓库地图 |
--| `ops/ai/tasks/<TASK_ID>/request.md` | 是 | 任务请求 |
--| `ops/ai/tasks/<TASK_ID>/plan.md` | 否 | 执行计划 |
--| `ops/ai/tasks/<TASK_ID>/handoff.md` | 否 | 交接文档 |
--| `ops/ai/tasks/<TASK_ID>/evidence/execute.log` | 否 | 执行日志 |
--| `ops/ai/tasks/<TASK_ID>/evidence/tests.log` | 否 | 测试日志 |
--| `ops/ai/tasks/<TASK_ID>/evidence/diff.patch` | 否 | 变更补丁 |
--
--### 3) context-packer 输出结构
--
--```markdown
--# Context Pack for <TASK_ID>
--
--## Task Summary
--(从 request.md 提取 Goal)
--
--## Current Status
--(从 STATE.md 提取 Latest Task 状态)
--
--## Key Files (sorted)
--- path/to/file1.py
--- path/to/file2.md
--
--## Evidence Index
--
--| File | Exists | Summary |
--|------|--------|---------|
--| execute.log | ✅/❌ | (关键失败行或"成功") |
--| tests.log | ✅/❌ | (失败测试名或"全部通过") |
--| diff.patch | ✅/❌ | (改动文件数 + 行数) |
--
--## Failures (if any)
--(最多 20 行错误摘要)
--
--## Minimal Files for Planner
--1. ops/ai/tasks/<TASK_ID>/request.md
--2. ops/ai/tasks/<TASK_ID>/evidence/context_pack.md
--3. (2-4 more relevant files, sorted)
--
-----
--*Generated: YYYY-MM-DD HH:MM*
--```
--
--### 4) 写入文件
--
--写入 `ops/ai/tasks/<TASK_ID>/evidence/context_pack.md`
--
--### 5) 输出建议
--
--```
--✅ Context Pack 已生成：ops/ai/tasks/<TASK_ID>/evidence/context_pack.md
--
--建议发给 Planner 的最小文件集合：
--1. ops/ai/tasks/<TASK_ID>/evidence/context_pack.md (本文件)
--2. ops/ai/tasks/<TASK_ID>/request.md
--3. (如果存在) ops/ai/tasks/<TASK_ID>/plan.md
--4. (如果存在) ops/ai/tasks/<TASK_ID>/handoff.md
--5. (从 request.md Planner Inputs 提取的关键文件，最多 3 个)
--
--Planner 读完后应产出：
--- 新的 plan.md 或 plan 修订
--- 如需改代码：patch.diff
--```
-+此命令已废弃，请使用：/ai-end $ARGUMENTS
-diff --git a/CLAUDE.md b/CLAUDE.md
-index ded3e56..aa18691 100644
---- a/CLAUDE.md
-+++ b/CLAUDE.md
-@@ -17,6 +17,7 @@
- 4) 少问人：除非被权限/缺输入阻塞，否则优先从仓库恢复上下文
- 
- ## Start Here (每次新会话第一步)
-+- **首选**: 运行 `/ai-resume` 恢复上下文并获取下一步计划
- - 运行 /bootstrap
- - 需要定位 bug：/triage
- - 需要构造最小复现：/repro
-diff --git a/ops/ai/context/PROMPTS.md b/ops/ai/context/PROMPTS.md
-index da70ed1..ccf25da 100644
---- a/ops/ai/context/PROMPTS.md
-+++ b/ops/ai/context/PROMPTS.md
-@@ -1,44 +1,12 @@
--# Prompts
--
--## ChatGPT (Planner) - Session Opener
--
--```
--你是"决策层（Planner）"，不直接改仓库、不运行命令。优先读：
-+你是决策层（Planner）。不运行命令、不直接改仓库。只基于以下文件做决策并输出可落盘的工件：
- - ops/ai/state/STATE.md
--- ops/ai/context/REPO_MAP.md
- - ops/ai/tasks/<TASK_ID>/request.md
-+- ops/ai/tasks/<TASK_ID>/evidence/context_pack.md（若有）
-+- ops/ai/tasks/<TASK_ID>/handoff.md（若有）
-+- ops/ai/tasks/<TASK_ID>/evidence/diff.patch / tests.log / execute.log（若有）
- 
--你的输出必须可执行：≤10步计划 + 影响文件 + 验收命令 + 证据清单；信息不足则先列 Context Pack 请求。
--```
--
--## ChatGPT (Planner) - Session Closer
--
--```
--1) 用 5 行以内列出执行层下一步要做什么（带路径）
--2) 成功判据/失败判据各 1 条
--3) 停止，不扩展
--```
--
--## Claude (Executor) - Session Opener
--
--```
--你是"执行层（Executor）"，先读：
--- CLAUDE.md
--- ops/ai/state/STATE.md
--- ops/ai/tasks/<TASK_ID>/request.md + plan.md (+patch.diff)
--
--先给≤10条执行计划，再动手。Evidence-first、Fail-closed、Minimal change。
--```
--
--## Claude (Executor) - Session Closer
--
--```
--收尾必须完成：
--- 写 ops/ai/tasks/<TASK_ID>/handoff.md（含 Evidence Index）
--- evidence/ 下落盘 execute.log/tests.log/diff.patch/context_pack.md(如需要)
--- 更新 ops/ai/state/STATE.md 指向最新任务目录与状态
--```
--
-----
-+交付物：
-+1) 生成 ops/ai/tasks/<TASK_ID>/plan.md（≤10 步，含命令、验收、证据清单、Stop conditions）
-+2) 信息足够则给 patch.diff（统一 diff）；不足就列 Context Pack 请求清单（要哪些文件/命令输出）
- 
--*Created: 2026-01-01*
-+约束：Fail-closed、Minimal change、Secret-safe（除非必要，不要要求我粘贴密钥/隐私原文）。
-diff --git a/ops/ai/state/STATE.md b/ops/ai/state/STATE.md
-index 1451a38..85bde02 100644
---- a/ops/ai/state/STATE.md
-+++ b/ops/ai/state/STATE.md
-@@ -1,25 +1,67 @@
- # Project State
- 
- ## Latest Task
--- TASK_ID: (none)
--- Status: (INIT)
--- Pointer: ops/ai/tasks/(none)
-+- TASK_ID: 20260103-midi-editor-pipeline
-+- Status: IN_PROGRESS (Phase 1 DONE)
-+- Pointer: ops/ai/tasks/20260103-midi-editor-pipeline
++        # 设置字体和颜色
++        font = QFont("Microsoft YaHei", font_size)
++        painter.setFont(font)
++        painter.setPen(QColor(255, 255, 255))  # 白色文字
 +
-+## Previous Task
-+- TASK_ID: 20260102-2138-main-mixin-refactor
-+- Status: DONE (包含 Input Diagnostics 实现)
-+- Pointer: ops/ai/tasks/20260102-2138-main-mixin-refactor
- 
- ## Current Focus
--- (write current focus here)
-+- MIDI 编辑器 Phase 1 完成：钢琴卷帘可视化 + 播放骨架
-+- 待进行 Phase 1.5：main.py 集成 + 版本选择弹窗
++        # 居中绘制
++        text = "音符"
++        fm = QFontMetrics(font)
++        text_width = fm.horizontalAdvance(text)
++        text_height = fm.height()
 +
-+## Completed Summary (MIDI Editor Phase 1)
-+- **Phase 1 钢琴卷帘骨架完成**: 6 个新文件 (~745 行)
-+- ui/editor/note_item.py: NoteItem (QGraphicsRectItem)
-+- ui/editor/piano_roll.py: PianoRollWidget (QGraphicsView)
-+- ui/editor/timeline.py: TimelineWidget
-+- ui/editor/keyboard.py: KeyboardWidget
-+- ui/editor/editor_window.py: EditorWindow (含保存/索引)
-+- Syntax check: OK
-+- Import check: OK (`from ui.editor import EditorWindow`)
++        x = rect.x() + (w - text_width) / 2
++        y = rect.y() + (h + text_height) / 2 - fm.descent()
 +
-+## 行数统计（当前）
-+- main.py: 1050 行 (原 2206 → 1556 → 1039 → 1050)
-+- ui/tab_builders.py: 575 行 (新增)
-+- i18n/translations.py: 173 行 (+5 新翻译键)
-+- ui/mixins/ 合计 910 行（7 files）
-+  - config_mixin.py: 337
-+  - settings_preset_mixin.py: 295
-+  - playback_mixin.py: 153
-+  - hotkeys_mixin.py: 68
-+  - language_mixin.py: 24
-+  - __init__.py: 18
-+  - logs_mixin.py: 15
++        painter.drawText(int(x), int(y), text)
 +
-+## Known Issues / Technical Debt
-+1. ~~**Field Drift Risk**: save_settings vs _collect_current_settings 字段结构不同~~ ✅ 已解决
-+2. LyreAutoPlayer 目录策略性未纳入 git 跟踪
-+   - 若未来要纳入，需先清理外部变更、确认子项目边界
+     def __repr__(self):
+         return f"NoteItem(note={self.note}, start={self.start_time:.3f}, dur={self.duration:.3f})"
+diff --git a/LyreAutoPlayer/ui/editor/piano_roll.py b/LyreAutoPlayer/ui/editor/piano_roll.py
+index e6aa53b..b110467 100644
+--- a/LyreAutoPlayer/ui/editor/piano_roll.py
++++ b/LyreAutoPlayer/ui/editor/piano_roll.py
+@@ -5,7 +5,7 @@ Phase 2: 支持选择、拖拽移动、删除、复制粘贴
+ """
+ from typing import List, Optional
+ from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsLineItem
+-from PyQt6.QtGui import QPen, QColor, QWheelEvent, QKeyEvent, QMouseEvent
++from PyQt6.QtGui import QPen, QColor, QWheelEvent, QKeyEvent, QMouseEvent, QResizeEvent
+ from PyQt6.QtCore import Qt, pyqtSignal
+ import mido
+ 
+@@ -112,8 +112,8 @@ class PianoRollWidget(QGraphicsView):
+         # 创建播放头
+         self._create_playhead()
+ 
+-        # 设置场景大小
+-        scene_width = self.total_duration * self.pixels_per_second + 100
++        # 设置场景大小 (覆盖滚动位置 + 视口宽度)
++        scene_width = self._calc_scene_width()
+         scene_height = (self.NOTE_RANGE[1] - self.NOTE_RANGE[0] + 1) * self.pixels_per_note
+         self.scene.setSceneRect(0, 0, scene_width, scene_height)
+ 
+@@ -208,6 +208,20 @@ class PianoRollWidget(QGraphicsView):
+             self.scene.removeItem(item)
+         self._grid_items.clear()
+ 
++    def _calc_scene_width(self) -> float:
++        """计算场景宽度 (覆盖滚动位置 + 视口宽度)"""
++        content_width = self.total_duration * self.pixels_per_second + 100
++        scroll_offset = self.horizontalScrollBar().value()
++        viewport_width = self.viewport().width()
++        return max(content_width, scroll_offset + viewport_width)
 +
-+## Pending Tasks
-+1. (IN_PROGRESS) 20260103-midi-editor-pipeline - MIDI 编辑管线 Phase 1.5+
- 
--## Known Issues / Risks
--- (bullet list)
-+## Recent Completions
-+- Input Diagnostics 窗口 + 修复审计 (追加到 20260102-2138)
-+  - ui/diagnostics_window.py (新增 ~240 行)
-+  - 支持按键记录、过滤、来源标注
-+  - 17 个新 i18n 翻译键
-+  - **2026-01-03 修复**: 线程安全 signal、语言同步、防御性 KeySource、_sync_diagnostics_state() 统一方法
- 
--## Next Actions
--- (bullet list, sorted by priority)
-+## Evidence
-+- Regression: LyreAutoPlayer/.claude/state/regression/mixin_refactor_20260102.json (14/14)
-+- Handoff: ops/ai/tasks/20260102-2142-unify-config-schema-and-persistence/handoff.md
- 
- ## How to Resume in a New Session
- 1. Read `ops/ai/state/STATE.md`
--2. Read `ops/ai/context/REPO_MAP.md`
--3. Read latest task folder `request.md` + `handoff.md` + `evidence/*`
--4. Continue from "Next Actions"
-+2. Read latest task's `request.md` and `handoff.md`
-+3. Review evidence files if needed
-+4. Continue from task status
- 
- ---
- 
--*Last Updated: 2026-01-01*
-+*Last Updated: 2026-01-03 (MIDI Editor Phase 1 completed)*
-diff --git a/ops/ai/templates/context_pack.template.md b/ops/ai/templates/context_pack.template.md
-index bbc75c9..3d89c3d 100644
---- a/ops/ai/templates/context_pack.template.md
-+++ b/ops/ai/templates/context_pack.template.md
-@@ -1,19 +1,39 @@
--# Context Pack (for Planner)
-+# Context Pack for <TASK_ID>
- 
--## Repo map pointers
--- Entry points:
--- Key modules:
-+> 固定 6 段结构，每段 3-6 行，避免长篇
- 
--## Changed files
--- (sorted)
-+## 1. Goal
-+(目标一句话，从 request.md 提取)
- 
--## Relevant logs
--- execute.log: (summary or key lines)
--- tests.log: (summary or key lines)
-+## 2. What's Done
-+(已完成的工作，列文件路径/函数名)
-+- path/to/file1.py: 实现了 XXX
-+- path/to/file2.md: 更新了 YYY
- 
--## Questions / Unknowns
--- ...
-+## 3. Current Blocker / Decision Needed
-+(要 ChatGPT Planner 决策的点，明确写出问题)
-+- 问题 1: ...
-+- 问题 2: ...
-+- 需要决策: A 方案 vs B 方案
- 
-----
-+## 4. Evidence Index
-+| File | Path | Summary |
-+|------|------|---------|
-+| execute.log | evidence/ | (关键结果或 N/A) |
-+| tests.log | evidence/ | (pass/fail 数量) |
-+| diff.patch | evidence/ | (N files, +X/-Y lines) |
++    def resizeEvent(self, event: QResizeEvent):
++        """窗口大小变化时更新网格/场景"""
++        super().resizeEvent(event)
++        # 如果已有音符数据，更新网格以覆盖新视口
++        if self.notes or self.total_duration > 0:
++            self._redraw_all()
 +
-+## 5. Minimal Files to Read
-+(最多 3-6 个文件，按重要性排序)
-+1. ops/ai/tasks/<TASK_ID>/request.md - 任务定义
-+2. ops/ai/tasks/<TASK_ID>/evidence/diff.patch - 当前改动
-+3. path/to/key_file.py - 核心实现
+     def _draw_grid(self):
+         """绘制网格背景 - 增强对比度版
  
--*Generated: YYYY-MM-DD*
-+## 6. Next Actions Candidates
-+(2-3 条候选路径，让 Planner 选择)
-+- [ ] A: 继续实现 XXX 功能
-+- [ ] B: 先修复 YYY 问题
-+- [ ] C: 需要更多信息才能决定
+@@ -223,7 +237,7 @@ class PianoRollWidget(QGraphicsView):
+         from PyQt6.QtGui import QBrush
+ 
+         note_min, note_max = self.NOTE_RANGE
+-        scene_width = self.total_duration * self.pixels_per_second + 100
++        scene_width = self._calc_scene_width()
+         h = self.pixels_per_note
+ 
+         for note in range(note_min, note_max + 1):
+@@ -310,8 +324,8 @@ class PianoRollWidget(QGraphicsView):
+             item.setPos(0, 0)
+             item.update_geometry(self.pixels_per_second, self.pixels_per_note, note_max)
+ 
+-        # 更新场景大小
+-        scene_width = self.total_duration * self.pixels_per_second + 100
++        # 更新场景大小 (覆盖滚动位置 + 视口宽度)
++        scene_width = self._calc_scene_width()
+         scene_height = (self.NOTE_RANGE[1] - self.NOTE_RANGE[0] + 1) * self.pixels_per_note
+         self.scene.setSceneRect(0, 0, scene_width, scene_height)
+ 
+@@ -367,8 +381,8 @@ class PianoRollWidget(QGraphicsView):
+         self._create_playhead()
+         self.set_playhead_position(playhead_time)
+ 
+-        # 更新场景大小
+-        scene_width = self.total_duration * self.pixels_per_second + 100
++        # 更新场景大小 (覆盖滚动位置 + 视口宽度)
++        scene_width = self._calc_scene_width()
+         scene_height = (self.NOTE_RANGE[1] - self.NOTE_RANGE[0] + 1) * self.pixels_per_note
+         self.scene.setSceneRect(0, 0, scene_width, scene_height)
+ 
+@@ -612,8 +626,8 @@ class PianoRollWidget(QGraphicsView):
+         # 更新总时长
+         self.total_duration = max(n.start_time + n.duration for n in self.notes)
+ 
+-        # 扩展场景大小
+-        scene_width = self.total_duration * self.pixels_per_second + 100
++        # 扩展场景大小 (覆盖滚动位置 + 视口宽度)
++        scene_width = self._calc_scene_width()
+         scene_height = (self.NOTE_RANGE[1] - self.NOTE_RANGE[0] + 1) * self.pixels_per_note
+         self.scene.setSceneRect(0, 0, scene_width, scene_height)
+ 
+diff --git a/LyreAutoPlayer/ui/editor/timeline.py b/LyreAutoPlayer/ui/editor/timeline.py
+index fc481e5..fd4a76e 100644
+--- a/LyreAutoPlayer/ui/editor/timeline.py
++++ b/LyreAutoPlayer/ui/editor/timeline.py
+@@ -52,6 +52,9 @@ class TimelineWidget(QWidget):
+         self._time_sig_map: List[Tuple[float, int, int]] = [(0.0, 4, 4)]
+         # 小节边界缓存: [(bar_number, time_sec), ...]
+         self._bar_times: List[Tuple[int, float]] = []
++        # 原始 tick 事件 (用于精确计算)
++        self._tempo_events_tick: List[Tuple[int, int]] = [(0, 500000)]
++        self._time_sig_events_tick: List[Tuple[int, int, int]] = [(0, 4, 4)]
+ 
+         self.setFixedHeight(self.HEIGHT)
+         self.setMinimumWidth(100)
+@@ -92,16 +95,20 @@ class TimelineWidget(QWidget):
+         """
+         self.ticks_per_beat = ticks_per_beat
+ 
++        # 保存原始 tick 事件 (确保 tick 0 有默认值)
++        if not tempo_events or tempo_events[0][0] > 0:
++            tempo_events = [(0, 500000)] + list(tempo_events)
++        if not time_sig_events or time_sig_events[0][0] > 0:
++            time_sig_events = [(0, 4, 4)] + list(time_sig_events)
++        self._tempo_events_tick = list(tempo_events)
++        self._time_sig_events_tick = list(time_sig_events)
 +
-+---
-+*Generated: YYYY-MM-DD HH:MM*
+         # 转换 tempo 事件为秒
+         self._tempo_map = []
+         current_sec = 0.0
+         prev_tick = 0
+         prev_tempo = 500000  # 默认 120 BPM
+ 
+-        # 确保 tick 0 有 tempo
+-        if not tempo_events or tempo_events[0][0] > 0:
+-            tempo_events = [(0, 500000)] + list(tempo_events)
+-
+         for tick, tempo in tempo_events:
+             if tick > prev_tick:
+                 # 计算时间增量
+@@ -123,10 +130,6 @@ class TimelineWidget(QWidget):
+         prev_tick = 0
+         prev_tempo = 500000
+ 
+-        # 确保 tick 0 有 time signature
+-        if not time_sig_events or time_sig_events[0][0] > 0:
+-            time_sig_events = [(0, 4, 4)] + list(time_sig_events)
+-
+         # 重新计算时间 (使用 tempo map)
+         tempo_idx = 0
+         for tick, num, denom in time_sig_events:
+@@ -246,10 +249,11 @@ class TimelineWidget(QWidget):
+         start_time = self.scroll_offset / self.pixels_per_second
+         end_time = start_time + self.width() / self.pixels_per_second
+ 
+-        # 字体
++        # 字体 (BPM 字号根据 ROW_BAR 动态计算)
+         font_bar = QFont("Arial", 9, QFont.Weight.Bold)
+         font_time = QFont("Arial", 8)
+-        font_bpm = QFont("Arial", 7)
++        bpm_font_size = max(9, int(self.ROW_BAR * 0.6))
++        font_bpm = QFont("Arial", bpm_font_size, QFont.Weight.Bold)
+ 
+         # ─────────────────────────────────────────────────────────────────────
+         # 上行: 小节编号 + BPM (y: 0 ~ ROW_BAR)
+@@ -271,7 +275,7 @@ class TimelineWidget(QWidget):
+ 
+     def _draw_bar_row(self, painter: QPainter, start_time: float, end_time: float,
+                        font_bar: QFont, font_bpm: QFont):
+-        """绘制上行: 小节编号 + BPM 指示"""
++        """绘制上行: 小节编号 + BPM 指示 (使用 tick 精确计算)"""
+         row_top = 0
+         row_bottom = self.ROW_BAR
+ 
+@@ -279,48 +283,151 @@ class TimelineWidget(QWidget):
+         painter.setPen(QPen(QColor(60, 60, 60), 1))
+         painter.drawLine(0, row_bottom, self.width(), row_bottom)
+ 
+-        # 绘制 BPM 指示 (在左上角)
++        # 绘制 BPM 指示 (始终在可视区左侧)
+         painter.setFont(font_bpm)
+         painter.setPen(self.BPM_COLOR)
+         bpm_text = f"♩={int(self.bpm)}"
+-        # 只在 scroll_offset=0 时显示在可见区域，否则固定在左侧
+-        if self.scroll_offset < 50:
+-            painter.drawText(4, 12, bpm_text)
++        painter.drawText(4, 14, bpm_text)
+ 
+-        # 绘制拍子线和小节编号
+-        beats_per_bar = self.time_sig_numerator
+-        beat_unit = self.time_sig_denominator
+-        seconds_per_beat = (60.0 / self.bpm) * (4.0 / beat_unit) if self.bpm > 0 else 0.5
++        # 使用 tick 精确计算拍子和小节
++        tempo_events = self._tempo_events_tick
++        time_sig_events = self._time_sig_events_tick
++        ticks_per_beat = self.ticks_per_beat
+ 
+-        if seconds_per_beat <= 0:
++        if ticks_per_beat <= 0:
+             return
+ 
+-        # 计算起始拍
+-        beat_idx = max(0, int(start_time / seconds_per_beat) - 1)
++        # 生成拍/小节 tick 列表: [(tick, is_bar_start, bar_num), ...]
++        beat_ticks = self._generate_beat_ticks(start_time, end_time)
+ 
+-        t = beat_idx * seconds_per_beat
+-        while t <= end_time + seconds_per_beat:
+-            if t >= start_time - seconds_per_beat:
+-                x = int((t - start_time) * self.pixels_per_second)
+-                beat_in_song = int(round(t / seconds_per_beat))
+-                is_bar_start = (beat_in_song % beats_per_bar) == 0
++        for tick, is_bar_start, bar_num in beat_ticks:
++            t = self._tick_to_second(tick, tempo_events, ticks_per_beat)
++            x = int((t - start_time) * self.pixels_per_second)
+ 
+-                if is_bar_start:
+-                    # 小节线 (粗)
+-                    painter.setPen(QPen(self.BAR_LINE_COLOR, 2))
+-                    painter.drawLine(x, row_top + 2, x, row_bottom)
++            if is_bar_start:
++                # 小节线 (粗)
++                painter.setPen(QPen(self.BAR_LINE_COLOR, 2))
++                painter.drawLine(x, row_top + 2, x, row_bottom)
+ 
+-                    # 小节编号
+-                    bar_num = beat_in_song // beats_per_bar + 1
+-                    painter.setFont(font_bar)
+-                    painter.setPen(self.TEXT_COLOR)
+-                    painter.drawText(x + 3, row_bottom - 4, str(bar_num))
+-                else:
+-                    # 拍线 (细)
+-                    painter.setPen(QPen(self.BEAT_LINE_COLOR, 1))
+-                    painter.drawLine(x, row_top + 10, x, row_bottom)
++                # 小节编号
++                painter.setFont(font_bar)
++                painter.setPen(self.TEXT_COLOR)
++                painter.drawText(x + 3, row_bottom - 4, str(bar_num))
++            else:
++                # 拍线 (细)
++                painter.setPen(QPen(self.BEAT_LINE_COLOR, 1))
++                painter.drawLine(x, row_top + 10, x, row_bottom)
+ 
+-            t += seconds_per_beat
++    def _generate_beat_ticks(self, start_time: float, end_time: float) -> List[Tuple[int, bool, int]]:
++        """生成可见时间范围内的拍子 tick 列表 (优化版: 直接跳到可视区)
++
++        Returns:
++            [(tick, is_bar_start, bar_num), ...]
++        """
++        result = []
++        tempo_events = self._tempo_events_tick
++        time_sig_events = self._time_sig_events_tick
++        ticks_per_beat = self.ticks_per_beat
++
++        if not time_sig_events or ticks_per_beat <= 0:
++            return result
++
++        # 计算可视 tick 范围 (带边距)
++        margin = 1.0  # 秒
++        visible_start_tick = self._second_to_tick(max(0, start_time - margin))
++        visible_end_tick = self._second_to_tick(end_time + margin)
++
++        # 累计小节数 (用于跨 time_sig 区间)
++        cumulative_bars = 0
++
++        for i, (sig_tick, numerator, denominator) in enumerate(time_sig_events):
++            # 计算此 time signature 区间的结束 tick
++            if i + 1 < len(time_sig_events):
++                next_sig_tick = time_sig_events[i + 1][0]
++            else:
++                next_sig_tick = visible_end_tick + ticks_per_beat * 4
++
++            # 每拍/每小节 tick 数
++            beat_ticks = ticks_per_beat * 4 // denominator
++            bar_ticks = beat_ticks * numerator
++
++            if beat_ticks <= 0 or bar_ticks <= 0:
++                continue
++
++            # 跳过完全在可视区之前的区间
++            if next_sig_tick <= visible_start_tick:
++                # 计算此区间贡献的完整小节数
++                interval_ticks = next_sig_tick - sig_tick
++                cumulative_bars += interval_ticks // bar_ticks
++                continue
++
++            # 跳过完全在可视区之后的区间
++            if sig_tick >= visible_end_tick:
++                break
++
++            # 计算从可视区开始的第一个拍子
++            if visible_start_tick > sig_tick:
++                # 从 sig_tick 到 visible_start_tick 之间有多少完整拍
++                ticks_before_visible = visible_start_tick - sig_tick
++                beats_before = ticks_before_visible // beat_ticks
++                first_beat_tick = sig_tick + beats_before * beat_ticks
++                # 计算 beat_in_bar 和已过小节数
++                beat_in_bar = beats_before % numerator
++                bars_before = beats_before // numerator
++            else:
++                first_beat_tick = sig_tick
++                beat_in_bar = 0
++                bars_before = 0
++
++            # 生成可视区内的拍子
++            current_tick = first_beat_tick
++            current_bar_num = cumulative_bars + bars_before + 1
++
++            while current_tick < next_sig_tick and current_tick <= visible_end_tick:
++                is_bar_start = (beat_in_bar == 0)
++                result.append((current_tick, is_bar_start, current_bar_num))
++
++                # 移动到下一拍
++                current_tick += beat_ticks
++                beat_in_bar += 1
++                if beat_in_bar >= numerator:
++                    beat_in_bar = 0
++                    current_bar_num += 1
++
++            # 累加此区间的完整小节数
++            interval_ticks = min(next_sig_tick, visible_end_tick + bar_ticks) - sig_tick
++            cumulative_bars += max(0, interval_ticks // bar_ticks)
++
++        return result
++
++    def _second_to_tick(self, time_sec: float) -> int:
++        """将秒转换为 tick (使用 tempo map)"""
++        if time_sec <= 0:
++            return 0
++
++        tempo_events = self._tempo_events_tick
++        ticks_per_beat = self.ticks_per_beat
++
++        current_tick = 0
++        current_sec = 0.0
++        prev_tempo = 500000
++
++        for i, (tick, tempo) in enumerate(tempo_events):
++            tick_sec = self._tick_to_second(tick, tempo_events, ticks_per_beat)
++            if tick_sec >= time_sec:
++                break
++            current_tick = tick
++            current_sec = tick_sec
++            prev_tempo = tempo
++
++        # 计算剩余时间对应的 tick
++        remaining_sec = time_sec - current_sec
++        if remaining_sec > 0 and prev_tempo > 0:
++            # tick = sec * ticks_per_beat * 1_000_000 / tempo
++            additional_ticks = int(remaining_sec * ticks_per_beat * 1_000_000 / prev_tempo)
++            current_tick += additional_ticks
++
++        return current_tick
+ 
+     def _draw_time_row(self, painter: QPainter, start_time: float, end_time: float,
+                         font_time: QFont):

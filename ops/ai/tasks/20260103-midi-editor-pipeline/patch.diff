@@ -1,0 +1,52 @@
+diff --git a/ops/ai/tasks/20260103-midi-editor-pipeline/plan.md b/ops/ai/tasks/20260103-midi-editor-pipeline/plan.md
+index 7c3df42..8138d56 100644
+--- a/ops/ai/tasks/20260103-midi-editor-pipeline/plan.md
++++ b/ops/ai/tasks/20260103-midi-editor-pipeline/plan.md
+@@ -1,31 +1,29 @@
+ # Plan: 20260103-midi-editor-pipeline
+ 
+ ## Goal/Scope
+-在已完成 Phase 1/1.5 的基础上，推进 Phase 2 基础编辑：选择、移动、删除、复制粘贴，保持现有播放与保存流程不被破坏。
++在现有钢琴卷帘时间轴上补充节拍速度（BPM）与小节数显示，保持秒数刻度不回归。
+ 
+ ## Constraints/Assumptions
+-- 独立模块，不影响现有播放流程
+-- PyQt6 + mido 作为基础框架/库
+-- 现阶段保存仍使用原始 MIDI（重建 MIDI 在后续阶段）
++- 仅改动编辑器模块（timeline.py / editor_window.py）
++- 保持现有播放与保存流程不受影响
++- 若 MIDI 无 tempo/time_signature，使用 120 BPM 与 4/4 作为默认值
+ 
+ ## Plan Steps
+-1. 复核当前编辑器数据模型与事件入口（PianoRoll/NoteItem/EditorWindow），明确交互挂载点。
+-2. 实现音符选择（单击/框选/Ctrl+A），同步 QGraphics 选中状态与 NoteItem.selected。
+-3. 实现音符移动（拖拽改变时间/音高、边界/音高 clamp、必要时扩展场景范围）。
+-4. 实现删除与复制粘贴（Delete/Backspace、Ctrl+C/Ctrl+V），粘贴按播放头时间对齐。
+-5. 补充最小手动验收与回归检查（加载、播放、缩放、基础编辑）。
++1. 阅读 `LyreAutoPlayer/ui/editor/timeline.py` 和 `LyreAutoPlayer/ui/editor/editor_window.py` 的时间轴与 MIDI 解析逻辑。
++2. 在 EditorWindow 中解析 MIDI 的 tempo/time_signature，并缓存供时间轴使用。
++3. 扩展 TimelineWidget：新增 BPM 显示与小节/拍刻度线绘制逻辑（与秒刻度并存）。
++4. 在加载 MIDI 时将 tempo/time_signature 传入时间轴，并确保 corner widget 高度与时间轴一致。
++5. 做最小验证：加载含/不含 tempo 的 MIDI，确认秒数+BPM+小节数同时显示且播放头贯穿。
+ 
+ ## Acceptance Checklist
+-- [ ] 单击/框选/Ctrl+A 能正确选择音符
+-- [ ] 拖拽可移动音符，时间与音高更新且不越界
+-- [ ] Delete/Backspace 删除选中音符
+-- [ ] Ctrl+C/V 复制粘贴到播放头位置
+-- [ ] 现有加载/播放/缩放流程不回归
++- [ ] 时间轴持续显示秒数刻度
++- [ ] 时间轴显示 BPM（或默认 120）
++- [ ] 时间轴显示小节号与拍刻度线
++- [ ] 读取 MIDI 时可正确更新 tempo/time_signature
++- [ ] UI 高度对齐（corner widget 与时间轴一致）
+ 
+ ## Risks/Dependencies
+-- QGraphics 交互与性能（大 MIDI 文件）
+-- 播放链路与编辑交互同步
+-- MIDI 写回逻辑仍在后续阶段实现
++- 多 tempo / 多拍号 MIDI 的处理策略可能需要后续扩展
+ 
+ ---
+-*Generated: 2026-01-03 18:59*
++*Generated: 2026-01-03 22:57*

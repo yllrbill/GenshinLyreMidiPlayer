@@ -1,20 +1,33 @@
 """
 EditorWindow - MIDI 编辑器主窗口
+
+Features:
+- MIDI 可视化 (钢琴卷帘)
+- 播放预览 (FluidSynth)
+- 保存/版本管理
 """
 import os
+import sys
 import json
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict
 from datetime import datetime
 
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QToolBar, QSlider, QLabel, QFileDialog, QMessageBox,
-    QSplitter, QScrollBar, QComboBox
+    QSplitter, QScrollBar, QComboBox, QSpinBox
 )
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtCore import Qt, QTimer
 import mido
+
+# FluidSynth (optional)
+try:
+    import fluidsynth
+    HAS_FLUIDSYNTH = True
+except ImportError:
+    HAS_FLUIDSYNTH = False
 
 from .piano_roll import PianoRollWidget
 from .timeline import TimelineWidget
@@ -36,10 +49,17 @@ class EditorWindow(QMainWindow):
         self._edits_dir = self._app_root / "midi-change"
 
         self.midi_path = midi_path
+        self._source_path: Optional[str] = None  # 原始文件路径 (用于索引)
         self.midi_file: Optional[mido.MidiFile] = None
         self.is_playing = False
         self.playback_time = 0.0
         self.edit_style = "custom"  # 编辑风格标签
+
+        # FluidSynth 相关
+        self._fs = None  # fluidsynth.Synth instance
+        self._sfid = -1  # SoundFont ID
+        self._chan = 0   # MIDI channel
+        self._active_notes: Dict[int, int] = {}  # 音符 -> 发声计数
 
         self._setup_ui()
         self._setup_toolbar()
@@ -64,11 +84,12 @@ class EditorWindow(QMainWindow):
         timeline_row = QHBoxLayout()
         timeline_row.setSpacing(0)
 
-        # 左上角占位
-        corner = QWidget()
-        corner.setFixedSize(60, 30)
-        corner.setStyleSheet("background-color: #282828;")
-        timeline_row.addWidget(corner)
+        # 左上角占位 (与 keyboard 宽度匹配: OCTAVE_LABEL_WIDTH + KEYBOARD_WIDTH = 80)
+        # 高度与 TimelineWidget.HEIGHT 同步
+        self._corner = QWidget()
+        self._corner.setFixedSize(80, TimelineWidget.HEIGHT)
+        self._corner.setStyleSheet("background-color: #282828;")
+        timeline_row.addWidget(self._corner)
 
         self.timeline = TimelineWidget()
         timeline_row.addWidget(self.timeline)
@@ -125,18 +146,46 @@ class EditorWindow(QMainWindow):
 
         toolbar.addSeparator()
 
-        # 缩放
-        toolbar.addWidget(QLabel(" Zoom: "))
+        # 水平缩放 (X)
+        toolbar.addWidget(QLabel(" Zoom X: "))
         self.zoom_slider = QSlider(Qt.Orientation.Horizontal)
         self.zoom_slider.setRange(20, 300)
         self.zoom_slider.setValue(100)
-        self.zoom_slider.setFixedWidth(120)
+        self.zoom_slider.setFixedWidth(100)
         toolbar.addWidget(self.zoom_slider)
+
+        # 垂直缩放 (Y) - 行高
+        toolbar.addWidget(QLabel(" Zoom Y: "))
+        self.zoom_y_slider = QSlider(Qt.Orientation.Horizontal)
+        self.zoom_y_slider.setRange(6, 30)
+        self.zoom_y_slider.setValue(12)  # 默认 12px
+        self.zoom_y_slider.setFixedWidth(80)
+        toolbar.addWidget(self.zoom_y_slider)
 
         # 时间显示
         toolbar.addWidget(QLabel("  "))
         self.lbl_time = QLabel("0:00.0 / 0:00.0")
         toolbar.addWidget(self.lbl_time)
+
+        toolbar.addSeparator()
+
+        # 量化分辨率选择
+        toolbar.addWidget(QLabel(" Quantize: "))
+        self.cmb_quantize = QComboBox()
+        self.cmb_quantize.addItems(["1/4", "1/8", "1/16", "1/32"])
+        self.cmb_quantize.setCurrentText("1/8")  # 默认 1/8
+        self.cmb_quantize.setFixedWidth(60)
+        toolbar.addWidget(self.cmb_quantize)
+
+        toolbar.addSeparator()
+
+        # BPM 控制
+        toolbar.addWidget(QLabel(" BPM: "))
+        self.sp_bpm = QSpinBox()
+        self.sp_bpm.setRange(20, 300)
+        self.sp_bpm.setValue(120)  # 默认 120 BPM
+        self.sp_bpm.setFixedWidth(60)
+        toolbar.addWidget(self.sp_bpm)
 
         toolbar.addSeparator()
 
@@ -157,9 +206,13 @@ class EditorWindow(QMainWindow):
         self.act_stop.triggered.connect(self.on_stop)
 
         self.zoom_slider.valueChanged.connect(self.on_zoom_changed)
+        self.zoom_y_slider.valueChanged.connect(self._on_zoom_y_changed)
         self.playback_timer.timeout.connect(self._update_playback)
         self.timeline.sig_seek.connect(self.on_seek)
         self.cmb_edit_style.currentTextChanged.connect(self._on_edit_style_changed)
+        self.cmb_quantize.currentTextChanged.connect(self._on_quantize_changed)
+        self.sp_bpm.valueChanged.connect(self._on_bpm_changed)
+        self.timeline.sig_bpm_changed.connect(self._on_timeline_bpm_changed)
 
         # 同步滚动
         self.piano_roll.horizontalScrollBar().valueChanged.connect(
@@ -172,12 +225,42 @@ class EditorWindow(QMainWindow):
         # 同步缩放 (Ctrl+滚轮 → 时间轴 + 滑条)
         self.piano_roll.sig_zoom_changed.connect(self._on_piano_roll_zoom)
 
-    def load_midi(self, path: str):
-        """加载 MIDI 文件"""
+        # 同步行高变化 (Ctrl+Up/Down / [ ] → 键盘)
+        self.piano_roll.sig_row_height_changed.connect(self._on_row_height_changed)
+
+        # 键盘拖拽选择音域 → 钢琴卷帘批量选择
+        self.keyboard.sig_range_selected.connect(self.piano_roll.select_by_pitch_range)
+
+    def load_midi(self, path: str, source_path: Optional[str] = None):
+        """加载 MIDI 文件
+
+        Args:
+            path: 要加载的 MIDI 文件路径
+            source_path: 原始文件路径 (用于索引)。若为 None，则尝试从 index.json 反查
+        """
         try:
             self.midi_file = mido.MidiFile(path)
             self.midi_path = path
+
+            # 确定原始文件路径
+            if source_path:
+                self._source_path = self._normalize_path(source_path)
+            else:
+                # 尝试从 index.json 反查
+                self._source_path = self._lookup_source_path(path)
+                if not self._source_path:
+                    # 没有找到，说明这是原始文件
+                    self._source_path = self._normalize_path(path)
+
             self.piano_roll.load_midi(self.midi_file)
+
+            # 解析 tempo 和 time signature 传递给时间轴
+            tempo_events, time_sig_events = self._extract_tempo_and_time_sig()
+            self.timeline.set_tempo_info(
+                self.midi_file.ticks_per_beat,
+                tempo_events,
+                time_sig_events
+            )
 
             # 更新时间轴
             self.timeline.set_duration(self.piano_roll.total_duration)
@@ -187,12 +270,106 @@ class EditorWindow(QMainWindow):
             filename = os.path.basename(path)
             self.setWindowTitle(f"MIDI Editor - {filename}")
 
+            # 更新键盘可用音域范围（基于 MIDI 文件中的实际音符）
+            self._update_keyboard_range()
+
+            # 更新 BPM spinbox（从 MIDI 文件读取）
+            midi_bpm = int(self._get_current_bpm())
+            self.sp_bpm.blockSignals(True)
+            self.sp_bpm.setValue(midi_bpm)
+            self.sp_bpm.blockSignals(False)
+
+            # 更新量化网格（使用新 MIDI 的 BPM）
+            self._on_quantize_changed(self.cmb_quantize.currentText())
+
             # 重置播放
             self.playback_time = 0.0
             self._update_time_label()
 
+            # 设置焦点到钢琴卷帘，确保快捷键立即生效
+            self.piano_roll.setFocus()
+
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load MIDI:\n{e}")
+
+    @staticmethod
+    def _normalize_path(path: str) -> str:
+        """规范化路径 (统一大小写和斜杠)
+
+        使用 Path.resolve() 解析符号链接和 .. 等，
+        然后用 os.path.normcase() 在 Windows 上统一大小写。
+        """
+        resolved = str(Path(path).resolve())
+        return os.path.normcase(resolved)
+
+    @staticmethod
+    def _count_midi_notes(midi_path: str) -> int:
+        """计算 MIDI 文件中的音符数量
+
+        Returns:
+            音符数量，失败时返回 0
+        """
+        try:
+            midi_file = mido.MidiFile(midi_path)
+            count = 0
+            for track in midi_file.tracks:
+                for msg in track:
+                    if msg.type == 'note_on' and msg.velocity > 0:
+                        count += 1
+            return count
+        except Exception:
+            return 0
+
+    def _lookup_source_path(self, saved_path: str) -> Optional[str]:
+        """从 index.json 反查 saved_path 对应的 source_path
+
+        返回规范化后的 source_path，以便后续比较时一致。
+        """
+        index_path = self._edits_dir / "index.json"
+        if not index_path.exists():
+            print(f"[EditorWindow] _lookup_source_path: index.json not found")
+            return None
+
+        try:
+            with open(index_path, "r", encoding="utf-8") as f:
+                index = json.load(f)
+
+            normalized_saved = self._normalize_path(saved_path)
+            for entry in index.get("files", []):
+                entry_saved = entry.get("saved_path", "")
+                if self._normalize_path(entry_saved) == normalized_saved:
+                    source = entry.get("source_path", "")
+                    # 返回规范化后的路径
+                    return self._normalize_path(source) if source else None
+
+            print(f"[EditorWindow] _lookup_source_path: no match for {saved_path}")
+        except Exception as e:
+            print(f"[EditorWindow] _lookup_source_path error: {e}")
+
+        return None
+
+    def _update_keyboard_range(self):
+        """根据当前 MIDI 文件更新键盘可用音域范围"""
+        if not self.piano_roll.notes:
+            # 无音符时使用默认范围
+            self.keyboard.set_available_range(*self.keyboard.NOTE_RANGE)
+            return
+
+        # 计算 MIDI 文件中的音符范围
+        notes = [item.note for item in self.piano_roll.notes]
+        note_min = min(notes)
+        note_max = max(notes)
+
+        # 扩展到完整八度边界 (C-B)
+        octave_min = (note_min // 12) * 12  # 向下取整到 C
+        octave_max = ((note_max // 12) + 1) * 12 - 1  # 向上取整到 B
+
+        # 限制在 88 键范围内
+        kbd_min, kbd_max = self.keyboard.NOTE_RANGE
+        range_low = max(octave_min, kbd_min)
+        range_high = min(octave_max, kbd_max)
+
+        self.keyboard.set_available_range(range_low, range_high)
 
     def on_open(self):
         """打开 MIDI 文件"""
@@ -205,14 +382,17 @@ class EditorWindow(QMainWindow):
 
     def _open_with_version_check(self, path: str):
         """打开文件，检查是否有已编辑版本（与主界面逻辑一致）"""
-        versions = self.get_edited_versions(path)
+        versions, stats = self.get_edited_versions(path, return_stats=True)
 
-        # 过滤 saved_path 不存在的版本
+        # 显示索引维护结果（迁移/清理）
+        self.show_index_maintenance_result(stats, parent=self)
+
+        # 过滤 saved_path 不存在的版本（理论上 auto_cleanup 已处理，但双重保险）
         versions = [v for v in versions if os.path.exists(v.get("saved_path", ""))]
 
         if not versions:
             # 无已编辑版本，直接打开原始文件
-            self.load_midi(path)
+            self.load_midi(path, source_path=path)
             return
 
         # 有已编辑版本（已按 last_modified 逆序排列，最新在前）
@@ -231,17 +411,19 @@ class EditorWindow(QMainWindow):
 
         if not ok:
             # 用户取消选择：自动加载最新保存版本
-            self.load_midi(versions[0].get("saved_path", path))
+            # 传递 source_path=path 确保后续保存时使用正确的原始路径
+            self.load_midi(versions[0].get("saved_path", path), source_path=path)
             return
 
         if choice == items[-1]:
             # 选择原始文件
-            self.load_midi(path)
+            self.load_midi(path, source_path=path)
         else:
             # 选择已编辑版本
             idx = items.index(choice)
             saved_path = versions[idx].get("saved_path", path)
-            self.load_midi(saved_path)
+            # 传递 source_path=path 确保后续保存时使用正确的原始路径
+            self.load_midi(saved_path, source_path=path)
 
     def on_save(self):
         """保存 (到默认路径)"""
@@ -253,6 +435,57 @@ class EditorWindow(QMainWindow):
     def _on_edit_style_changed(self, text: str):
         """编辑风格变化"""
         self.edit_style = text
+
+    def _on_quantize_changed(self, text: str):
+        """量化分辨率变化
+
+        Args:
+            text: 分辨率文本 ("1/4", "1/8", "1/16", "1/32")
+        """
+        # 获取当前 BPM (从 spinbox)
+        bpm = self.sp_bpm.value()
+
+        # 解析分辨率
+        resolution_map = {"1/4": 4, "1/8": 8, "1/16": 16, "1/32": 32}
+        subdivision = resolution_map.get(text, 8)
+
+        # 计算网格大小: (60 / bpm) * (4 / subdivision)
+        # 例如 @120BPM, 1/8 = 0.25s, 1/16 = 0.125s
+        grid_size = (60.0 / bpm) * (4.0 / subdivision)
+        self.piano_roll.set_quantize_grid_size(grid_size)
+
+    def _on_bpm_changed(self, value: int):
+        """BPM 变化 (来自 spinbox)
+
+        更新时间轴显示和量化网格大小
+        """
+        # 更新时间轴 BPM
+        self.timeline.set_bpm(value)
+
+        # 重新计算量化网格（使用新 BPM）
+        self._on_quantize_changed(self.cmb_quantize.currentText())
+
+    def _on_timeline_bpm_changed(self, bpm: int):
+        """BPM 变化 (来自时间轴右键菜单)
+
+        同步 spinbox 值和量化网格
+        """
+        # 更新 spinbox (阻止循环信号)
+        self.sp_bpm.blockSignals(True)
+        self.sp_bpm.setValue(bpm)
+        self.sp_bpm.blockSignals(False)
+
+        # 重新计算量化网格（使用新 BPM）
+        self._on_quantize_changed(self.cmb_quantize.currentText())
+
+    def _get_current_bpm(self) -> float:
+        """获取当前 BPM (从 MIDI 文件或默认 120)"""
+        if self.midi_file:
+            for track in self.midi_file.tracks:
+                for msg in track:
+                    if msg.type == "set_tempo":
+                        return mido.tempo2bpm(msg.tempo)
+        return 120.0
 
     def on_save_as(self):
         """另存为"""
@@ -289,21 +522,252 @@ class EditorWindow(QMainWindow):
         self._save_midi(str(save_path))
 
     def _save_midi(self, path: str):
-        """保存 MIDI 文件并更新索引"""
+        """保存 MIDI 文件并更新索引
+
+        从 piano_roll.notes 重建 MIDI 文件，而非直接保存原始文件。
+        这样才能保存用户的编辑（移动、删除、修改音符等）。
+        """
         try:
-            # TODO: 从 piano_roll 重建 MIDI (Phase 2)
-            # 目前直接保存原始文件
-            self.midi_file.save(path)
+            # 强制同步音符位置：确保拖拽后的 start_time/note 已写回数据模型
+            self.piano_roll._sync_notes_from_graphics()
+
+            # 从 piano_roll.notes 重建 MIDI
+            new_midi = self._rebuild_midi_from_notes()
+            new_midi.save(path)
 
             # 更新索引
             self._update_index(path)
 
-            QMessageBox.information(self, "Saved", f"Saved to:\n{path}")
+            # 提示保存成功（说明简化单轨）
+            QMessageBox.information(
+                self, "Saved",
+                f"Saved to:\n{path}\n\n"
+                "(Exported as single track with original tempo and channel preserved)"
+            )
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save:\n{e}")
 
+    def _rebuild_midi_from_notes(self) -> mido.MidiFile:
+        """从 piano_roll.notes 重建 MIDI 文件
+
+        保留原始 MIDI 的 tempo 事件，使用原始 channel。
+        当前为简化单轨输出（多轨合并为单轨）。
+
+        Returns:
+            mido.MidiFile: 重建的 MIDI 文件
+        """
+        # 使用原始 ticks_per_beat，默认 480
+        ticks_per_beat = 480
+        if self.midi_file:
+            ticks_per_beat = self.midi_file.ticks_per_beat
+
+        # 从原始 MIDI 提取 tempo 事件
+        tempo_events = self._extract_tempo_events()
+        # 获取第一个 tempo 用于时间转换（如果没有则默认 120 BPM）
+        first_tempo = tempo_events[0][1] if tempo_events else 500000
+
+        new_midi = mido.MidiFile(ticks_per_beat=ticks_per_beat)
+
+        # 创建单轨道（简化输出，保留 channel 信息）
+        track = mido.MidiTrack()
+        new_midi.tracks.append(track)
+
+        # 添加 tempo 事件（保留原始 tempo）
+        for abs_tick, tempo in tempo_events:
+            # tempo 事件会在后续按时间排序时正确插入
+            pass  # 先收集音符，再统一排序
+
+        # 收集所有事件（tempo + 音符）
+        events = []
+
+        # 添加 tempo 事件
+        for abs_tick, tempo in tempo_events:
+            events.append((abs_tick, 'set_tempo', tempo, 0, 0))  # (tick, type, tempo, 0, 0)
+
+        # 收集所有音符事件
+        for note_item in self.piano_roll.notes:
+            # 考虑拖拽偏移：pos() 返回相对于原始位置的偏移
+            pos = note_item.pos()
+            offset_time = pos.x() / self.piano_roll.pixels_per_second
+            offset_note = -int(round(pos.y() / self.piano_roll.pixels_per_note))
+
+            # 计算最终的时间和音高
+            start_sec = note_item.start_time + offset_time
+            end_sec = start_sec + note_item.duration
+            note_pitch = note_item.note + offset_note
+
+            # 确保有效范围
+            start_sec = max(0.0, start_sec)
+            note_pitch = max(0, min(127, note_pitch))
+            velocity = max(1, min(127, note_item.velocity))
+            channel = max(0, min(15, getattr(note_item, 'channel', 0)))
+
+            # 使用 tempo map 转换时间到 ticks
+            start_tick = self._second_to_tick(start_sec, tempo_events, ticks_per_beat)
+            end_tick = self._second_to_tick(end_sec, tempo_events, ticks_per_beat)
+
+            events.append((start_tick, 'note_on', note_pitch, velocity, channel))
+            events.append((end_tick, 'note_off', note_pitch, 0, channel))
+
+        # 按时间排序：tempo 优先，然后 note_off 优先于 note_on
+        def sort_key(e):
+            tick, msg_type = e[0], e[1]
+            if msg_type == 'set_tempo':
+                return (tick, 0)  # tempo 最先
+            elif msg_type == 'note_off':
+                return (tick, 1)  # note_off 次之
+            else:
+                return (tick, 2)  # note_on 最后
+
+        events.sort(key=sort_key)
+
+        # 转换为 delta time 并添加到轨道
+        prev_tick = 0
+        for event in events:
+            abs_tick = event[0]
+            msg_type = event[1]
+            delta = abs_tick - prev_tick
+
+            if msg_type == 'set_tempo':
+                tempo = event[2]
+                track.append(mido.MetaMessage('set_tempo', tempo=tempo, time=delta))
+            else:
+                note_pitch = event[2]
+                velocity = event[3]
+                channel = event[4]
+                track.append(mido.Message(msg_type, note=note_pitch, velocity=velocity,
+                                          channel=channel, time=delta))
+            prev_tick = abs_tick
+
+        # 添加结束标记
+        track.append(mido.MetaMessage('end_of_track', time=0))
+
+        return new_midi
+
+    def _extract_tempo_events(self) -> list:
+        """从原始 MIDI 提取所有 tempo 事件
+
+        Returns:
+            list: [(abs_tick, tempo), ...] 按时间排序
+        """
+        tempo_events = []
+
+        if self.midi_file:
+            for track in self.midi_file.tracks:
+                abs_tick = 0
+                for msg in track:
+                    abs_tick += msg.time
+                    if msg.type == 'set_tempo':
+                        tempo_events.append((abs_tick, msg.tempo))
+
+        # 按 tick 排序
+        tempo_events.sort(key=lambda x: x[0])
+
+        # 如果没有 tempo 事件，添加默认 120 BPM
+        if not tempo_events:
+            tempo_events = [(0, 500000)]
+        elif tempo_events[0][0] > 0:
+            # 确保 tick 0 有 tempo
+            tempo_events.insert(0, (0, 500000))
+
+        return tempo_events
+
+    def _extract_tempo_and_time_sig(self) -> tuple:
+        """从原始 MIDI 提取 tempo 和 time signature 事件
+
+        Returns:
+            tuple: (tempo_events, time_sig_events)
+                - tempo_events: [(abs_tick, tempo_microseconds), ...]
+                - time_sig_events: [(abs_tick, numerator, denominator), ...]
+        """
+        tempo_events = []
+        time_sig_events = []
+
+        if self.midi_file:
+            for track in self.midi_file.tracks:
+                abs_tick = 0
+                for msg in track:
+                    abs_tick += msg.time
+                    if msg.type == 'set_tempo':
+                        tempo_events.append((abs_tick, msg.tempo))
+                    elif msg.type == 'time_signature':
+                        # mido time_signature: numerator, denominator
+                        # mido 已将 denominator 转为实际值 (4, 8 等)
+                        num = msg.numerator
+                        denom = msg.denominator
+                        time_sig_events.append((abs_tick, num, denom))
+
+        # 按 tick 排序
+        tempo_events.sort(key=lambda x: x[0])
+        time_sig_events.sort(key=lambda x: x[0])
+
+        # 确保有默认值
+        if not tempo_events:
+            tempo_events = [(0, 500000)]  # 120 BPM
+        elif tempo_events[0][0] > 0:
+            tempo_events.insert(0, (0, 500000))
+
+        if not time_sig_events:
+            time_sig_events = [(0, 4, 4)]  # 4/4 拍
+        elif time_sig_events[0][0] > 0:
+            time_sig_events.insert(0, (0, 4, 4))
+
+        return tempo_events, time_sig_events
+
+    def _second_to_tick(self, time_sec: float, tempo_events: list, ticks_per_beat: int) -> int:
+        """使用 tempo map 将秒转换为 tick
+
+        Args:
+            time_sec: 时间（秒）
+            tempo_events: [(abs_tick, tempo), ...] tempo 事件列表
+            ticks_per_beat: MIDI ticks per beat
+
+        Returns:
+            int: 对应的 tick 值
+        """
+        if time_sec <= 0:
+            return 0
+
+        # 构建 tempo map: [(tick, tempo, cumulative_seconds), ...]
+        tempo_map = []
+        cumulative_sec = 0.0
+        prev_tick = 0
+        prev_tempo = tempo_events[0][1]
+
+        for tick, tempo in tempo_events:
+            if tick > prev_tick:
+                # 计算这段的时间
+                segment_sec = mido.tick2second(tick - prev_tick, ticks_per_beat, prev_tempo)
+                cumulative_sec += segment_sec
+            tempo_map.append((tick, tempo, cumulative_sec))
+            prev_tick = tick
+            prev_tempo = tempo
+
+        # 找到 time_sec 落在哪个 tempo 段
+        current_tick = 0
+        current_sec = 0.0
+        current_tempo = tempo_events[0][1]
+
+        for i, (tick, tempo, cum_sec) in enumerate(tempo_map):
+            if cum_sec >= time_sec:
+                break
+            current_tick = tick
+            current_sec = cum_sec
+            current_tempo = tempo
+
+        # 计算剩余时间对应的 ticks
+        remaining_sec = time_sec - current_sec
+        remaining_ticks = int(mido.second2tick(remaining_sec, ticks_per_beat, current_tempo))
+
+        return current_tick + remaining_ticks
+
     def _update_index(self, saved_path: str):
-        """更新编辑文件索引"""
+        """更新编辑文件索引
+
+        写入元数据用于后续回退匹配验证:
+        - source_file_size: 原始文件大小 (bytes)
+        - source_note_count: 原始文件音符数量
+        """
         index_path = self._edits_dir / "index.json"
 
         # 读取现有索引
@@ -313,19 +777,37 @@ class EditorWindow(QMainWindow):
         else:
             index = {"files": []}
 
-        # 添加/更新记录
+        # 计算原始文件的元数据（基于 source_path，不是当前编辑状态）
+        source_path = self._source_path or self._normalize_path(self.midi_path)
+        source_file_size = 0
+        source_note_count = 0
+
+        try:
+            # 从原始文件获取元数据
+            resolved_source = Path(source_path).resolve()
+            if resolved_source.exists():
+                source_file_size = resolved_source.stat().st_size
+                source_note_count = self._count_midi_notes(str(resolved_source))
+        except Exception:
+            pass
+
+        # 添加/更新记录 - 使用 _source_path 而非 midi_path
         entry = {
-            "source_path": self.midi_path,
-            "saved_path": str(saved_path),
+            "source_path": source_path,
+            "saved_path": self._normalize_path(saved_path),
             "display_name": Path(saved_path).stem,
             "edit_style": self.edit_style,
-            "last_modified": datetime.now().isoformat()
+            "last_modified": datetime.now().isoformat(),
+            # 元数据用于回退匹配验证
+            "source_file_size": source_file_size,
+            "source_note_count": source_note_count,
         }
 
-        # 更新或追加
+        # 更新或追加 (使用规范化路径比较)
+        normalized_saved = self._normalize_path(saved_path)
         found = False
         for i, e in enumerate(index["files"]):
-            if e.get("saved_path") == str(saved_path):
+            if self._normalize_path(e.get("saved_path", "")) == normalized_saved:
                 index["files"][i] = entry
                 found = True
                 break
@@ -341,9 +823,31 @@ class EditorWindow(QMainWindow):
         if self.is_playing:
             self.is_playing = False
             self.playback_timer.stop()
+            self._release_all_notes()
             self.act_play.setText("Play")
         else:
+            # 懒加载 FluidSynth - 失败时阻止播放
+            if not self._init_sound():
+                if not HAS_FLUIDSYNTH:
+                    QMessageBox.warning(
+                        self, "Audio Not Available",
+                        "pyfluidsynth is not installed.\n"
+                        "Please install it with: pip install pyfluidsynth\n\n"
+                        "Playback is disabled."
+                    )
+                else:
+                    QMessageBox.warning(
+                        self, "Audio Error",
+                        "FluidSynth failed to initialize.\n"
+                        "Possible causes:\n"
+                        "- No audio driver available\n"
+                        "- SoundFont file not found\n\n"
+                        "Playback is disabled."
+                    )
+                return  # 阻止进入播放状态
             self.is_playing = True
+            # 从中间位置开始播放时，同步当前时刻的音符状态
+            self._sync_notes_at_time(self.playback_time)
             self.playback_timer.start()
             self.act_play.setText("Pause")
 
@@ -351,6 +855,7 @@ class EditorWindow(QMainWindow):
         """停止播放"""
         self.is_playing = False
         self.playback_timer.stop()
+        self._release_all_notes()
         self.playback_time = 0.0
         self.piano_roll.set_playhead_position(0.0)
         self.timeline.set_playhead(0.0)
@@ -363,6 +868,57 @@ class EditorWindow(QMainWindow):
         self.piano_roll.set_playhead_position(time_sec)
         self.timeline.set_playhead(time_sec)
         self._update_time_label()
+        # 同步音符发声状态
+        if self.is_playing:
+            self._sync_notes_at_time(time_sec)
+
+    def _sync_notes_at_time(self, time_sec: float):
+        """同步指定时间点的音符发声状态
+
+        计数差异补偿：正确处理重叠音符
+        - new > old: 补发 (new-old) 次 noteon
+        - new < old: 补发 (old-new) 次 noteoff
+        - new == 0:  完全释放
+        """
+        if self._fs is None:
+            self._active_notes.clear()
+            return
+
+        # 计算在 time_sec 时刻应该发声的音符及其计数
+        new_active: Dict[int, int] = {}
+        for note_item in self.piano_roll.notes:
+            note = note_item.note
+            start = note_item.start_time
+            end = start + note_item.duration
+            if start <= time_sec < end:
+                new_active[note] = new_active.get(note, 0) + 1
+
+        # 收集所有涉及的音符
+        all_notes = set(self._active_notes.keys()) | set(new_active.keys())
+
+        for note in all_notes:
+            old_count = self._active_notes.get(note, 0)
+            new_count = new_active.get(note, 0)
+
+            if new_count > old_count:
+                # 需要补发 noteon
+                # 获取该音高的 velocity (取第一个匹配音符)
+                velocity = 100
+                for note_item in self.piano_roll.notes:
+                    if note_item.note == note:
+                        start = note_item.start_time
+                        end = start + note_item.duration
+                        if start <= time_sec < end:
+                            velocity = note_item.velocity
+                            break
+                for _ in range(new_count - old_count):
+                    self._fs.noteon(self._chan, note, velocity)
+            elif new_count < old_count:
+                # 需要补发 noteoff
+                for _ in range(old_count - new_count):
+                    self._fs.noteoff(self._chan, note)
+
+        self._active_notes = new_active
 
     def on_zoom_changed(self, value: int):
         """缩放变化 (来自滑条)"""
@@ -379,17 +935,57 @@ class EditorWindow(QMainWindow):
         self.zoom_slider.setValue(int(pixels_per_second))
         self.zoom_slider.blockSignals(False)
 
+    def _on_row_height_changed(self, pixels_per_note: float):
+        """行高变化 (来自 Ctrl+Up/Down 或 [ ])"""
+        # 同步键盘高度
+        self.keyboard.set_scale(pixels_per_note)
+        # 同步 Y 滑条 (避免循环触发)
+        self.zoom_y_slider.blockSignals(True)
+        self.zoom_y_slider.setValue(int(pixels_per_note))
+        self.zoom_y_slider.blockSignals(False)
+
+    def _on_zoom_y_changed(self, value: int):
+        """Y 轴缩放滑条变化"""
+        # 调用 piano_roll 的行高调整 (会触发 sig_row_height_changed → 同步键盘)
+        delta = value - self.piano_roll.pixels_per_note
+        if abs(delta) > 0.1:
+            self.piano_roll._adjust_row_height(delta)
+
     def _update_playback(self):
         """更新播放位置"""
         if not self.is_playing:
             return
 
+        prev_time = self.playback_time
         self.playback_time += 0.016  # ~16ms
 
         # 检查是否结束
         if self.playback_time >= self.piano_roll.total_duration:
             self.on_stop()
             return
+
+        # 触发音符发声
+        # 注：每个音符事件都发送 noteon/noteoff，即使同音高重叠。
+        # FluidSynth 对同 channel+note 的多次 noteon 会产生叠加效果（重触发）。
+        # 引用计数用于跟踪活跃数量，便于 seek 时同步状态。
+        if self._fs is not None:
+            for note_item in self.piano_roll.notes:
+                note = note_item.note
+                start = note_item.start_time
+                end = start + note_item.duration
+
+                # 进入音符区间 → note on (每次都触发，引用计数 +1)
+                if prev_time < start <= self.playback_time:
+                    self._fs.noteon(self._chan, note, note_item.velocity)
+                    self._active_notes[note] = self._active_notes.get(note, 0) + 1
+
+                # 离开音符区间 → note off (每次都触发，引用计数 -1)
+                if prev_time < end <= self.playback_time:
+                    self._fs.noteoff(self._chan, note)
+                    if note in self._active_notes:
+                        self._active_notes[note] -= 1
+                        if self._active_notes[note] <= 0:
+                            del self._active_notes[note]
 
         self.piano_roll.set_playhead_position(self.playback_time)
         self.timeline.set_playhead(self.playback_time)
@@ -407,27 +1003,324 @@ class EditorWindow(QMainWindow):
 
         self.lbl_time.setText(f"{fmt(current)} / {fmt(total)}")
 
+    # ─────────────────────────────────────────────────────────────────────────
+    # FluidSynth 相关方法
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _init_sound(self) -> bool:
+        """初始化 FluidSynth (懒加载)"""
+        if self._fs is not None:
+            return True
+
+        if not HAS_FLUIDSYNTH:
+            return False
+
+        try:
+            fs = fluidsynth.Synth(gain=0.8, samplerate=44100)
+            fs.setting('audio.period-size', 1024)
+            fs.setting('audio.periods', 4)
+
+            # 尝试不同的音频驱动
+            if sys.platform == 'win32':
+                drivers = ['dsound', 'wasapi', 'portaudio']
+            else:
+                drivers = ['pulseaudio', 'alsa', 'coreaudio', 'portaudio']
+
+            started = False
+            for driver in drivers:
+                try:
+                    fs.start(driver=driver)
+                    started = True
+                    break
+                except Exception:
+                    continue
+
+            if not started:
+                fs.delete()
+                return False
+
+            # 加载 SoundFont
+            sf_paths = [
+                self._app_root / "assets" / "FluidR3_GM.sf2",
+                self._app_root / "FluidR3_GM.sf2",
+                Path("C:/soundfonts/FluidR3_GM.sf2"),
+            ]
+
+            sfid = -1
+            for sf_path in sf_paths:
+                if sf_path.exists():
+                    sfid = fs.sfload(str(sf_path))
+                    if sfid >= 0:
+                        break
+
+            if sfid < 0:
+                fs.delete()
+                return False
+
+            fs.program_select(self._chan, sfid, 0, 0)  # Piano
+
+            self._fs = fs
+            self._sfid = sfid
+            return True
+
+        except Exception:
+            return False
+
+    def _release_all_notes(self):
+        """释放所有正在发声的音符
+
+        按计数发送 noteoff：每个重叠音符都需要单独释放
+        """
+        if self._fs is None:
+            self._active_notes.clear()
+            return
+        for note, count in list(self._active_notes.items()):
+            for _ in range(count):
+                self._fs.noteoff(self._chan, note)
+        self._active_notes.clear()
+
+    def closeEvent(self, event):
+        """窗口关闭时清理资源"""
+        self._release_all_notes()
+        if self._fs is not None:
+            self._fs.delete()
+            self._fs = None
+        super().closeEvent(event)
+
     @classmethod
-    def get_edited_versions(cls, source_path: str) -> list:
-        """获取指定 MIDI 的已编辑版本列表（按 last_modified 逆序）"""
+    def get_edited_versions(
+        cls,
+        source_path: str,
+        auto_cleanup: bool = True,
+        return_stats: bool = False
+    ):
+        """获取指定 MIDI 的已编辑版本列表（按 last_modified 逆序）
+
+        使用规范化路径比较，避免大小写/斜杠差异导致匹配失败。
+        如果正向匹配为空，尝试多重回退策略进行反向匹配并自动迁移索引。
+
+        回退策略（按优先级）:
+        1. source_path 旧格式规范化后匹配（处理斜杠/大小写差异）
+        2. 文件名 + edit_style + 元数据验证（file_size + note_count）
+        3. 文件名前缀 + 有效 style 验证（兜底）
+
+        Args:
+            source_path: 原始 MIDI 文件路径
+            auto_cleanup: 是否自动清理无效条目（saved_path 不存在）
+            return_stats: 是否返回统计信息（用于 GUI 提示）
+
+        Returns:
+            如果 return_stats=False: list - 版本列表
+            如果 return_stats=True: tuple(list, dict) - (版本列表, 统计信息)
+                统计信息格式: {"migrated": int, "cleaned": int, "cleaned_paths": list}
+        """
+        stats = {"migrated": 0, "cleaned": 0, "cleaned_paths": []}
+
         # 计算 edits_dir：基于此文件所在的 LyreAutoPlayer 根目录
         app_root = Path(__file__).parent.parent.parent
         edits_dir = app_root / "midi-change"
         index_path = edits_dir / "index.json"
 
         if not index_path.exists():
-            return []
+            return ([], stats) if return_stats else []
 
         with open(index_path, "r", encoding="utf-8") as f:
             index = json.load(f)
 
-        # 过滤出当前源文件的版本
-        versions = [
-            e for e in index.get("files", [])
-            if e.get("source_path") == source_path
-        ]
+        # 规范化输入路径 (使用 _normalize_path 统一格式)
+        normalized_source = cls._normalize_path(source_path)
+        source_stem = Path(source_path).stem.lower()  # 文件名（无扩展名），小写
+
+        # 获取源文件元数据用于回退验证
+        source_file_size = 0
+        source_note_count = 0
+        try:
+            resolved_source = Path(source_path).resolve()
+            if resolved_source.exists():
+                source_file_size = resolved_source.stat().st_size
+                source_note_count = cls._count_midi_notes(str(resolved_source))
+        except Exception:
+            pass
+
+        # 过滤出当前源文件的版本 (使用规范化路径比较)
+        versions = []
+        needs_migration = False
+        invalid_entries = []  # 记录无效条目索引
+
+        for idx, e in enumerate(index.get("files", [])):
+            entry_source = e.get("source_path", "")
+            saved_path = e.get("saved_path", "")
+
+            # 检查 saved_path 是否存在
+            if saved_path and not os.path.exists(saved_path):
+                invalid_entries.append(idx)
+                continue
+
+            try:
+                entry_normalized = cls._normalize_path(entry_source)
+                if entry_normalized == normalized_source:
+                    versions.append(e)
+            except Exception:
+                # 路径无效，跳过
+                continue
+
+        # 如果正向匹配为空，尝试多重回退策略
+        if not versions:
+            # 回退策略 1: 文件名 + edit_style + 元数据验证
+            # saved_path 格式: "{source_stem}_{style}.mid"
+            for e in index.get("files", []):
+                saved_path = e.get("saved_path", "")
+                edit_style = e.get("edit_style", "")
+                if not saved_path or not edit_style:
+                    continue
+
+                # 检查文件是否存在
+                if not os.path.exists(saved_path):
+                    continue
+
+                saved_stem = Path(saved_path).stem.lower()
+                expected_stem = f"{source_stem}_{edit_style}".lower()
+
+                if saved_stem == expected_stem:
+                    # 元数据验证：file_size + note_count（双重校验）
+                    if not cls._validate_metadata(e, source_file_size, source_note_count, saved_stem):
+                        continue
+
+                    # 精确匹配成功，迁移
+                    e["source_path"] = cls._normalize_path(source_path)
+                    versions.append(e)
+                    needs_migration = True
+
+            # 回退策略 2: 文件名前缀 + 有效 style 验证（兜底）
+            # 仅当策略 1 没有找到任何匹配时才使用
+            if not versions:
+                for e in index.get("files", []):
+                    saved_path = e.get("saved_path", "")
+                    if not saved_path:
+                        continue
+
+                    if not os.path.exists(saved_path):
+                        continue
+
+                    saved_stem = Path(saved_path).stem.lower()
+
+                    # 检查 saved_stem 是否以 source_stem 开头（后跟 _style）
+                    if saved_stem.startswith(source_stem + "_"):
+                        # 额外验证：saved_stem 去掉前缀后应该是有效的 edit_style
+                        suffix = saved_stem[len(source_stem) + 1:]
+                        if suffix in [s.lower() for s in cls.EDIT_STYLES]:
+                            # 元数据验证
+                            if not cls._validate_metadata(e, source_file_size, source_note_count, saved_stem):
+                                continue
+
+                            e["source_path"] = cls._normalize_path(source_path)
+                            versions.append(e)
+                            needs_migration = True
+
+        # 自动清理无效条目（saved_path 不存在）
+        index_modified = needs_migration
+        if auto_cleanup and invalid_entries:
+            # 从后往前删除，避免索引偏移
+            for idx in sorted(invalid_entries, reverse=True):
+                removed = index["files"].pop(idx)
+                removed_path = removed.get('saved_path', '?')
+                stats["cleaned_paths"].append(removed_path)
+                print(f"[EditorWindow] Removed invalid entry: {removed_path}")
+            stats["cleaned"] = len(invalid_entries)
+            index_modified = True
+
+        # 记录迁移数量
+        if needs_migration:
+            stats["migrated"] = len(versions)
+
+        # 如果有修改，写回 index.json
+        if index_modified:
+            try:
+                with open(index_path, "w", encoding="utf-8") as f:
+                    json.dump(index, f, indent=2, ensure_ascii=False)
+                if needs_migration:
+                    print(f"[EditorWindow] Index migrated: {len(versions)} entries updated")
+                if invalid_entries:
+                    print(f"[EditorWindow] Index cleaned: {len(invalid_entries)} invalid entries removed")
+            except Exception as ex:
+                print(f"[EditorWindow] Index update failed: {ex}")
 
         # 按 last_modified 逆序排序（最新在前）
         versions.sort(key=lambda x: x.get("last_modified", ""), reverse=True)
 
-        return versions
+        return (versions, stats) if return_stats else versions
+
+    @classmethod
+    def _validate_metadata(
+        cls,
+        entry: dict,
+        source_file_size: int,
+        source_note_count: int,
+        saved_stem: str
+    ) -> bool:
+        """验证索引条目的元数据是否匹配源文件
+
+        同时检查 file_size 和 note_count，任一不匹配则拒绝。
+        允许 10% 误差（考虑到文件可能被轻微修改）。
+
+        Returns:
+            True: 元数据匹配或无法验证（无元数据）
+            False: 元数据明确不匹配
+        """
+        entry_file_size = entry.get("source_file_size", 0)
+        entry_note_count = entry.get("source_note_count", 0)
+
+        # 验证 file_size
+        if entry_file_size > 0 and source_file_size > 0:
+            size_diff = abs(entry_file_size - source_file_size)
+            if size_diff > source_file_size * 0.1:
+                print(f"[EditorWindow] Metadata mismatch: {saved_stem} "
+                      f"(size {entry_file_size} vs {source_file_size})")
+                return False
+
+        # 验证 note_count
+        if entry_note_count > 0 and source_note_count > 0:
+            count_diff = abs(entry_note_count - source_note_count)
+            # 允许 10% 误差，但至少允许 5 个音符的差异（小文件容忍度）
+            tolerance = max(source_note_count * 0.1, 5)
+            if count_diff > tolerance:
+                print(f"[EditorWindow] Metadata mismatch: {saved_stem} "
+                      f"(note_count {entry_note_count} vs {source_note_count})")
+                return False
+
+        return True
+
+    @classmethod
+    def show_index_maintenance_result(cls, stats: dict, parent=None):
+        """显示索引维护结果的 GUI 提示
+
+        Args:
+            stats: get_edited_versions 返回的统计信息
+            parent: 父窗口（用于 QMessageBox）
+        """
+        migrated = stats.get("migrated", 0)
+        cleaned = stats.get("cleaned", 0)
+
+        if migrated == 0 and cleaned == 0:
+            return  # 无需提示
+
+        lines = []
+        if migrated > 0:
+            lines.append(f"• Migrated {migrated} index entries to new format")
+        if cleaned > 0:
+            lines.append(f"• Removed {cleaned} invalid entries (files no longer exist)")
+            # 显示被清理的路径（最多 5 个）
+            cleaned_paths = stats.get("cleaned_paths", [])
+            if cleaned_paths:
+                lines.append("")
+                lines.append("Removed entries:")
+                for p in cleaned_paths[:5]:
+                    lines.append(f"  - {Path(p).name}")
+                if len(cleaned_paths) > 5:
+                    lines.append(f"  ... and {len(cleaned_paths) - 5} more")
+
+        QMessageBox.information(
+            parent,
+            "Index Maintenance",
+            "\n".join(lines)
+        )

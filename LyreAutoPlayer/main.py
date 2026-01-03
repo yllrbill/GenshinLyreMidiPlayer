@@ -823,7 +823,10 @@ class MainWindow(
 
     def _select_version(self, original_path: str) -> str:
         """选择版本：有历史版本时弹窗选择，取消时返回最新版本，无历史时返回原始路径"""
-        versions = EditorWindow.get_edited_versions(original_path)
+        versions, stats = EditorWindow.get_edited_versions(original_path, return_stats=True)
+
+        # 显示索引维护结果（迁移/清理）
+        EditorWindow.show_index_maintenance_result(stats, parent=self)
 
         if not versions:
             # 无已编辑版本，返回原始文件
