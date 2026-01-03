@@ -65,6 +65,25 @@ def resizeEvent(event)  # 窗口大小变化时重绘
 | Path Handling 文档 | STATE.md Known Issues P2 风险降级; handoff.md 多重回退策略; Search Constraints 章节 |
 | 新功能 | Audio checkbox 静音预览; HumanizeCommand (H/Shift+H/Ctrl+H); floating.py 简化版 UI |
 
+## Session 3 Changes (2026-01-04 Late)
+
+| Category | Changes |
+|----------|---------|
+| Large File Removal | FluidR3_GM.sf2 (141MB) 从 git 历史移除 (filter-branch) |
+| WSL Fix | core.autocrlf 配置同步, 284→2 虚假变更消除 |
+| .gitignore | 修正 .claude/private/ 规则 + 添加 sf2 排除 |
+| SoundFont Path | settings.json 改用 C:\soundfonts\FluidR3_GM.sf2 |
+| Audio Verification | GUI 已启动, 待用户确认音频预览 |
+
+## Git Commits (Session 3)
+```
+80f31e1 chore: update midi index and add new midi file
+bc83ada chore: update soundfont path
+9ece6c7 fix: correct .gitignore rules for private dir and sf2 file
+e41d2d6 feat(editor): complete MIDI editor Phase 1-3 implementation
+```
+
 ## Dependencies
 - mido (MIDI解析)
 - PyQt6 (GUI)
+- fluidsynth (音频预览, 需 C:\soundfonts\FluidR3_GM.sf2)

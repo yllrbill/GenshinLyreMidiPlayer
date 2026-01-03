@@ -1,419 +1,51 @@
-diff --git a/LyreAutoPlayer/ui/editor/editor_window.py b/LyreAutoPlayer/ui/editor/editor_window.py
-index 10cfc72..673567a 100644
---- a/LyreAutoPlayer/ui/editor/editor_window.py
-+++ b/LyreAutoPlayer/ui/editor/editor_window.py
-@@ -605,10 +605,10 @@ class EditorWindow(QMainWindow):
-                     if msg.type == 'set_tempo':
-                         tempo_events.append((abs_tick, msg.tempo))
-                     elif msg.type == 'time_signature':
--                        # mido time_signature: numerator, denominator (as power of 2)
--                        # denominator 在 MIDI 中是 2^n 的 n，需要转换
-+                        # mido time_signature: numerator, denominator
-+                        # mido 已将 denominator 转为实际值 (4, 8 等)
-                         num = msg.numerator
--                        denom = 2 ** msg.denominator
-+                        denom = msg.denominator
-                         time_sig_events.append((abs_tick, num, denom))
+diff --git a/.gitignore b/.gitignore
+index cee3cad..8191698 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -373,4 +373,7 @@ private/tasks/*
  
-         # 按 tick 排序
-diff --git a/LyreAutoPlayer/ui/editor/note_item.py b/LyreAutoPlayer/ui/editor/note_item.py
-index 049aad9..a71cd70 100644
---- a/LyreAutoPlayer/ui/editor/note_item.py
-+++ b/LyreAutoPlayer/ui/editor/note_item.py
-@@ -4,7 +4,7 @@ NoteItem - 单个音符的图形表示
- Phase 2: 支持选择、拖拽移动
- """
- from PyQt6.QtWidgets import QGraphicsRectItem, QGraphicsItem
--from PyQt6.QtGui import QBrush, QPen, QColor
-+from PyQt6.QtGui import QBrush, QPen, QColor, QPainter, QFont, QFontMetrics
- from PyQt6.QtCore import Qt, QPointF
- 
- 
-@@ -126,5 +126,44 @@ class NoteItem(QGraphicsRectItem):
-         h = pixels_per_note - 1  # 留 1px 间隙
-         self.setRect(x, y, w, h)
- 
-+    def paint(self, painter: QPainter, option, widget=None):
-+        """自定义绘制: 矩形 + 居中 '音符' 文字 (仅蓝色普通状态)"""
-+        # 先绘制默认矩形
-+        super().paint(painter, option, widget)
+ # Claude Code runtime state
+ .claude/state/
+-.claude/private/LyreAutoPlayer/FluidR3_GM.sf2
++.claude/private/
 +
-+        # 仅在普通蓝色状态下绘制 "音符" 标签
-+        if self.selected or self.out_of_range:
-+            return
-+
-+        rect = self.rect()
-+        w, h = rect.width(), rect.height()
-+
-+        # 字号自适应: 基于高度和宽度估算
-+        # 中文 "音符" 两个字，每个字大约是 font_size 宽度
-+        # 确保文字不超出矩形
-+        font_size_by_height = int(h * 0.7)
-+        font_size_by_width = int(w / 2.5)  # 两个中文字约占 2.5 * font_size
-+        font_size = min(font_size_by_height, font_size_by_width)
-+
-+        # 过小则不绘制 (避免挤压)
-+        if font_size < 6:
-+            return
-+
-+        # 设置字体和颜色
-+        font = QFont("Microsoft YaHei", font_size)
-+        painter.setFont(font)
-+        painter.setPen(QColor(255, 255, 255))  # 白色文字
-+
-+        # 居中绘制
-+        text = "音符"
-+        fm = QFontMetrics(font)
-+        text_width = fm.horizontalAdvance(text)
-+        text_height = fm.height()
-+
-+        x = rect.x() + (w - text_width) / 2
-+        y = rect.y() + (h + text_height) / 2 - fm.descent()
-+
-+        painter.drawText(int(x), int(y), text)
-+
-     def __repr__(self):
-         return f"NoteItem(note={self.note}, start={self.start_time:.3f}, dur={self.duration:.3f})"
-diff --git a/LyreAutoPlayer/ui/editor/piano_roll.py b/LyreAutoPlayer/ui/editor/piano_roll.py
-index e6aa53b..b110467 100644
---- a/LyreAutoPlayer/ui/editor/piano_roll.py
-+++ b/LyreAutoPlayer/ui/editor/piano_roll.py
-@@ -5,7 +5,7 @@ Phase 2: 支持选择、拖拽移动、删除、复制粘贴
- """
- from typing import List, Optional
- from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsLineItem
--from PyQt6.QtGui import QPen, QColor, QWheelEvent, QKeyEvent, QMouseEvent
-+from PyQt6.QtGui import QPen, QColor, QWheelEvent, QKeyEvent, QMouseEvent, QResizeEvent
- from PyQt6.QtCore import Qt, pyqtSignal
- import mido
- 
-@@ -112,8 +112,8 @@ class PianoRollWidget(QGraphicsView):
-         # 创建播放头
-         self._create_playhead()
- 
--        # 设置场景大小
--        scene_width = self.total_duration * self.pixels_per_second + 100
-+        # 设置场景大小 (覆盖滚动位置 + 视口宽度)
-+        scene_width = self._calc_scene_width()
-         scene_height = (self.NOTE_RANGE[1] - self.NOTE_RANGE[0] + 1) * self.pixels_per_note
-         self.scene.setSceneRect(0, 0, scene_width, scene_height)
- 
-@@ -208,6 +208,20 @@ class PianoRollWidget(QGraphicsView):
-             self.scene.removeItem(item)
-         self._grid_items.clear()
- 
-+    def _calc_scene_width(self) -> float:
-+        """计算场景宽度 (覆盖滚动位置 + 视口宽度)"""
-+        content_width = self.total_duration * self.pixels_per_second + 100
-+        scroll_offset = self.horizontalScrollBar().value()
-+        viewport_width = self.viewport().width()
-+        return max(content_width, scroll_offset + viewport_width)
-+
-+    def resizeEvent(self, event: QResizeEvent):
-+        """窗口大小变化时更新网格/场景"""
-+        super().resizeEvent(event)
-+        # 如果已有音符数据，更新网格以覆盖新视口
-+        if self.notes or self.total_duration > 0:
-+            self._redraw_all()
-+
-     def _draw_grid(self):
-         """绘制网格背景 - 增强对比度版
- 
-@@ -223,7 +237,7 @@ class PianoRollWidget(QGraphicsView):
-         from PyQt6.QtGui import QBrush
- 
-         note_min, note_max = self.NOTE_RANGE
--        scene_width = self.total_duration * self.pixels_per_second + 100
-+        scene_width = self._calc_scene_width()
-         h = self.pixels_per_note
- 
-         for note in range(note_min, note_max + 1):
-@@ -310,8 +324,8 @@ class PianoRollWidget(QGraphicsView):
-             item.setPos(0, 0)
-             item.update_geometry(self.pixels_per_second, self.pixels_per_note, note_max)
- 
--        # 更新场景大小
--        scene_width = self.total_duration * self.pixels_per_second + 100
-+        # 更新场景大小 (覆盖滚动位置 + 视口宽度)
-+        scene_width = self._calc_scene_width()
-         scene_height = (self.NOTE_RANGE[1] - self.NOTE_RANGE[0] + 1) * self.pixels_per_note
-         self.scene.setSceneRect(0, 0, scene_width, scene_height)
- 
-@@ -367,8 +381,8 @@ class PianoRollWidget(QGraphicsView):
-         self._create_playhead()
-         self.set_playhead_position(playhead_time)
- 
--        # 更新场景大小
--        scene_width = self.total_duration * self.pixels_per_second + 100
-+        # 更新场景大小 (覆盖滚动位置 + 视口宽度)
-+        scene_width = self._calc_scene_width()
-         scene_height = (self.NOTE_RANGE[1] - self.NOTE_RANGE[0] + 1) * self.pixels_per_note
-         self.scene.setSceneRect(0, 0, scene_width, scene_height)
- 
-@@ -612,8 +626,8 @@ class PianoRollWidget(QGraphicsView):
-         # 更新总时长
-         self.total_duration = max(n.start_time + n.duration for n in self.notes)
- 
--        # 扩展场景大小
--        scene_width = self.total_duration * self.pixels_per_second + 100
-+        # 扩展场景大小 (覆盖滚动位置 + 视口宽度)
-+        scene_width = self._calc_scene_width()
-         scene_height = (self.NOTE_RANGE[1] - self.NOTE_RANGE[0] + 1) * self.pixels_per_note
-         self.scene.setSceneRect(0, 0, scene_width, scene_height)
- 
-diff --git a/LyreAutoPlayer/ui/editor/timeline.py b/LyreAutoPlayer/ui/editor/timeline.py
-index fc481e5..fd4a76e 100644
---- a/LyreAutoPlayer/ui/editor/timeline.py
-+++ b/LyreAutoPlayer/ui/editor/timeline.py
-@@ -52,6 +52,9 @@ class TimelineWidget(QWidget):
-         self._time_sig_map: List[Tuple[float, int, int]] = [(0.0, 4, 4)]
-         # 小节边界缓存: [(bar_number, time_sec), ...]
-         self._bar_times: List[Tuple[int, float]] = []
-+        # 原始 tick 事件 (用于精确计算)
-+        self._tempo_events_tick: List[Tuple[int, int]] = [(0, 500000)]
-+        self._time_sig_events_tick: List[Tuple[int, int, int]] = [(0, 4, 4)]
- 
-         self.setFixedHeight(self.HEIGHT)
-         self.setMinimumWidth(100)
-@@ -92,16 +95,20 @@ class TimelineWidget(QWidget):
-         """
-         self.ticks_per_beat = ticks_per_beat
- 
-+        # 保存原始 tick 事件 (确保 tick 0 有默认值)
-+        if not tempo_events or tempo_events[0][0] > 0:
-+            tempo_events = [(0, 500000)] + list(tempo_events)
-+        if not time_sig_events or time_sig_events[0][0] > 0:
-+            time_sig_events = [(0, 4, 4)] + list(time_sig_events)
-+        self._tempo_events_tick = list(tempo_events)
-+        self._time_sig_events_tick = list(time_sig_events)
-+
-         # 转换 tempo 事件为秒
-         self._tempo_map = []
-         current_sec = 0.0
-         prev_tick = 0
-         prev_tempo = 500000  # 默认 120 BPM
- 
--        # 确保 tick 0 有 tempo
--        if not tempo_events or tempo_events[0][0] > 0:
--            tempo_events = [(0, 500000)] + list(tempo_events)
--
-         for tick, tempo in tempo_events:
-             if tick > prev_tick:
-                 # 计算时间增量
-@@ -123,10 +130,6 @@ class TimelineWidget(QWidget):
-         prev_tick = 0
-         prev_tempo = 500000
- 
--        # 确保 tick 0 有 time signature
--        if not time_sig_events or time_sig_events[0][0] > 0:
--            time_sig_events = [(0, 4, 4)] + list(time_sig_events)
--
-         # 重新计算时间 (使用 tempo map)
-         tempo_idx = 0
-         for tick, num, denom in time_sig_events:
-@@ -246,10 +249,11 @@ class TimelineWidget(QWidget):
-         start_time = self.scroll_offset / self.pixels_per_second
-         end_time = start_time + self.width() / self.pixels_per_second
- 
--        # 字体
-+        # 字体 (BPM 字号根据 ROW_BAR 动态计算)
-         font_bar = QFont("Arial", 9, QFont.Weight.Bold)
-         font_time = QFont("Arial", 8)
--        font_bpm = QFont("Arial", 7)
-+        bpm_font_size = max(9, int(self.ROW_BAR * 0.6))
-+        font_bpm = QFont("Arial", bpm_font_size, QFont.Weight.Bold)
- 
-         # ─────────────────────────────────────────────────────────────────────
-         # 上行: 小节编号 + BPM (y: 0 ~ ROW_BAR)
-@@ -271,7 +275,7 @@ class TimelineWidget(QWidget):
- 
-     def _draw_bar_row(self, painter: QPainter, start_time: float, end_time: float,
-                        font_bar: QFont, font_bpm: QFont):
--        """绘制上行: 小节编号 + BPM 指示"""
-+        """绘制上行: 小节编号 + BPM 指示 (使用 tick 精确计算)"""
-         row_top = 0
-         row_bottom = self.ROW_BAR
- 
-@@ -279,48 +283,151 @@ class TimelineWidget(QWidget):
-         painter.setPen(QPen(QColor(60, 60, 60), 1))
-         painter.drawLine(0, row_bottom, self.width(), row_bottom)
- 
--        # 绘制 BPM 指示 (在左上角)
-+        # 绘制 BPM 指示 (始终在可视区左侧)
-         painter.setFont(font_bpm)
-         painter.setPen(self.BPM_COLOR)
-         bpm_text = f"♩={int(self.bpm)}"
--        # 只在 scroll_offset=0 时显示在可见区域，否则固定在左侧
--        if self.scroll_offset < 50:
--            painter.drawText(4, 12, bpm_text)
-+        painter.drawText(4, 14, bpm_text)
- 
--        # 绘制拍子线和小节编号
--        beats_per_bar = self.time_sig_numerator
--        beat_unit = self.time_sig_denominator
--        seconds_per_beat = (60.0 / self.bpm) * (4.0 / beat_unit) if self.bpm > 0 else 0.5
-+        # 使用 tick 精确计算拍子和小节
-+        tempo_events = self._tempo_events_tick
-+        time_sig_events = self._time_sig_events_tick
-+        ticks_per_beat = self.ticks_per_beat
- 
--        if seconds_per_beat <= 0:
-+        if ticks_per_beat <= 0:
-             return
- 
--        # 计算起始拍
--        beat_idx = max(0, int(start_time / seconds_per_beat) - 1)
-+        # 生成拍/小节 tick 列表: [(tick, is_bar_start, bar_num), ...]
-+        beat_ticks = self._generate_beat_ticks(start_time, end_time)
- 
--        t = beat_idx * seconds_per_beat
--        while t <= end_time + seconds_per_beat:
--            if t >= start_time - seconds_per_beat:
--                x = int((t - start_time) * self.pixels_per_second)
--                beat_in_song = int(round(t / seconds_per_beat))
--                is_bar_start = (beat_in_song % beats_per_bar) == 0
-+        for tick, is_bar_start, bar_num in beat_ticks:
-+            t = self._tick_to_second(tick, tempo_events, ticks_per_beat)
-+            x = int((t - start_time) * self.pixels_per_second)
- 
--                if is_bar_start:
--                    # 小节线 (粗)
--                    painter.setPen(QPen(self.BAR_LINE_COLOR, 2))
--                    painter.drawLine(x, row_top + 2, x, row_bottom)
-+            if is_bar_start:
-+                # 小节线 (粗)
-+                painter.setPen(QPen(self.BAR_LINE_COLOR, 2))
-+                painter.drawLine(x, row_top + 2, x, row_bottom)
- 
--                    # 小节编号
--                    bar_num = beat_in_song // beats_per_bar + 1
--                    painter.setFont(font_bar)
--                    painter.setPen(self.TEXT_COLOR)
--                    painter.drawText(x + 3, row_bottom - 4, str(bar_num))
--                else:
--                    # 拍线 (细)
--                    painter.setPen(QPen(self.BEAT_LINE_COLOR, 1))
--                    painter.drawLine(x, row_top + 10, x, row_bottom)
-+                # 小节编号
-+                painter.setFont(font_bar)
-+                painter.setPen(self.TEXT_COLOR)
-+                painter.drawText(x + 3, row_bottom - 4, str(bar_num))
-+            else:
-+                # 拍线 (细)
-+                painter.setPen(QPen(self.BEAT_LINE_COLOR, 1))
-+                painter.drawLine(x, row_top + 10, x, row_bottom)
- 
--            t += seconds_per_beat
-+    def _generate_beat_ticks(self, start_time: float, end_time: float) -> List[Tuple[int, bool, int]]:
-+        """生成可见时间范围内的拍子 tick 列表 (优化版: 直接跳到可视区)
-+
-+        Returns:
-+            [(tick, is_bar_start, bar_num), ...]
-+        """
-+        result = []
-+        tempo_events = self._tempo_events_tick
-+        time_sig_events = self._time_sig_events_tick
-+        ticks_per_beat = self.ticks_per_beat
-+
-+        if not time_sig_events or ticks_per_beat <= 0:
-+            return result
-+
-+        # 计算可视 tick 范围 (带边距)
-+        margin = 1.0  # 秒
-+        visible_start_tick = self._second_to_tick(max(0, start_time - margin))
-+        visible_end_tick = self._second_to_tick(end_time + margin)
-+
-+        # 累计小节数 (用于跨 time_sig 区间)
-+        cumulative_bars = 0
-+
-+        for i, (sig_tick, numerator, denominator) in enumerate(time_sig_events):
-+            # 计算此 time signature 区间的结束 tick
-+            if i + 1 < len(time_sig_events):
-+                next_sig_tick = time_sig_events[i + 1][0]
-+            else:
-+                next_sig_tick = visible_end_tick + ticks_per_beat * 4
-+
-+            # 每拍/每小节 tick 数
-+            beat_ticks = ticks_per_beat * 4 // denominator
-+            bar_ticks = beat_ticks * numerator
-+
-+            if beat_ticks <= 0 or bar_ticks <= 0:
-+                continue
-+
-+            # 跳过完全在可视区之前的区间
-+            if next_sig_tick <= visible_start_tick:
-+                # 计算此区间贡献的完整小节数
-+                interval_ticks = next_sig_tick - sig_tick
-+                cumulative_bars += interval_ticks // bar_ticks
-+                continue
-+
-+            # 跳过完全在可视区之后的区间
-+            if sig_tick >= visible_end_tick:
-+                break
-+
-+            # 计算从可视区开始的第一个拍子
-+            if visible_start_tick > sig_tick:
-+                # 从 sig_tick 到 visible_start_tick 之间有多少完整拍
-+                ticks_before_visible = visible_start_tick - sig_tick
-+                beats_before = ticks_before_visible // beat_ticks
-+                first_beat_tick = sig_tick + beats_before * beat_ticks
-+                # 计算 beat_in_bar 和已过小节数
-+                beat_in_bar = beats_before % numerator
-+                bars_before = beats_before // numerator
-+            else:
-+                first_beat_tick = sig_tick
-+                beat_in_bar = 0
-+                bars_before = 0
-+
-+            # 生成可视区内的拍子
-+            current_tick = first_beat_tick
-+            current_bar_num = cumulative_bars + bars_before + 1
-+
-+            while current_tick < next_sig_tick and current_tick <= visible_end_tick:
-+                is_bar_start = (beat_in_bar == 0)
-+                result.append((current_tick, is_bar_start, current_bar_num))
-+
-+                # 移动到下一拍
-+                current_tick += beat_ticks
-+                beat_in_bar += 1
-+                if beat_in_bar >= numerator:
-+                    beat_in_bar = 0
-+                    current_bar_num += 1
-+
-+            # 累加此区间的完整小节数
-+            interval_ticks = min(next_sig_tick, visible_end_tick + bar_ticks) - sig_tick
-+            cumulative_bars += max(0, interval_ticks // bar_ticks)
-+
-+        return result
-+
-+    def _second_to_tick(self, time_sec: float) -> int:
-+        """将秒转换为 tick (使用 tempo map)"""
-+        if time_sec <= 0:
-+            return 0
-+
-+        tempo_events = self._tempo_events_tick
-+        ticks_per_beat = self.ticks_per_beat
-+
-+        current_tick = 0
-+        current_sec = 0.0
-+        prev_tempo = 500000
-+
-+        for i, (tick, tempo) in enumerate(tempo_events):
-+            tick_sec = self._tick_to_second(tick, tempo_events, ticks_per_beat)
-+            if tick_sec >= time_sec:
-+                break
-+            current_tick = tick
-+            current_sec = tick_sec
-+            prev_tempo = tempo
-+
-+        # 计算剩余时间对应的 tick
-+        remaining_sec = time_sec - current_sec
-+        if remaining_sec > 0 and prev_tempo > 0:
-+            # tick = sec * ticks_per_beat * 1_000_000 / tempo
-+            additional_ticks = int(remaining_sec * ticks_per_beat * 1_000_000 / prev_tempo)
-+            current_tick += additional_ticks
-+
-+        return current_tick
- 
-     def _draw_time_row(self, painter: QPainter, start_time: float, end_time: float,
-                         font_time: QFont):
++# Large binary files (use Git LFS or download separately)
++LyreAutoPlayer/FluidR3_GM.sf2
+diff --git a/LyreAutoPlayer/midi-change/index.json b/LyreAutoPlayer/midi-change/index.json
+index 6caef19..0a58dfa 100644
+--- a/LyreAutoPlayer/midi-change/index.json
++++ b/LyreAutoPlayer/midi-change/index.json
+@@ -8,6 +8,15 @@
+       "last_modified": "2026-01-03T22:41:48.578857",
+       "source_file_size": 5682,
+       "source_note_count": 626
++    },
++    {
++      "source_path": "d:\\dw11\\piano\\lyreautoplayer\\midi\\《凡人修仙传》op-不凡.mid",
++      "saved_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\《凡人修仙传》op-不凡_custom.mid",
++      "display_name": "《凡人修仙传》OP-不凡_custom",
++      "edit_style": "custom",
++      "last_modified": "2026-01-04T04:36:49.977714",
++      "source_file_size": 7348,
++      "source_note_count": 916
+     }
+   ]
+ }
+\ No newline at end of file
+diff --git "a/LyreAutoPlayer/midi-change/\343\200\212\345\207\241\344\272\272\344\277\256\344\273\231\344\274\240\343\200\213OP-\344\270\215\345\207\241_custom.mid" "b/LyreAutoPlayer/midi-change/\343\200\212\345\207\241\344\272\272\344\277\256\344\273\231\344\274\240\343\200\213OP-\344\270\215\345\207\241_custom.mid"
+new file mode 100644
+index 0000000..5321b65
+Binary files /dev/null and "b/LyreAutoPlayer/midi-change/\343\200\212\345\207\241\344\272\272\344\277\256\344\273\231\344\274\240\343\200\213OP-\344\270\215\345\207\241_custom.mid" differ
+diff --git a/LyreAutoPlayer/settings.json b/LyreAutoPlayer/settings.json
+index 9554d67..9bec5de 100644
+--- a/LyreAutoPlayer/settings.json
++++ b/LyreAutoPlayer/settings.json
+@@ -18,7 +18,7 @@
+   "velocity": 90,
+   "input_style": "natural",
+   "enable_diagnostics": false,
+-  "soundfont_path": "D:\\dw11\\piano\\LyreAutoPlayer\\FluidR3_GM.sf2",
++  "soundfont_path": "C:\\soundfonts\\FluidR3_GM.sf2",
+   "last_midi_path": "D:/dw11/piano/LyreAutoPlayer/midi/Sis puella magica!.mid",
+   "input_manager": {},
+   "error_config": {

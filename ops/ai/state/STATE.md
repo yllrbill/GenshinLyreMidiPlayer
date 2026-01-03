@@ -2,7 +2,7 @@
 
 ## Latest Task
 - TASK_ID: 20260103-midi-editor-pipeline
-- Status: DONE (Phase 1 + 1.5 + 2 + Timeline优化)
+- Status: DONE (Phase 1-3 + Git cleanup + SoundFont config)
 - Pointer: ops/ai/tasks/20260103-midi-editor-pipeline
 
 ## Previous Task
@@ -11,9 +11,10 @@
 - Pointer: ops/ai/tasks/20260102-2138-main-mixin-refactor
 
 ## Current Focus
-- MIDI 编辑器 Phase 1 + 1.5 + 2 + Timeline优化 完成
-- 本次优化: 拍子生成性能、音符标签条件显示、网格宽度覆盖、resizeEvent
-- 待进行 Phase 3：高级编辑 (双击添加音符/批量移调/量化/撤销重做)
+- MIDI 编辑器 Phase 1-3 完成 + Git 清理 + SoundFont 配置
+- Session 3: 141MB sf2 从历史移除, WSL autocrlf 修复, soundfont_path 更新
+- Phase 3 已实现: 双击创建/移调/量化/撤销重做 (undo_commands.py)
+- 待验证: 音频预览功能 (LyreAutoPlayer GUI 已启动)
 
 ## Completed Summary (MIDI Editor Phase 1)
 - **Phase 1 钢琴卷帘骨架完成**: 6 个新文件 (~745 行)
@@ -74,10 +75,10 @@
 ---
 
 ## Next Actions
-1. Phase 3: 双击创建音符
-2. Phase 3: 批量移调/量化
-3. Phase 3: 撤销/重做 (QUndoStack)
-4. Phase 4: 超音域处理预览
+1. 验证音频预览功能 (用户手动测试)
+2. Phase 4: 超音域处理预览
+3. 考虑 Git LFS 或外部下载方案管理 FluidR3_GM.sf2
+4. 清理 analyzetools/eop/ 多版本脚本 (可选)
 
 ---
-*Last Updated: 2026-01-04 (Path Handling Known Issues & Search Constraints 更新)*
+*Last Updated: 2026-01-04 (Session 3 - Git cleanup + WSL fix + SoundFont config)*

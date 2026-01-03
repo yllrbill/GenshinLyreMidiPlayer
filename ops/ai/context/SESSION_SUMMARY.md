@@ -1,22 +1,27 @@
 - 背景/目标:
-  - 处理 MIDI 长音缺失问题（CC64 延音 + 未关闭音符补尾），用于《凡人修仙传》OP-不凡.mid 等文件。
+  - 处理 CC64 延音修复后的验证路径、补齐本地 SoundFont，以及厘清 Windows/WSL git status 差异。
+  - 用户反馈 3 个问题：悬浮窗闪退、主界面播放与乐谱不一致/进度不走、编辑器切换 MIDI 未同步主界面。
 - 已完成:
-  - 在 `_parse_midi()` 中加入 CC64 延音逻辑与轨道末尾 note_off 补齐规则。
-  - 补齐规则使用“下一同音前 100ms”与“最多 4 小节”上限。
+  - 在 Windows 创建 `C:\soundfonts\`，下载 `fluid-soundfont.zip` 并提取为 `C:\soundfonts\FluidR3_GM.sf2`，删除 zip。
+  - 更新 `LyreAutoPlayer/settings.json` 的 `soundfont_path` 为 `C:\soundfonts\FluidR3_GM.sf2`，提交 `bc83ada chore: update soundfont path`。
+  - 删除误生成的 `nul` 文件，`git status --short` 为空。
+  - 排查 Windows/WSL 行尾差异：WSL 设置 `core.autocrlf true` 后 `git checkout -- .`，两边状态一致（操作会丢弃未暂存修改）。
 - 关键修改:
-  - `LyreAutoPlayer/ui/editor/piano_roll.py`:
-    - 新增 time_signature 收集与默认 4/4。
-    - 增加 `second_to_tick()`、`ticks_per_bar_at()`、`append_note()` 辅助逻辑。
-    - CC64: sustain_on 时延迟 note_off，sustain_off 统一结束。
-    - 轨道末尾补 note_off：下一同音前 100ms，且不超过 4 小节。
+  - `LyreAutoPlayer/settings.json`: `soundfont_path` 更新为 `C:\soundfonts\FluidR3_GM.sf2`。
+  - 工作区外部文件：`C:\soundfonts\FluidR3_GM.sf2`（不入仓）。
 - 相关文件:
-  - `LyreAutoPlayer/ui/editor/piano_roll.py`（唯一实际改动文件）。
+  - `LyreAutoPlayer/settings.json`
+  - `LyreAutoPlayer/ui/floating.py`（未改，但排查到 `_sync_from_main` 缺失）
+  - `LyreAutoPlayer/ui/mixins/playback_mixin.py`
+  - `LyreAutoPlayer/main.py`
+  - `LyreAutoPlayer/player/thread.py`
 - 验证:
-  - `python3 -m py_compile /mnt/d/dw11/piano/LyreAutoPlayer/ui/editor/piano_roll.py` -> Syntax OK。
-  - 未运行 GUI 实测（需打开目标 MIDI 验证长音）。
+  - `cmd.exe /c dir C:\soundfonts\FluidR3_GM.sf2` 确认文件存在。
+  - 启动 `python main.py` 失败（缺 PyQt6）；未做 GUI 音频/CC64 实测。
 - 风险/待办:
-  - 需要在实际 MIDI（如《凡人修仙传》OP-不凡.mid）确认延音效果与补尾上限是否合适。
-  - 若仍缺长音，需检查 CC64 控制器范围/轨道层级与 tempo/time_signature 解析一致性。
+  - 悬浮窗闪退：`PlaybackMixin.on_show_floating()` 调用不存在的 `_sync_from_main()`。
+  - 进度不走：`FloatingController` 读取 `current_time/total_duration`，主窗口未维护且 `PlayerThread.progress` 未 emit/连接。
+  - 编辑器与主界面不同步：编辑器加载新 MIDI 未更新主播放；CC64 延音修复仅在编辑器解析逻辑。
 - 下一步:
-  - 用目标 MIDI 回归验证长音是否恢复。
-  - 如不够长，调节“100ms + 4 小节”规则或增加配置项。
+  - 用 `D:\dw11\piano\LyreAutoPlayer\.venv\Scripts\python.exe D:\dw11\piano\LyreAutoPlayer\main.py` 启动并做音频预览验证。
+  - 修复悬浮窗 `_sync_from_main()`、主播放进度更新、编辑器→主界面同步与 CC64 解析落地。

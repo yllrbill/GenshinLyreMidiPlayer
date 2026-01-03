@@ -421,13 +421,39 @@ Exit code: 0
 2. 实现批量操作 (移调、量化)
 3. 实现撤销/重做
 
+## Session 3 (2026-01-04)
+
+### Git 历史清理
+| 操作 | 说明 |
+|------|------|
+| filter-branch | 从 3 个未推送 commit 移除 FluidR3_GM.sf2 (141MB) |
+| .gitignore 修正 | 恢复 `.claude/private/` + 添加 `LyreAutoPlayer/FluidR3_GM.sf2` |
+| soundfont_path | settings.json 改为 `C:\soundfonts\FluidR3_GM.sf2` |
+
+### WSL 行尾差异修复
+- 根因: `core.autocrlf` 配置不一致 (Windows=true, WSL=unset)
+- 修复: `git config core.autocrlf true && git checkout -- .`
+- 结果: 284 → 2 虚假变更消除
+
+### Audio Verification
+- LyreAutoPlayer GUI 已启动
+- 待用户确认音频预览功能
+
+### Git Commits
+```
+80f31e1 chore: update midi index and add new midi file
+bc83ada chore: update soundfont path
+9ece6c7 fix: correct .gitignore rules for private dir and sf2 file
+e41d2d6 feat(editor): complete MIDI editor Phase 1-3 implementation
+```
+
 ## Evidence Index
 | File | Path | Summary |
 |------|------|---------|
 | context_pack.md | evidence/ | Planner 最小阅读摘要 |
-| execute.log | evidence/ | 执行日志 + 语法检查 |
-| diff.patch | evidence/ | git diff (ops/ai 骨架) |
+| execute.log | evidence/ | 执行日志 (Session 3) |
+| diff.patch | evidence/ | git diff (e41d2d6..HEAD) |
 
 ---
 *Created: 2026-01-03*
-*Updated: 2026-01-03 (Phase 1.5 Timeline 优化修复 completed)*
+*Updated: 2026-01-04 (Session 3 - Git cleanup + WSL fix + SoundFont path)*
