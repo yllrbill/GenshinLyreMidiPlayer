@@ -373,4 +373,7 @@ private/tasks/*
 
 # Claude Code runtime state
 .claude/state/
-.claude/private/LyreAutoPlayer/FluidR3_GM.sf2
+.claude/private/
+
+# Large binary files (use Git LFS or download separately)
+LyreAutoPlayer/FluidR3_GM.sf2
