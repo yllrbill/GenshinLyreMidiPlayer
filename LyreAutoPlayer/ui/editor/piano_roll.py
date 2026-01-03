@@ -4,7 +4,7 @@ PianoRollWidget - 钢琴卷帘主视图
 Phase 2: 支持选择、拖拽移动、删除、复制粘贴
 """
 from typing import List, Optional, Tuple
-from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsLineItem, QGraphicsRectItem
+from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsLineItem, QGraphicsRectItem, QMessageBox
 from PyQt6.QtGui import QPen, QColor, QBrush, QWheelEvent, QKeyEvent, QMouseEvent, QResizeEvent, QUndoStack
 from PyQt6.QtCore import Qt, pyqtSignal, QPointF
 import mido
@@ -12,7 +12,8 @@ import mido
 from .note_item import NoteItem
 from .undo_commands import (
     AddNoteCommand, DeleteNotesCommand, MoveNotesCommand,
-    TransposeCommand, QuantizeCommand, AutoTransposeCommand
+    TransposeCommand, QuantizeCommand, AutoTransposeCommand,
+    HumanizeCommand
 )
 
 
@@ -89,6 +90,16 @@ class PianoRollWidget(QGraphicsView):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         # 默认使用橡皮筋框选模式
         self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
+
+        # 设置工具提示 (显示快捷键帮助)
+        self.setToolTip(
+            "Piano Roll\n"
+            "• Click+Drag: Select notes\n"
+            "• Alt+Click/Drag: Create note\n"
+            "• T: Auto transpose (selection)\n"
+            "• Space (hold): Pan mode\n"
+            "• See Help > Keyboard Shortcuts"
+        )
         # 关闭抗锯齿以提高性能
         from PyQt6.QtGui import QPainter
         self.setRenderHint(QPainter.RenderHint.Antialiasing, False)
@@ -637,6 +648,21 @@ class PianoRollWidget(QGraphicsView):
             self.undo_stack.redo()
             return
 
+        # H: 人性化抖动 (自然: 20ms/10), Shift+H: 轻微 (10ms/5), Ctrl+H: 强 (40ms/20)
+        if key == Qt.Key.Key_H:
+            if modifiers == Qt.KeyboardModifier.NoModifier:
+                self.humanize_selected(20.0, 10.0, 0.05)  # 自然
+                return
+            elif modifiers == Qt.KeyboardModifier.ShiftModifier:
+                self.humanize_selected(10.0, 5.0, 0.02)   # 轻微
+                return
+            elif modifiers == Qt.KeyboardModifier.ControlModifier:
+                self.humanize_selected(40.0, 20.0, 0.10)  # 强
+                return
+
+        # T/Shift+T: 自动移调 - 已移至 Edit 菜单 (editor_window._setup_menus)
+        # 菜单快捷键在窗口级别处理，无需在此重复
+
         super().keyPressEvent(event)
 
     def keyReleaseEvent(self, event: QKeyEvent):
@@ -649,7 +675,7 @@ class PianoRollWidget(QGraphicsView):
         super().keyReleaseEvent(event)
 
     def mousePressEvent(self, event: QMouseEvent):
-        """鼠标按下事件 - 中键切换到拖拽平移，左键空白处开始创建音符"""
+        """鼠标按下事件 - 中键平移，Alt+左键创建音符，左键框选/拖拽"""
         # 右键取消正在进行的创建
         if event.button() == Qt.MouseButton.RightButton and self._is_creating_note:
             self._cancel_note_create()
@@ -669,15 +695,18 @@ class PianoRollWidget(QGraphicsView):
             super().mousePressEvent(fake_event)
             return
 
-        # 左键检测：空白处开始拖拽创建
+        # Alt+左键：空白处开始拖拽创建音符
+        # 不按 Alt 时左键保留 RubberBand 框选功能
         if event.button() == Qt.MouseButton.LeftButton:
-            scene_pos = self.mapToScene(event.pos())
-            # 检查点击位置是否有音符
-            item_at_pos = self._get_item_at_pos(scene_pos)
-            if item_at_pos is None:
-                # 空白处：开始创建音符
-                self._start_note_create(scene_pos)
-                return
+            modifiers = event.modifiers()
+            if modifiers & Qt.KeyboardModifier.AltModifier:
+                scene_pos = self.mapToScene(event.pos())
+                # 检查点击位置是否有音符
+                item_at_pos = self._get_item_at_pos(scene_pos)
+                if item_at_pos is None:
+                    # 空白处 + Alt：开始创建音符
+                    self._start_note_create(scene_pos)
+                    return
 
         super().mousePressEvent(event)
 
@@ -1040,6 +1069,46 @@ class PianoRollWidget(QGraphicsView):
 
         # 使用 AutoTransposeCommand
         cmd = AutoTransposeCommand(self, notes_data, best_semitones, target_low, target_high)
+        self.undo_stack.push(cmd)
+
+        self.sig_notes_changed.emit()
+
+    def humanize_selected(self, timing_ms: float = 20.0, velocity_var: float = 10.0,
+                          duration_pct: float = 0.05):
+        """对选中音符应用人性化抖动
+
+        使用高斯分布随机偏移音符的起始时间、力度和时值，
+        使演奏听起来更自然。
+
+        Args:
+            timing_ms: 起始时间偏移标准差 (毫秒)
+            velocity_var: 力度偏移标准差 (0-127 范围内)
+            duration_pct: 时值偏移比例标准差 (如 0.05 = ±5%)
+
+        预设:
+            轻微: (10ms, 5, 0.02)
+            自然: (20ms, 10, 0.05)
+            强:   (40ms, 20, 0.10)
+        """
+        selected = [item for item in self.notes if item.isSelected()]
+        if not selected:
+            return
+
+        # 收集选中音符数据
+        notes_data = [
+            {
+                "note": item.note,
+                "start": item.start_time,
+                "duration": item.duration,
+                "velocity": item.velocity,
+                "track": item.track,
+                "channel": getattr(item, 'channel', 0)
+            }
+            for item in selected
+        ]
+
+        # 使用 HumanizeCommand
+        cmd = HumanizeCommand(self, notes_data, timing_ms, velocity_var, duration_pct)
         self.undo_stack.push(cmd)
 
         self.sig_notes_changed.emit()

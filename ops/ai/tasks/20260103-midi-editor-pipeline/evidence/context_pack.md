@@ -4,7 +4,7 @@
 20260103-midi-editor-pipeline
 
 ## Status
-DONE - Phase 1 + 1.5 + 2 + Optimization Fixes
+DONE - Phase 1 + 1.5 + 2 + Optimization Fixes + Session 2 (2026-01-04)
 
 ## Goal
 实现钢琴卷帘编辑器基础编辑功能 + 时间轴BPM/小节显示
@@ -55,6 +55,15 @@ def resizeEvent(event)  # 窗口大小变化时重绘
 - [x] 音符标签仅普通状态显示
 - [x] 网格覆盖滚动位置+视口
 - [x] 语法检查通过
+
+## Session 2 Changes (2026-01-04)
+
+| Category | Changes |
+|----------|---------|
+| Shortcuts Help | 补全 `_show_shortcuts_help()` 所有快捷键; Space pan 模式焦点说明; Alt+Click/Drag 说明 |
+| BPM/Tempo 文案 | spinbox tooltip 明确仅影响网格/导出; 右键菜单 "Set BPM (Grid/Export)"; 保存对话框提示 |
+| Path Handling 文档 | STATE.md Known Issues P2 风险降级; handoff.md 多重回退策略; Search Constraints 章节 |
+| 新功能 | Audio checkbox 静音预览; HumanizeCommand (H/Shift+H/Ctrl+H); floating.py 简化版 UI |
 
 ## Dependencies
 - mido (MIDI解析)

@@ -41,6 +41,12 @@
 ## Known Issues / Technical Debt
 1. ~~**Field Drift Risk**: save_settings vs _collect_current_settings 字段结构不同~~ ✅ 已解决
 2. ~~LyreAutoPlayer 目录策略性未纳入 git 跟踪~~ ✅ 已纳入 git 跟踪
+3. **Path Handling (P2 - Low Risk)**: 版本索引仍依赖 `midi-change/index.json`，但已实现多重回退策略：
+   - 路径规范化匹配 (`os.path.normcase`)
+   - 文件名 + edit_style + 元数据验证 (file_size + note_count)
+   - 文件名前缀 + 有效风格兜底
+   - 当 index.json 缺失或元数据变化过大时仍可能匹配失败
+   - `_lookup_source_path()` 失败时，`load_midi()` 回退为按原始文件加载
 
 ## Pending Tasks
 1. (DONE) 20260103-midi-editor-pipeline - MIDI 编辑管线 Phase 1+1.5+2+优化
@@ -62,6 +68,9 @@
 3. Review evidence files if needed
 4. Continue from task status
 
+## Search Constraints
+- 检索任务文档时仅扫描 `ops/ai/tasks/*/` 一层，避免全仓库遍历
+
 ---
 
 ## Next Actions
@@ -71,4 +80,4 @@
 4. Phase 4: 超音域处理预览
 
 ---
-*Last Updated: 2026-01-03 (MIDI Editor Phase 1.5 Timeline 优化修复 completed)*
+*Last Updated: 2026-01-04 (Path Handling Known Issues & Search Constraints 更新)*

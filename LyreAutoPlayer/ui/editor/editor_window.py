@@ -16,9 +16,9 @@ from datetime import datetime
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QToolBar, QSlider, QLabel, QFileDialog, QMessageBox,
-    QSplitter, QScrollBar, QComboBox, QSpinBox
+    QSplitter, QScrollBar, QComboBox, QSpinBox, QCheckBox
 )
-from PyQt6.QtGui import QAction, QIcon
+from PyQt6.QtGui import QAction, QIcon, QShortcut, QKeySequence
 from PyQt6.QtCore import Qt, QTimer
 import mido
 
@@ -63,6 +63,7 @@ class EditorWindow(QMainWindow):
 
         self._setup_ui()
         self._setup_toolbar()
+        self._setup_menus()
         self._setup_connections()
 
         if midi_path:
@@ -144,6 +145,12 @@ class EditorWindow(QMainWindow):
         self.act_stop = QAction("Stop", self)
         toolbar.addAction(self.act_stop)
 
+        # 音频开关
+        self.chk_enable_audio = QCheckBox("Audio")
+        self.chk_enable_audio.setChecked(True)
+        self.chk_enable_audio.setToolTip("Enable audio playback (F5 to toggle play)")
+        toolbar.addWidget(self.chk_enable_audio)
+
         toolbar.addSeparator()
 
         # 水平缩放 (X)
@@ -179,12 +186,18 @@ class EditorWindow(QMainWindow):
 
         toolbar.addSeparator()
 
-        # BPM 控制
+        # BPM 控制 (仅影响网格显示和导出，不影响播放速度)
         toolbar.addWidget(QLabel(" BPM: "))
         self.sp_bpm = QSpinBox()
         self.sp_bpm.setRange(20, 300)
         self.sp_bpm.setValue(120)  # 默认 120 BPM
         self.sp_bpm.setFixedWidth(60)
+        self.sp_bpm.setToolTip(
+            "Grid/Export BPM\n"
+            "• Affects timeline grid display\n"
+            "• Affects exported MIDI tempo\n"
+            "• Does NOT affect playback speed"
+        )
         toolbar.addWidget(self.sp_bpm)
 
         toolbar.addSeparator()
@@ -197,6 +210,115 @@ class EditorWindow(QMainWindow):
         self.cmb_edit_style.setFixedWidth(100)
         toolbar.addWidget(self.cmb_edit_style)
 
+    def _setup_menus(self):
+        """设置菜单栏"""
+        menubar = self.menuBar()
+
+        # Edit 菜单
+        edit_menu = menubar.addMenu("Edit")
+
+        # 音符操作
+        act_transpose_lyre = edit_menu.addAction("Auto Transpose to Lyre Range (C3-C6)")
+        act_transpose_lyre.setShortcut("T")
+        act_transpose_lyre.setToolTip("Move selected notes to fit within Lyre range (C3-C6, 3 octaves)")
+        act_transpose_lyre.triggered.connect(lambda: self._do_transpose(48, 84))
+
+        act_transpose_ext = edit_menu.addAction("Auto Transpose to Extended Range (C4-C7)")
+        act_transpose_ext.setShortcut("Shift+T")
+        act_transpose_ext.setToolTip("Move selected notes to fit within extended range (C4-C7, 3 octaves)")
+        act_transpose_ext.triggered.connect(lambda: self._do_transpose(60, 96))
+
+        edit_menu.addSeparator()
+
+        # 帮助提示
+        act_create_hint = edit_menu.addAction("Note Creation: Alt+Click/Drag")
+        act_create_hint.setEnabled(False)  # 仅作为提示，不可点击
+        act_create_hint.setToolTip("Hold Alt and click/drag on empty area to create a note")
+
+        act_select_hint = edit_menu.addAction("Selection: Click+Drag (RubberBand)")
+        act_select_hint.setEnabled(False)
+        act_select_hint.setToolTip("Click and drag to select multiple notes")
+
+        # Help 菜单
+        help_menu = menubar.addMenu("Help")
+        act_shortcuts = help_menu.addAction("Keyboard Shortcuts...")
+        act_shortcuts.triggered.connect(self._show_shortcuts_help)
+
+    def _do_transpose(self, target_low: int, target_high: int):
+        """执行自动移调"""
+        selected = [item for item in self.piano_roll.notes if item.isSelected()]
+        if not selected:
+            QMessageBox.information(
+                self, "Auto Transpose",
+                "No notes selected.\nSelect notes first, then use Edit menu or press T."
+            )
+            return
+        self.piano_roll.auto_transpose_octave(target_low, target_high)
+
+    def _show_shortcuts_help(self):
+        """显示快捷键帮助"""
+        shortcuts = """
+<h3>Keyboard Shortcuts</h3>
+
+<b>File:</b>
+<ul>
+<li>Ctrl+O - Open MIDI file</li>
+<li>Ctrl+S - Save</li>
+<li>Ctrl+Shift+S - Save As</li>
+</ul>
+
+<b>Playback:</b>
+<ul>
+<li>Space / F5 - Play/Pause</li>
+</ul>
+
+<b>Selection:</b>
+<ul>
+<li>Ctrl+A - Select all notes</li>
+<li>Escape - Deselect all</li>
+<li>Delete / Backspace - Delete selected</li>
+<li>Ctrl+C - Copy selected</li>
+<li>Ctrl+V - Paste at playhead</li>
+</ul>
+
+<b>Edit (requires selection):</b>
+<ul>
+<li>Ctrl+Z - Undo</li>
+<li>Ctrl+Y / Ctrl+Shift+Z - Redo</li>
+<li>Q - Quantize to grid</li>
+<li>H - Humanize (natural: 20ms)</li>
+<li>Shift+H - Humanize (light: 10ms)</li>
+<li>Ctrl+H - Humanize (strong: 40ms)</li>
+</ul>
+
+<b>Transpose (requires selection):</b>
+<ul>
+<li>Shift+↑ / Shift+↓ - Transpose ±1 semitone</li>
+<li>Ctrl+Shift+↑ / Ctrl+Shift+↓ - Transpose ±1 octave</li>
+<li>T - Auto transpose to Lyre range (C3-C6)</li>
+<li>Shift+T - Auto transpose to extended range (C4-C7)</li>
+</ul>
+
+<b>View:</b>
+<ul>
+<li>Ctrl+Wheel - Zoom</li>
+<li>Ctrl+↑ / Ctrl+↓ - Adjust row height</li>
+<li>[ / ] - Adjust row height</li>
+<li>Space (hold) - Pan mode (piano roll focus only)</li>
+</ul>
+
+<b>Mouse (in piano roll):</b>
+<ul>
+<li>Click+Drag - RubberBand selection</li>
+<li>Alt+Click/Drag - Create note (drag to set duration)</li>
+<li>Drag note edge - Resize note</li>
+<li>Drag note body - Move note</li>
+</ul>
+
+<p><i>Note: Space for pan requires piano roll focus; otherwise Space triggers Play/Pause.</i></p>
+"""
+        QMessageBox.information(self, "Keyboard Shortcuts", shortcuts)
+
     def _setup_connections(self):
         """连接信号槽"""
         self.act_open.triggered.connect(self.on_open)
@@ -204,6 +326,10 @@ class EditorWindow(QMainWindow):
         self.act_save_as.triggered.connect(self.on_save_as)
         self.act_play.triggered.connect(self.on_play_pause)
         self.act_stop.triggered.connect(self.on_stop)
+
+        # F5 快捷键播放/暂停
+        self.shortcut_f5 = QShortcut(QKeySequence(Qt.Key.Key_F5), self)
+        self.shortcut_f5.activated.connect(self.on_play_pause)
 
         self.zoom_slider.valueChanged.connect(self.on_zoom_changed)
         self.zoom_y_slider.valueChanged.connect(self._on_zoom_y_changed)
@@ -538,11 +664,12 @@ class EditorWindow(QMainWindow):
             # 更新索引
             self._update_index(path)
 
-            # 提示保存成功（说明简化单轨）
+            # 提示保存成功（说明简化格式）
             QMessageBox.information(
                 self, "Saved",
                 f"Saved to:\n{path}\n\n"
-                "(Exported as single track with original tempo and channel preserved)"
+                f"Format: Single track, {self.sp_bpm.value()} BPM\n"
+                f"Note: Original tempo map and multi-track structure not preserved."
             )
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save:\n{e}")
@@ -550,32 +677,34 @@ class EditorWindow(QMainWindow):
     def _rebuild_midi_from_notes(self) -> mido.MidiFile:
         """从 piano_roll.notes 重建 MIDI 文件
 
-        保留原始 MIDI 的 tempo 事件，使用原始 channel。
+        使用用户设定的 BPM (来自工具栏 spinbox)，使用原始 channel。
         当前为简化单轨输出（多轨合并为单轨）。
 
+        WARNING: 此方法会丢失原始 MIDI 的以下信息：
+        - 原始 tempo map (多个速度变化事件) → 替换为单一用户 BPM
+        - 多轨道结构 → 合并为单轨
+        - 控制器事件、弯音、歌词等 → 仅保留音符
+
+        如需保留原始 tempo map，应使用原始文件并仅应用音符编辑。
+
         Returns:
-            mido.MidiFile: 重建的 MIDI 文件
+            mido.MidiFile: 重建的 MIDI 文件 (简化版，单一 BPM)
         """
         # 使用原始 ticks_per_beat，默认 480
         ticks_per_beat = 480
         if self.midi_file:
             ticks_per_beat = self.midi_file.ticks_per_beat
 
-        # 从原始 MIDI 提取 tempo 事件
-        tempo_events = self._extract_tempo_events()
-        # 获取第一个 tempo 用于时间转换（如果没有则默认 120 BPM）
-        first_tempo = tempo_events[0][1] if tempo_events else 500000
+        # 使用用户设定的 BPM (来自工具栏 spinbox) 而非原始 MIDI tempo
+        user_bpm = self.sp_bpm.value()
+        user_tempo = mido.bpm2tempo(user_bpm)  # 转换为微秒/拍
+        tempo_events = [(0, user_tempo)]  # 单一全局 tempo
 
         new_midi = mido.MidiFile(ticks_per_beat=ticks_per_beat)
 
         # 创建单轨道（简化输出，保留 channel 信息）
         track = mido.MidiTrack()
         new_midi.tracks.append(track)
-
-        # 添加 tempo 事件（保留原始 tempo）
-        for abs_tick, tempo in tempo_events:
-            # tempo 事件会在后续按时间排序时正确插入
-            pass  # 先收集音符，再统一排序
 
         # 收集所有事件（tempo + 音符）
         events = []
@@ -819,35 +948,45 @@ class EditorWindow(QMainWindow):
             json.dump(index, f, indent=2, ensure_ascii=False)
 
     def on_play_pause(self):
-        """播放/暂停"""
+        """播放/暂停
+
+        如果 Audio checkbox 被勾选，会尝试初始化音频引擎并播放声音。
+        如果未勾选或音频初始化失败，仍然可以进行视觉预览（播放头移动）。
+        """
         if self.is_playing:
             self.is_playing = False
             self.playback_timer.stop()
             self._release_all_notes()
             self.act_play.setText("Play")
         else:
-            # 懒加载 FluidSynth - 失败时阻止播放
-            if not self._init_sound():
-                if not HAS_FLUIDSYNTH:
-                    QMessageBox.warning(
-                        self, "Audio Not Available",
-                        "pyfluidsynth is not installed.\n"
-                        "Please install it with: pip install pyfluidsynth\n\n"
-                        "Playback is disabled."
-                    )
-                else:
-                    QMessageBox.warning(
-                        self, "Audio Error",
-                        "FluidSynth failed to initialize.\n"
-                        "Possible causes:\n"
-                        "- No audio driver available\n"
-                        "- SoundFont file not found\n\n"
-                        "Playback is disabled."
-                    )
-                return  # 阻止进入播放状态
+            audio_enabled = self.chk_enable_audio.isChecked()
+
+            # 仅在启用音频时尝试初始化 FluidSynth
+            if audio_enabled:
+                if not self._init_sound():
+                    if not HAS_FLUIDSYNTH:
+                        QMessageBox.warning(
+                            self, "Audio Not Available",
+                            "pyfluidsynth is not installed.\n"
+                            "Please install it with: pip install pyfluidsynth\n\n"
+                            "Visual playback will continue without audio."
+                        )
+                    else:
+                        QMessageBox.warning(
+                            self, "Audio Error",
+                            "FluidSynth failed to initialize.\n"
+                            "Possible causes:\n"
+                            "- No audio driver available\n"
+                            "- SoundFont file not found\n\n"
+                            "Visual playback will continue without audio."
+                        )
+                    # 禁用音频复选框，允许视觉播放继续
+                    self.chk_enable_audio.setChecked(False)
+
             self.is_playing = True
             # 从中间位置开始播放时，同步当前时刻的音符状态
-            self._sync_notes_at_time(self.playback_time)
+            if self.chk_enable_audio.isChecked():
+                self._sync_notes_at_time(self.playback_time)
             self.playback_timer.start()
             self.act_play.setText("Pause")
 
@@ -964,11 +1103,11 @@ class EditorWindow(QMainWindow):
             self.on_stop()
             return
 
-        # 触发音符发声
+        # 触发音符发声 (仅在音频启用且初始化成功时)
         # 注：每个音符事件都发送 noteon/noteoff，即使同音高重叠。
         # FluidSynth 对同 channel+note 的多次 noteon 会产生叠加效果（重触发）。
         # 引用计数用于跟踪活跃数量，便于 seek 时同步状态。
-        if self._fs is not None:
+        if self._fs is not None and self.chk_enable_audio.isChecked():
             for note_item in self.piano_roll.notes:
                 note = note_item.note
                 start = note_item.start_time

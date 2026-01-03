@@ -3,6 +3,7 @@ Undo Commands - 撤销/重做命令类
 
 Phase 3: 实现 QUndoCommand 子类用于各种编辑操作
 """
+import random
 from typing import List, TYPE_CHECKING
 from PyQt6.QtGui import QUndoCommand
 
@@ -306,3 +307,84 @@ class AutoTransposeCommand(QUndoCommand):
                     break
 
         pr._refresh_notes()
+
+
+class HumanizeCommand(QUndoCommand):
+    """人性化抖动命令
+
+    对选中音符应用随机偏移：
+    - timing_ms: 起始时间偏移 (毫秒，高斯分布标准差)
+    - velocity_var: 力度偏移 (高斯分布标准差)
+    - duration_pct: 时值偏移比例 (如 0.05 = ±5%)
+    """
+
+    def __init__(self, piano_roll: "PianoRollWidget",
+                 notes_data: List[dict],
+                 timing_ms: float = 20.0,
+                 velocity_var: float = 10.0,
+                 duration_pct: float = 0.05):
+        super().__init__(f"Humanize {len(notes_data)} Note(s)")
+        self._piano_roll = piano_roll
+        self._notes_data = [d.copy() for d in notes_data]
+        self._timing_ms = timing_ms
+        self._velocity_var = velocity_var
+        self._duration_pct = duration_pct
+
+        # 预生成随机偏移值 (确保 redo 一致性)
+        self._offsets: List[dict] = []
+        for _ in notes_data:
+            self._offsets.append({
+                "timing": random.gauss(0, timing_ms / 1000.0),  # 转换为秒
+                "velocity": int(random.gauss(0, velocity_var)),
+                "duration": random.gauss(0, duration_pct)
+            })
+
+    def redo(self):
+        """执行/重做: 应用人性化偏移"""
+        pr = self._piano_roll
+
+        for idx, data in enumerate(self._notes_data):
+            for item in pr.notes:
+                if (item.note == data["note"] and
+                    abs(item.start_time - data["start"]) < 0.001 and
+                    abs(item.duration - data["duration"]) < 0.001):
+                    # 应用偏移
+                    offset = self._offsets[idx]
+                    item.start_time = max(0, data["start"] + offset["timing"])
+                    item.velocity = max(1, min(127, data["velocity"] + offset["velocity"]))
+                    new_dur = data["duration"] * (1 + offset["duration"])
+                    item.duration = max(0.01, new_dur)  # 最小 10ms
+                    break
+
+        pr._refresh_notes()
+
+        # 更新总时长
+        if pr.notes:
+            pr.total_duration = max(n.start_time + n.duration for n in pr.notes)
+
+    def undo(self):
+        """撤销: 恢复原始值"""
+        pr = self._piano_roll
+
+        for idx, data in enumerate(self._notes_data):
+            offset = self._offsets[idx]
+            # 查找偏移后的音符
+            target_start = max(0, data["start"] + offset["timing"])
+            target_vel = max(1, min(127, data["velocity"] + offset["velocity"]))
+            target_dur = max(0.01, data["duration"] * (1 + offset["duration"]))
+
+            for item in pr.notes:
+                if (item.note == data["note"] and
+                    abs(item.start_time - target_start) < 0.01 and
+                    abs(item.velocity - target_vel) <= 1):
+                    # 恢复原始值
+                    item.start_time = data["start"]
+                    item.velocity = data["velocity"]
+                    item.duration = data["duration"]
+                    break
+
+        pr._refresh_notes()
+
+        # 更新总时长
+        if pr.notes:
+            pr.total_duration = max(n.start_time + n.duration for n in pr.notes)

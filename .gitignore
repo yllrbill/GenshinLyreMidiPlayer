@@ -373,4 +373,4 @@ private/tasks/*
 
 # Claude Code runtime state
 .claude/state/
-.claude/private/
+.claude/private/LyreAutoPlayer/FluidR3_GM.sf2

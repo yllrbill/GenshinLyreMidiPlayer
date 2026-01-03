@@ -305,6 +305,21 @@ Exit code: 0
    - 写回 `index.json`
 3. 工具栏标签从 "Y:" 改为 "Zoom Y:"
 
+**Path Handling 多重回退策略** (`get_edited_versions`):
+1. **路径规范化匹配**: `os.path.normcase()` 处理大小写/斜杠差异
+2. **文件名 + 元数据验证**: 检查 `edit_style` 是否有效 + `file_size`/`note_count` 是否匹配
+3. **文件名前缀兜底**: `saved_stem.startswith(source_stem + "_")` + 有效风格验证
+
+**`_lookup_source_path()` 失败回退行为**:
+- 当 `index.json` 不存在或无匹配条目时返回 `None`
+- `load_midi()` 检测到 `source_path` 为 `None` 时，将当前文件视为原始文件加载
+- 即：编辑版本的索引查找失败不会阻止文件打开，只会影响版本关联
+
+**风险评估 (P2 - Low Risk)**:
+- 仍依赖 `index.json` 作为版本索引
+- 当 index 缺失或元数据变化过大时可能匹配失败
+- 失败时降级为独立文件打开（不影响核心功能）
+
 **语法检查日志**:
 ```
 $ cd d:/dw11/piano/LyreAutoPlayer && python -m py_compile ui/editor/editor_window.py ui/editor/piano_roll.py
