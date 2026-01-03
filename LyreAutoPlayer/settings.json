@@ -18,7 +18,7 @@
   "velocity": 90,
   "input_style": "natural",
   "enable_diagnostics": false,
-  "soundfont_path": "D:\\dw11\\piano\\LyreAutoPlayer\\FluidR3_GM.sf2",
+  "soundfont_path": "C:\\soundfonts\\FluidR3_GM.sf2",
   "last_midi_path": "D:/dw11/piano/LyreAutoPlayer/midi/Sis puella magica!.mid",
   "input_manager": {},
   "error_config": {
