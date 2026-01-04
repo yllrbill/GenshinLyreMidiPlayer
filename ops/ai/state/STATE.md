@@ -2,9 +2,10 @@
 
 ## Latest Task
 - TASK_ID: 20260103-midi-editor-pipeline
-- Status: DONE (Session 9 - UI Fixes & Auto-scroll)
+- Status: DONE (Session 10 - Bug Fixes & New Features)
 - Pointer: ops/ai/tasks/20260103-midi-editor-pipeline
-- Latest Commit: `7713727`
+- Latest Commit: `864ba46`
+- Uncommitted: 7 files
 
 ## Previous Task
 - TASK_ID: 20260102-2138-main-mixin-refactor
@@ -12,9 +13,9 @@
 - Pointer: ops/ai/tasks/20260102-2138-main-mixin-refactor
 
 ## Current Focus
+- Session 10: Bug fixes (imports, timeline snap) + new features (duration adjust, auto-jitter)
 - Session 9: UI fixes (KeyList width, progress bar, auto-scroll, audio sync, toolbar)
 - Session 8: Bug fixes, i18n, keyboard config sync
-- Session 7: KeyListWidget + Main GUI cleanup
 
 ## Completed Summary (MIDI Editor)
 - **Phase 1 钢琴卷帘骨架完成**: 6 个新文件 (~745 行)
@@ -59,15 +60,16 @@
 3. **Path Handling (P2 - Low Risk)**: 版本索引依赖 `midi-change/index.json`
 
 ## Pending Tasks
-1. **用户测试**: 验证 KeyList 宽度、进度条高亮、自动滚动、音频同步、工具栏布局
-2. Phase 3-4: 高级编辑 + 超音域处理预览（如需继续）
+1. **Commit**: `/repo-push` 提交 Session 10 变更 (7 files uncommitted)
+2. **用户测试**: 时间轴拖拽、时值调整、自动 jitter 功能
+3. Phase 3-4: 高级编辑 + 超音域处理预览（如需继续）
 
 ## Recent Completions
-- UI Fixes & Auto-scroll (Session 9, 2026-01-05) - **Committed: 7713727**
+- Bug Fixes & New Features (Session 10, 2026-01-05) - **Uncommitted: 7 files**
+- UI Fixes & Auto-scroll (Session 9, 2026-01-05) - Committed: 7713727
 - Bug Fixes & i18n (Session 8, 2026-01-05)
 - KeyListWidget + Main GUI Cleanup (Session 7, 2026-01-04)
 - Unified Playback Engine Phase 1-7 (Session 6, 2026-01-04)
-- Timeline Sync Fix (Session 5, 2026-01-04)
 
 ## Evidence
 - Handoff: ops/ai/tasks/20260103-midi-editor-pipeline/handoff.md
@@ -86,9 +88,9 @@
 ---
 
 ## Next Actions
-1. **用户测试**: 验证 KeyList 宽度、进度条高亮、自动滚动、音频同步、工具栏布局
-2. Phase 3-4: 高级编辑 + 超音域处理预览（如需继续）
-3. 验证 BPM Scaling 效果 (Session 4 反馈)
+1. **Commit**: `/repo-push` 提交 Session 10 变更
+2. **用户测试**: 时间轴拖拽、时值调整、自动 jitter 功能
+3. Phase 3-4: 高级编辑 + 超音域处理预览（如需继续）
 
 ---
-*Last Updated: 2026-01-05 (Session 9 - UI Fixes & Auto-scroll, DONE, Commit: 7713727)*
+*Last Updated: 2026-01-05 (Session 10 - Bug Fixes & New Features, DONE, Uncommitted: 7 files)*

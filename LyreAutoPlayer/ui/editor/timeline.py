@@ -16,6 +16,7 @@ class TimelineWidget(QWidget):
 
     sig_seek = pyqtSignal(float)  # 点击跳转到指定时间 (秒)
     sig_bpm_changed = pyqtSignal(int)  # BPM 变化 (用于同步 spinbox)
+    sig_select_range = pyqtSignal(float, float)  # 拖动选择范围 (start, end)
 
     # 常量 - 颜色
     BG_COLOR = QColor(40, 40, 40)
@@ -27,6 +28,8 @@ class TimelineWidget(QWidget):
     BEAT_LINE_COLOR = QColor(100, 100, 120)   # 拍线 (淡蓝灰)
     BPM_COLOR = QColor(255, 180, 80)          # BPM 文字 (橙色)
     PLAYHEAD_COLOR = QColor(255, 0, 0)
+    SELECT_COLOR = QColor(80, 150, 255, 80)   # 选区背景 (半透明蓝)
+    SELECT_BORDER = QColor(80, 150, 255)      # 选区边框
 
     # 常量 - 布局 (+50% 高度)
     HEIGHT = 75              # 总高度 (增加以容纳两行)
@@ -56,6 +59,11 @@ class TimelineWidget(QWidget):
         # 原始 tick 事件 (用于精确计算)
         self._tempo_events_tick: List[Tuple[int, int]] = [(0, 500000)]
         self._time_sig_events_tick: List[Tuple[int, int, int]] = [(0, 4, 4)]
+
+        # 拖动选择状态
+        self._drag_start: float = -1.0   # 拖动起点时间 (秒)
+        self._drag_end: float = -1.0     # 拖动终点时间 (秒)
+        self._is_dragging = False
 
         self.setFixedHeight(self.HEIGHT)
         self.setMinimumWidth(100)
@@ -269,6 +277,20 @@ class TimelineWidget(QWidget):
         self._draw_time_row(painter, start_time, end_time, font_time)
 
         # ─────────────────────────────────────────────────────────────────────
+        # 选区 (拖动时绘制)
+        # ─────────────────────────────────────────────────────────────────────
+        if self._drag_start >= 0 and self._drag_end >= 0:
+            sel_start = min(self._drag_start, self._drag_end)
+            sel_end = max(self._drag_start, self._drag_end)
+            x1 = int((sel_start - start_time) * self.pixels_per_second)
+            x2 = int((sel_end - start_time) * self.pixels_per_second)
+            if x2 > x1:
+                painter.fillRect(x1, 0, x2 - x1, self.HEIGHT, self.SELECT_COLOR)
+                painter.setPen(QPen(self.SELECT_BORDER, 1))
+                painter.drawLine(x1, 0, x1, self.HEIGHT)
+                painter.drawLine(x2, 0, x2, self.HEIGHT)
+
+        # ─────────────────────────────────────────────────────────────────────
         # 播放头 (贯穿两行)
         # ─────────────────────────────────────────────────────────────────────
         if 0 <= self.playhead_time <= self.total_duration:
@@ -479,13 +501,66 @@ class TimelineWidget(QWidget):
 
             t += minor_interval
 
+    def _snap_bar_floor(self, time_sec: float) -> float:
+        """将时间向下取整到小节起点"""
+        if not self._bar_times:
+            return time_sec
+        best_t = 0.0
+        for _, t in self._bar_times:
+            if t <= time_sec:
+                best_t = t
+            else:
+                break
+        return best_t
+
+    def _snap_bar_ceil(self, time_sec: float) -> float:
+        """将时间向上取整到小节终点"""
+        if not self._bar_times:
+            return time_sec
+        for _, t in self._bar_times:
+            if t >= time_sec:
+                return t
+        # 超出最后小节，返回总时长
+        return self.total_duration
+
     def mousePressEvent(self, event):
-        """点击跳转"""
+        """点击/开始拖动（不吸附，记录精确位置）"""
         if event.button() == Qt.MouseButton.LeftButton:
             x = event.position().x()
             time_sec = (x + self.scroll_offset) / self.pixels_per_second
             time_sec = max(0, min(time_sec, self.total_duration))
-            self.sig_seek.emit(time_sec)
+            # 记录精确位置（不吸附）
+            self._drag_start = time_sec
+            self._drag_end = time_sec
+            self._is_dragging = True
+            self.update()
+
+    def mouseMoveEvent(self, event):
+        """拖动选区（实时显示原始位置，不吸附预览）"""
+        if self._is_dragging:
+            x = event.position().x()
+            time_sec = (x + self.scroll_offset) / self.pixels_per_second
+            time_sec = max(0, min(time_sec, self.total_duration))
+            self._drag_end = time_sec
+            self.update()
+
+    def mouseReleaseEvent(self, event):
+        """结束拖动并发射选择信号"""
+        if event.button() == Qt.MouseButton.LeftButton and self._is_dragging:
+            self._is_dragging = False
+            raw_start = min(self._drag_start, self._drag_end)
+            raw_end = max(self._drag_start, self._drag_end)
+            if abs(raw_end - raw_start) < 0.01:
+                # 单击 → 精确跳转（不吸附）
+                self.sig_seek.emit(raw_start)
+            else:
+                # 拖动 → 选区（start 向下取整，end 向上取整）
+                snapped_start = self._snap_bar_floor(raw_start)
+                snapped_end = self._snap_bar_ceil(raw_end)
+                self.sig_select_range.emit(snapped_start, snapped_end)
+            self._drag_start = -1.0
+            self._drag_end = -1.0
+            self.update()
 
     def get_bpm_text(self) -> str:
         """获取当前 BPM 显示文本"""

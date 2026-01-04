@@ -120,6 +120,7 @@ class KeyProgressWidget(QGraphicsView):
         self._layout: KeyboardLayout = LAYOUT_21KEY
         self.pixels_per_second = 100.0
         self.row_height = self.ROW_HEIGHT
+        self._total_duration = 0.0  # 总时长（从 piano_roll 同步）
 
         # 播放头
         self._playhead: Optional[QGraphicsLineItem] = None
@@ -127,7 +128,7 @@ class KeyProgressWidget(QGraphicsView):
         self._current_bar_index = -1
 
         # 视图设置
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)  # 只跟随 piano_roll
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.setRenderHint(QPainter.RenderHint.Antialiasing, False)
         self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
@@ -158,12 +159,7 @@ class KeyProgressWidget(QGraphicsView):
             }
         """)
 
-        # 连接滚动信号
-        self.horizontalScrollBar().valueChanged.connect(self._on_hscroll)
-
-    def _on_hscroll(self, value: int):
-        """水平滚动变化"""
-        self.sig_scroll_changed.emit(value)
+        # 不连接水平滚动信号，只跟随 piano_roll
 
     def set_scroll_offset(self, offset: int):
         """设置水平滚动位置（从 PianoRollWidget 同步）"""
@@ -194,6 +190,11 @@ class KeyProgressWidget(QGraphicsView):
         """设置行高"""
         self.row_height = height
         self._update_all_geometry()
+
+    def set_total_duration(self, duration: float):
+        """设置总时长（从 PianoRollWidget 同步）"""
+        self._total_duration = duration
+        self._update_scene_size()
 
     def _rebuild_key_rows(self):
         """重建按键行列表"""
@@ -277,11 +278,12 @@ class KeyProgressWidget(QGraphicsView):
         if not self._key_rows:
             return
 
-        # 计算场景宽度
+        # 计算场景宽度（考虑 total_duration）
         if self._events:
             max_time = max(e["time"] + e.get("duration", 0.1) for e in self._events)
         else:
             max_time = 10.0
+        max_time = max(max_time, self._total_duration)
         scene_width = max(max_time * self.pixels_per_second + 200, 800)
 
         pen = QPen(self.GRID_COLOR, 1)
@@ -308,6 +310,7 @@ class KeyProgressWidget(QGraphicsView):
             max_time = max(e["time"] + e.get("duration", 0.1) for e in self._events)
         else:
             max_time = 10.0
+        max_time = max(max_time, self._total_duration)
 
         # 使用与 PianoRoll 相同的计算方式：max(content_width, viewport_width)
         content_width = max_time * self.pixels_per_second + 100  # +100 与 piano_roll 一致
@@ -533,6 +536,10 @@ class KeyListWidget(QWidget):
     def set_scroll_offset(self, offset: int):
         """设置水平滚动位置"""
         self.progress_view.set_scroll_offset(offset)
+
+    def set_total_duration(self, duration: float):
+        """设置总时长"""
+        self.progress_view.set_total_duration(duration)
 
     def update_playback_time(self, current_time: float, auto_scroll: bool = False):
         """更新播放时间

@@ -1210,6 +1210,28 @@ class PianoRollWidget(QGraphicsView):
         end = max(item.start_time + item.duration for item in selected)
         return (start, end)
 
+    def adjust_selected_duration(self, delta_sec: float):
+        """调整选中音符的时值
+
+        Args:
+            delta_sec: 时值增量（秒，可正可负）
+        """
+        from .undo_commands import AdjustDurationCommand
+
+        selected = [item for item in self.notes if item.isSelected()]
+        if not selected:
+            return
+
+        notes_data = [{
+            "note": item.note,
+            "start": item.start_time,
+            "duration": item.duration
+        } for item in selected]
+
+        cmd = AdjustDurationCommand(self, notes_data, delta_sec)
+        self.undo_stack.push(cmd)
+        self.sig_notes_changed.emit()
+
     def select_by_pitch_range(self, low_note: int, high_note: int):
         """按音域范围选择音符（保留现有时间范围过滤）
 

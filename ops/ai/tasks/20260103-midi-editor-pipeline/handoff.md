@@ -1,6 +1,33 @@
 # Handoff - 20260103-midi-editor-pipeline
 
-## Status: DONE (Session 9 - UI Fixes & Auto-scroll)
+## Status: DONE (Session 10 - Bug Fixes & New Features)
+
+## Session 10 Summary (2026-01-05)
+
+**Bug Fixes + New Features: imports, timeline snap, duration adjust, auto-jitter**
+
+Latest Commit: `864ba46` autosave: 2026-01-05 03:39:21
+Uncommitted: 7 files
+
+### Session 10 Changes
+| Task | Description | Status |
+|------|-------------|--------|
+| 4 | Add duration adjustment (QSpinBox 50ms step + apply button) | DONE |
+| 5 | Auto-apply jitter on input style change | DONE |
+| 6 | Add translations for duration controls | DONE |
+| Fix | `undo_commands.py` - add `import weakref` | DONE |
+| Fix | `timeline.py` - single click precise, drag = floor/ceil snap | DONE |
+| Fix | `editor_window.py` - add `QPushButton` import | DONE |
+
+### Key Files Modified
+| Path | Change |
+|------|--------|
+| `undo_commands.py` | +import weakref |
+| `timeline.py` | snap logic rewrite (floor/ceil) |
+| `editor_window.py` | +QPushButton, duration controls, auto-jitter |
+| `translations.py` | +4 translation keys |
+
+---
 
 ## Session 9 Summary (2026-01-05)
 

@@ -1,4 +1,57 @@
-# Execute Log - Session 6-9
+# Execute Log - Session 6-10
+
+---
+
+# Session 10 (2026-01-05) - Bug Fixes & New Features
+
+## Session Info
+- Date: 2026-01-05
+- Latest Commit: `864ba46` autosave: 2026-01-05 03:39:21
+- Focus: Bug fixes (imports, timeline snap), new features (duration adjust, auto-jitter)
+- Status: DONE
+
+## Tasks Completed
+
+| Task | Description | Status |
+|------|-------------|--------|
+| 4 | Add extend duration feature (QSpinBox + apply button) | DONE |
+| 5 | Auto-apply jitter on input style change | DONE |
+| 6 | Add translations for duration controls | DONE |
+| Fix | `undo_commands.py` - add missing `import weakref` | DONE |
+| Fix | `timeline.py` - single click precise (no snap), drag = floor/ceil snap | DONE |
+| Fix | `editor_window.py` - add missing `QPushButton` import | DONE |
+
+## Changes Made
+
+### undo_commands.py
+- Added `import weakref` to fix NameError in AdjustDurationCommand
+
+### timeline.py
+- Replaced `_snap_to_bar()` with `_snap_bar_floor()` and `_snap_bar_ceil()`
+- `mousePressEvent`: records precise time (no snap)
+- `mouseMoveEvent`: shows raw position during drag (no snap preview)
+- `mouseReleaseEvent`: single click = precise seek, drag = floor/ceil snap
+
+### editor_window.py
+- Added `QPushButton` to PyQt6.QtWidgets import
+- Added duration adjustment controls (QSpinBox 50ms step + apply button)
+- Added `_apply_duration_delta()` method
+- Added `_on_input_style_changed()` handler for auto-jitter
+- Connected `cmb_input_style.currentTextChanged` signal
+
+### translations.py
+- Added 4 translation keys: duration_label, duration_tooltip, apply_duration, apply_duration_tooltip
+
+## Files Modified (7)
+| File | Change |
+|------|--------|
+| undo_commands.py | +import weakref |
+| timeline.py | snap logic rewrite |
+| editor_window.py | +QPushButton, duration controls, auto-jitter |
+| translations.py | +4 translation keys |
+| key_list_widget.py | (linter changes) |
+| piano_roll.py | (linter changes) |
+| player/config.py | (linter changes) |
 
 ---
 

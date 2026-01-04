@@ -17,7 +17,8 @@ from datetime import datetime
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QToolBar, QSlider, QLabel, QFileDialog, QMessageBox,
-    QSplitter, QScrollBar, QComboBox, QSpinBox, QCheckBox
+    QSplitter, QScrollBar, QComboBox, QSpinBox, QCheckBox,
+    QPushButton
 )
 from PyQt6.QtGui import QAction, QIcon, QShortcut, QKeySequence
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
@@ -300,6 +301,24 @@ class EditorWindow(QMainWindow):
 
         toolbar2.addSeparator()
 
+        # 时值调整控件
+        toolbar2.addWidget(QLabel(tr("duration_label")))
+        self.spin_duration_delta = QSpinBox()
+        self.spin_duration_delta.setRange(-5000, 5000)
+        self.spin_duration_delta.setSingleStep(50)
+        self.spin_duration_delta.setValue(0)
+        self.spin_duration_delta.setSuffix(" ms")
+        self.spin_duration_delta.setFixedWidth(90)
+        self.spin_duration_delta.setToolTip(tr("duration_tooltip"))
+        toolbar2.addWidget(self.spin_duration_delta)
+
+        self.btn_apply_duration = QPushButton(tr("apply_duration"))
+        self.btn_apply_duration.setToolTip(tr("apply_duration_tooltip"))
+        self.btn_apply_duration.clicked.connect(self._apply_duration_delta)
+        toolbar2.addWidget(self.btn_apply_duration)
+
+        toolbar2.addSeparator()
+
         # 编辑风格选择
         toolbar2.addWidget(QLabel(" Style: "))
         self.cmb_edit_style = QComboBox()
@@ -450,9 +469,11 @@ class EditorWindow(QMainWindow):
         self.playback_timer.timeout.connect(self._update_playback)
         self.timeline.sig_seek.connect(self.on_seek)
         self.cmb_edit_style.currentTextChanged.connect(self._on_edit_style_changed)
+        self.cmb_input_style.currentTextChanged.connect(self._on_input_style_changed)
         self.cmb_quantize.currentTextChanged.connect(self._on_quantize_changed)
         self.sp_bpm.valueChanged.connect(self._on_bpm_changed)
         self.timeline.sig_bpm_changed.connect(self._on_timeline_bpm_changed)
+        self.timeline.sig_select_range.connect(self._on_timeline_select_range)
         self.sp_octave_shift.valueChanged.connect(self._on_octave_shift_changed)
 
         # 同步滚动
@@ -462,13 +483,9 @@ class EditorWindow(QMainWindow):
         self.piano_roll.verticalScrollBar().valueChanged.connect(
             lambda v: self.keyboard.set_scroll_offset(v)
         )
-        # 按键进度窗水平滚动同步
+        # 按键进度窗水平滚动同步（单向：piano_roll → key_list）
         self.piano_roll.horizontalScrollBar().valueChanged.connect(
             lambda v: self.key_list.set_scroll_offset(v)
-        )
-        # 双向同步：按键进度窗滚动也同步到 PianoRoll
-        self.key_list.sig_scroll_changed.connect(
-            lambda v: self._sync_scroll_from_key_list(v)
         )
 
         # 同步缩放 (Ctrl+滚轮 → 时间轴 + 滑条 + 按键进度窗)
@@ -495,6 +512,7 @@ class EditorWindow(QMainWindow):
             # 更新按键列表内容
             events = self.export_events()
             self.key_list.set_events(events)
+            self.key_list.set_total_duration(self.piano_roll.total_duration)
             # 同步缩放
             self.key_list.set_scale(self.piano_roll.pixels_per_second)
         else:
@@ -599,6 +617,7 @@ class EditorWindow(QMainWindow):
 
             # 更新按键列表
             self.key_list.set_events(events_list)
+            self.key_list.set_total_duration(self.piano_roll.total_duration)
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load MIDI:\n{e}")
@@ -747,6 +766,12 @@ class EditorWindow(QMainWindow):
         """编辑风格变化"""
         self.edit_style = text
 
+    def _on_input_style_changed(self, text: str):
+        """输入风格变化 → 自动应用 jitter（仅当有选中音符时）"""
+        selected = [item for item in self.piano_roll.notes if item.isSelected()]
+        if selected:
+            self._apply_input_style_jitter()
+
     def _on_quantize_changed(self, text: str):
         """量化分辨率变化
 
@@ -801,6 +826,10 @@ class EditorWindow(QMainWindow):
         # Notify main window of BPM change
         self.bpm_changed.emit(bpm)
 
+    def _on_timeline_select_range(self, start: float, end: float):
+        """时间轴拖动选区 → 批量选中音符"""
+        self.piano_roll.select_by_filter(time_range=(start, end))
+
     def _on_octave_shift_changed(self, value: int):
         """八度平移变化 - 实际修改音符数据
 
@@ -828,6 +857,7 @@ class EditorWindow(QMainWindow):
         if self.chk_key_list.isChecked():
             events = self.export_events()
             self.key_list.set_events(events)
+            self.key_list.set_total_duration(self.piano_roll.total_duration)
 
         # Log the change
         self.statusBar().showMessage(
@@ -902,6 +932,7 @@ class EditorWindow(QMainWindow):
         if self.chk_key_list.isChecked():
             events = self.export_events()
             self.key_list.set_events(events)
+            self.key_list.set_total_duration(self.piano_roll.total_duration)
 
         # Emit notes changed for tracking
         self.piano_roll.sig_notes_changed.emit()
@@ -919,6 +950,21 @@ class EditorWindow(QMainWindow):
             ),
             5000
         )
+
+    def _apply_duration_delta(self):
+        """应用时值调整到选中音符"""
+        delta_ms = self.spin_duration_delta.value()
+        if delta_ms == 0:
+            return
+        delta_sec = delta_ms / 1000.0
+        self.piano_roll.adjust_selected_duration(delta_sec)
+        # 更新 key list
+        if self.chk_key_list.isChecked():
+            events = self.export_events()
+            self.key_list.set_events(events)
+            self.key_list.set_total_duration(self.piano_roll.total_duration)
+        # 重置 spinbox
+        self.spin_duration_delta.setValue(0)
 
     def _update_bar_lines(self):
         """更新钢琴卷帘的小节分隔线"""
@@ -1489,14 +1535,6 @@ class EditorWindow(QMainWindow):
         # 同步按键进度窗
         if self.chk_key_list.isChecked():
             self.key_list.set_scale(float(value))
-
-    def _sync_scroll_from_key_list(self, value: int):
-        """从按键进度窗同步水平滚动到 PianoRollWidget"""
-        self.piano_roll.horizontalScrollBar().blockSignals(True)
-        self.piano_roll.horizontalScrollBar().setValue(value)
-        self.piano_roll.horizontalScrollBar().blockSignals(False)
-        # 同步时间轴
-        self.timeline.set_scroll_offset(value)
 
     def _on_piano_roll_zoom(self, pixels_per_second: float):
         """缩放变化 (来自 Ctrl+滚轮)"""

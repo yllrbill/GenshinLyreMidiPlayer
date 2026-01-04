@@ -235,4 +235,15 @@ TRANSLATIONS = {
     },
     "scope_selected": {LANG_EN: "selected", LANG_ZH: "选中的"},
     "scope_all": {LANG_EN: "all", LANG_ZH: "全部"},
+    # Duration adjustment
+    "duration_label": {LANG_EN: " Duration: ", LANG_ZH: " 时值: "},
+    "duration_tooltip": {
+        LANG_EN: "Duration adjustment in milliseconds (step: 50ms)",
+        LANG_ZH: "时值调整（毫秒，步进 50ms）",
+    },
+    "apply_duration": {LANG_EN: "Apply", LANG_ZH: "应用"},
+    "apply_duration_tooltip": {
+        LANG_EN: "Apply duration change to selected notes",
+        LANG_ZH: "将时值变化应用到选中音符",
+    },
 }

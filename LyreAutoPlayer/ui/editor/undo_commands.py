@@ -4,6 +4,7 @@ Undo Commands - 撤销/重做命令类
 Phase 3: 实现 QUndoCommand 子类用于各种编辑操作
 """
 import random
+import weakref
 from typing import List, TYPE_CHECKING
 from PyQt6.QtGui import QUndoCommand
 
@@ -478,5 +479,56 @@ class ApplyJitterCommand(QUndoCommand):
         pr._refresh_notes()
 
         # 更新总时长
+        if pr.notes:
+            pr.total_duration = max(n.start_time + n.duration for n in pr.notes)
+
+
+class AdjustDurationCommand(QUndoCommand):
+    """调整选中音符时值"""
+
+    def __init__(self, piano_roll, notes_data: list, delta_sec: float, parent=None):
+        """
+        Args:
+            piano_roll: PianoRollWidget 实例
+            notes_data: 选中音符数据 [{note, start, duration}, ...]
+            delta_sec: 时值增量（秒，可正可负）
+        """
+        super().__init__(parent)
+        self._piano_roll = weakref.ref(piano_roll)
+        self._notes_data = notes_data
+        self._delta_sec = delta_sec
+        self.setText(f"Adjust Duration {delta_sec:+.3f}s")
+
+    def redo(self):
+        pr = self._piano_roll()
+        if not pr:
+            return
+
+        for data in self._notes_data:
+            for item in pr.notes:
+                if (item.note == data["note"] and
+                    abs(item.start_time - data["start"]) < 0.001 and
+                    abs(item.duration - data["duration"]) < 0.001):
+                    new_dur = max(0.01, item.duration + self._delta_sec)
+                    item.duration = new_dur
+                    break
+
+        pr._refresh_notes()
+        if pr.notes:
+            pr.total_duration = max(n.start_time + n.duration for n in pr.notes)
+
+    def undo(self):
+        pr = self._piano_roll()
+        if not pr:
+            return
+
+        for data in self._notes_data:
+            for item in pr.notes:
+                if (item.note == data["note"] and
+                    abs(item.start_time - data["start"]) < 0.001):
+                    item.duration = data["duration"]
+                    break
+
+        pr._refresh_notes()
         if pr.notes:
             pr.total_duration = max(n.start_time + n.duration for n in pr.notes)
