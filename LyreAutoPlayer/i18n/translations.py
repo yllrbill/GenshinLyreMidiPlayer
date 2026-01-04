@@ -246,4 +246,20 @@ TRANSLATIONS = {
         LANG_EN: "Apply duration change to selected notes",
         LANG_ZH: "将时值变化应用到选中音符",
     },
+    # Bar duration adjustment
+    "bar_duration_label": {LANG_EN: " Bar: ", LANG_ZH: " 小节: "},
+    "bar_duration_tooltip": {
+        LANG_EN: "Time stretch/compress selected bars (ms, Ctrl+drag timeline to select)",
+        LANG_ZH: "拉伸/压缩选中小节的时值（毫秒，Ctrl+拖拽时间轴选择小节）",
+    },
+    "apply_bar_duration": {LANG_EN: "Stretch", LANG_ZH: "拉伸"},
+    "apply_bar_duration_tooltip": {
+        LANG_EN: "Apply time stretch to notes in selected bars",
+        LANG_ZH: "将时值变化应用到选中小节内的音符",
+    },
+    "no_bars_selected_title": {LANG_EN: "Bar Duration", LANG_ZH: "小节时长"},
+    "no_bars_selected_msg": {
+        LANG_EN: "No bars selected.\nCtrl+drag on the timeline to select bars.",
+        LANG_ZH: "未选中任何小节。\n在时间轴上按住 Ctrl 拖拽选择小节。",
+    },
 }

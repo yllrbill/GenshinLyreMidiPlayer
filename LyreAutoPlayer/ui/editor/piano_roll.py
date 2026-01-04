@@ -13,7 +13,7 @@ from .note_item import NoteItem
 from .undo_commands import (
     AddNoteCommand, DeleteNotesCommand, MoveNotesCommand,
     TransposeCommand, QuantizeCommand, AutoTransposeCommand,
-    HumanizeCommand, ApplyJitterCommand
+    HumanizeCommand, ApplyJitterCommand, AdjustBarsDurationCommand
 )
 
 
@@ -86,6 +86,18 @@ class PianoRollWidget(QGraphicsView):
 
         # 量化分辨率 (秒)
         self._quantize_grid_size: float = 0.25  # 默认 1/4 拍 @120BPM
+
+        # Bar selection state (从 timeline 同步)
+        self._selected_bars: List[int] = []
+
+        # Drag boundary state (黄色竖线)
+        self._drag_boundary_start: float = 0.0  # 秒
+        self._drag_boundary_end: float = 0.0    # 秒
+        self._drag_boundary_active: bool = False
+
+        # Bar selection overlay items
+        self._bar_overlay_items: List = []
+        self._drag_line_items: List = []
 
         # 视图设置
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
@@ -1366,4 +1378,286 @@ class PianoRollWidget(QGraphicsView):
         self.scene.setSceneRect(0, 0, scene_width, scene_height)
         self._clamp_scrollbar()
 
+        self.sig_notes_changed.emit()
+
+    # ============== Bar Selection & Duration Adjustment ==============
+
+    def set_selected_bars(self, bar_numbers: List[int]):
+        """设置选中的小节并绘制覆盖层
+
+        Args:
+            bar_numbers: 选中的小节号列表 (从 0 开始)
+        """
+        self._selected_bars = bar_numbers[:]
+        self._update_bar_overlay()
+
+    def get_selected_bars(self) -> List[int]:
+        """获取当前选中的小节列表"""
+        return self._selected_bars[:]
+
+    def clear_selected_bars(self):
+        """清除小节选择"""
+        self._selected_bars.clear()
+        self._clear_bar_overlay()
+
+    def set_drag_boundary(self, start_sec: float, end_sec: float, active: bool):
+        """设置拖拽边界线 (黄色竖线)
+
+        Args:
+            start_sec: 起始时间 (秒)
+            end_sec: 结束时间 (秒)
+            active: 是否激活显示
+        """
+        self._drag_boundary_start = start_sec
+        self._drag_boundary_end = end_sec
+        self._drag_boundary_active = active
+        self._update_drag_lines()
+
+    def _clear_bar_overlay(self):
+        """清除小节选择覆盖层"""
+        for item in self._bar_overlay_items:
+            self.scene.removeItem(item)
+        self._bar_overlay_items.clear()
+
+    def _update_bar_overlay(self):
+        """更新小节选择覆盖层
+
+        注意: bar_num 从 timeline 传入，是 1-based (小节 1, 2, 3, ...)
+        转换为时间时需要使用 (bar_num - 1) * _bar_duration_sec
+        """
+        self._clear_bar_overlay()
+
+        if not self._selected_bars or self._bar_duration_sec <= 0:
+            return
+
+        scene_height = (self.NOTE_RANGE[1] - self.NOTE_RANGE[0] + 1) * self.pixels_per_note
+        overlay_color = QColor(255, 255, 0, 40)  # 半透明黄色
+
+        for bar_num in sorted(self._selected_bars):
+            # bar_num 是 1-based，转换为 0-based 计算时间
+            x_start = (bar_num - 1) * self._bar_duration_sec * self.pixels_per_second
+            width = self._bar_duration_sec * self.pixels_per_second
+
+            rect = QGraphicsRectItem(x_start, 0, width, scene_height)
+            rect.setBrush(QBrush(overlay_color))
+            rect.setPen(QPen(Qt.PenStyle.NoPen))
+            rect.setZValue(-5)  # 在网格之上，音符之下
+            rect.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+            self.scene.addItem(rect)
+            self._bar_overlay_items.append(rect)
+
+    def _clear_drag_lines(self):
+        """清除拖拽边界线"""
+        for item in self._drag_line_items:
+            self.scene.removeItem(item)
+        self._drag_line_items.clear()
+
+    def _update_drag_lines(self):
+        """更新拖拽边界线 (黄色竖线)"""
+        self._clear_drag_lines()
+
+        if not self._drag_boundary_active:
+            return
+
+        scene_height = (self.NOTE_RANGE[1] - self.NOTE_RANGE[0] + 1) * self.pixels_per_note
+        pen = QPen(QColor(255, 255, 0), 2)  # 黄色 2px
+
+        # 起始线
+        x1 = self._drag_boundary_start * self.pixels_per_second
+        line1 = self.scene.addLine(x1, 0, x1, scene_height, pen)
+        line1.setZValue(90)  # 在音符之上，播放头之下
+        line1.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+        self._drag_line_items.append(line1)
+
+        # 结束线
+        x2 = self._drag_boundary_end * self.pixels_per_second
+        line2 = self.scene.addLine(x2, 0, x2, scene_height, pen)
+        line2.setZValue(90)
+        line2.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+        self._drag_line_items.append(line2)
+
+    def adjust_selected_bars_duration(self, delta_ms: int):
+        """调整选中小节内音符的时值，并平移后续音符
+
+        时间拉伸/压缩语义：
+        - 选中的小节按连续区间分组（如 [1,2] 和 [5,6] 是两个区间）
+        - 每个区间内的音符按比例拉伸/压缩
+        - 后续区间和音符累计平移
+        - delta 按小节数量累计：total_delta = delta_sec * bar_count
+
+        音符归属判定：
+        - 使用区间重叠检测（音符时间区间与小节区间有交集）
+        - 不使用音符中心点
+
+        Args:
+            delta_ms: 每小节时值增量 (毫秒，正=拉伸，负=压缩)
+
+        注意: bar_num 是 1-based (小节 1, 2, 3, ...)
+        """
+        if not self._selected_bars or self._bar_duration_sec <= 0:
+            return
+
+        delta_sec_per_bar = delta_ms / 1000.0
+
+        # 将选中小节分组为连续区间
+        # 例如 [1, 2, 5, 6, 7] -> [[1, 2], [5, 6, 7]]
+        sorted_bars = sorted(self._selected_bars)
+        intervals = []  # [(first_bar, last_bar), ...]
+        if sorted_bars:
+            interval_start = sorted_bars[0]
+            interval_end = sorted_bars[0]
+            for bar in sorted_bars[1:]:
+                if bar == interval_end + 1:
+                    # 连续，扩展当前区间
+                    interval_end = bar
+                else:
+                    # 不连续，保存当前区间，开始新区间
+                    intervals.append((interval_start, interval_end))
+                    interval_start = bar
+                    interval_end = bar
+            intervals.append((interval_start, interval_end))
+
+        if not intervals:
+            return
+
+        # 收集所有音符的旧状态
+        all_notes_old_data = [{
+            "note": item.note,
+            "start": item.start_time,
+            "duration": item.duration,
+            "velocity": item.velocity,
+            "track": item.track,
+            "channel": getattr(item, 'channel', 0)
+        } for item in self.notes]
+
+        # 按起始时间排序音符（用于处理后续平移）
+        notes_by_start = sorted(self.notes, key=lambda n: n.start_time)
+
+        # 计算每个音符的新位置
+        # 使用字典存储：note_item -> new_data
+        note_updates = {}
+        cumulative_shift = 0.0  # 累计平移量
+
+        for interval_idx, (first_bar, last_bar) in enumerate(intervals):
+            # 计算此区间的时间范围 (bar_num 是 1-based)
+            interval_start_sec = (first_bar - 1) * self._bar_duration_sec
+            interval_end_sec = last_bar * self._bar_duration_sec
+
+            # 此区间包含的小节数
+            bar_count = last_bar - first_bar + 1
+
+            # 此区间的 delta
+            total_delta = delta_sec_per_bar * bar_count
+
+            # 原始时长和新时长
+            original_duration = interval_end_sec - interval_start_sec
+            new_duration = max(0.01, original_duration + total_delta)
+            scale = new_duration / original_duration if original_duration > 0 else 1.0
+
+            # 应用累计平移到此区间的起点
+            shifted_interval_start = interval_start_sec + cumulative_shift
+
+            # 找出与此区间重叠的音符（区间重叠检测）
+            for item in notes_by_start:
+                note_start = item.start_time
+                note_end = item.start_time + item.duration
+
+                # 跳过已处理的音符
+                if item in note_updates:
+                    continue
+
+                # 区间重叠检测：音符区间 [note_start, note_end) 与小节区间 [interval_start, interval_end) 有交集
+                # 注意：比较时需要考虑之前的累计平移
+                adjusted_note_start = note_start
+                if cumulative_shift != 0 and note_start >= interval_start_sec:
+                    # 此音符在当前或之后的区间，需要考虑累计平移
+                    pass  # 暂不调整，在下面处理
+
+                # 判断音符是否与原始区间重叠
+                if note_end > interval_start_sec and note_start < interval_end_sec:
+                    # 音符与此区间重叠，进行拉伸
+                    rel_start = note_start - interval_start_sec
+                    rel_end = rel_start + item.duration
+
+                    new_rel_start = rel_start * scale
+                    new_rel_end = rel_end * scale
+
+                    note_updates[item] = {
+                        "note": item.note,
+                        "start": shifted_interval_start + new_rel_start,
+                        "duration": max(0.01, new_rel_end - new_rel_start),
+                        "velocity": item.velocity,
+                        "track": item.track,
+                        "channel": getattr(item, 'channel', 0)
+                    }
+
+            # 更新累计平移量
+            cumulative_shift += (new_duration - original_duration)
+
+        # 处理未被任何区间覆盖的音符（在所有选中区间之后的音符需要平移）
+        last_interval_end = intervals[-1][1] * self._bar_duration_sec
+        for item in notes_by_start:
+            if item in note_updates:
+                continue
+
+            note_start = item.start_time
+
+            # 判断音符是否在所有选中区间之后
+            if note_start >= last_interval_end:
+                # 在最后一个区间之后，应用累计平移
+                note_updates[item] = {
+                    "note": item.note,
+                    "start": note_start + cumulative_shift,
+                    "duration": item.duration,
+                    "velocity": item.velocity,
+                    "track": item.track,
+                    "channel": getattr(item, 'channel', 0)
+                }
+            else:
+                # 在区间之间或之前，检查是否需要部分平移
+                # 找出此音符应该受到多少累计平移
+                shift_for_note = 0.0
+                temp_shift = 0.0
+                for first_bar, last_bar in intervals:
+                    interval_start_sec = (first_bar - 1) * self._bar_duration_sec
+                    interval_end_sec = last_bar * self._bar_duration_sec
+                    bar_count = last_bar - first_bar + 1
+                    total_delta = delta_sec_per_bar * bar_count
+                    original_dur = interval_end_sec - interval_start_sec
+                    new_dur = max(0.01, original_dur + total_delta)
+
+                    if note_start >= interval_end_sec:
+                        # 音符在此区间之后，累加此区间的平移
+                        temp_shift += (new_dur - original_dur)
+
+                if temp_shift != 0:
+                    note_updates[item] = {
+                        "note": item.note,
+                        "start": note_start + temp_shift,
+                        "duration": item.duration,
+                        "velocity": item.velocity,
+                        "track": item.track,
+                        "channel": getattr(item, 'channel', 0)
+                    }
+
+        if not note_updates:
+            return
+
+        # 构建 old 和 new 数据用于 undo 命令
+        old_notes_data = []
+        new_notes_data = []
+        for item, new_data in note_updates.items():
+            old_notes_data.append({
+                "note": item.note,
+                "start": item.start_time,
+                "duration": item.duration,
+                "velocity": item.velocity,
+                "track": item.track,
+                "channel": getattr(item, 'channel', 0)
+            })
+            new_notes_data.append(new_data)
+
+        # 使用 undo 命令
+        cmd = AdjustBarsDurationCommand(self, old_notes_data, new_notes_data)
+        self.undo_stack.push(cmd)
         self.sig_notes_changed.emit()

@@ -532,3 +532,52 @@ class AdjustDurationCommand(QUndoCommand):
         pr._refresh_notes()
         if pr.notes:
             pr.total_duration = max(n.start_time + n.duration for n in pr.notes)
+
+
+class AdjustBarsDurationCommand(QUndoCommand):
+    """调整选中小节内音符的时值（时间拉伸/压缩）
+
+    - 选中的小节内所有音符按比例拉伸/压缩
+    - 选中小节之后的所有音符整体平移
+    """
+
+    def __init__(self, piano_roll, old_notes_data: list, new_notes_data: list, parent=None):
+        """
+        Args:
+            piano_roll: PianoRollWidget 实例
+            old_notes_data: 原始音符数据 [{note, start, duration, velocity, track, channel}, ...]
+            new_notes_data: 新音符数据（与 old_notes_data 一一对应）
+        """
+        super().__init__(parent)
+        self._piano_roll = weakref.ref(piano_roll)
+        self._old_notes_data = [d.copy() for d in old_notes_data]
+        self._new_notes_data = [d.copy() for d in new_notes_data]
+        self.setText(f"Adjust Bars Duration ({len(old_notes_data)} notes)")
+
+    def redo(self):
+        """执行/重做: 应用新的音符位置和时值"""
+        self._apply_notes_data(self._old_notes_data, self._new_notes_data)
+
+    def undo(self):
+        """撤销: 恢复原始音符位置和时值"""
+        self._apply_notes_data(self._new_notes_data, self._old_notes_data)
+
+    def _apply_notes_data(self, from_data: list, to_data: list):
+        """将音符从 from_data 状态更新到 to_data 状态"""
+        pr = self._piano_roll()
+        if not pr:
+            return
+
+        for from_d, to_d in zip(from_data, to_data):
+            for item in pr.notes:
+                if (item.note == from_d["note"] and
+                    abs(item.start_time - from_d["start"]) < 0.001 and
+                    abs(item.duration - from_d["duration"]) < 0.001):
+                    # 更新到新状态
+                    item.start_time = to_d["start"]
+                    item.duration = to_d["duration"]
+                    break
+
+        pr._refresh_notes()
+        if pr.notes:
+            pr.total_duration = max(n.start_time + n.duration for n in pr.notes)

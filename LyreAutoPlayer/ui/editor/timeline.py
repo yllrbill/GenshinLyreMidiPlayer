@@ -17,6 +17,8 @@ class TimelineWidget(QWidget):
     sig_seek = pyqtSignal(float)  # 点击跳转到指定时间 (秒)
     sig_bpm_changed = pyqtSignal(int)  # BPM 变化 (用于同步 spinbox)
     sig_select_range = pyqtSignal(float, float)  # 拖动选择范围 (start, end)
+    sig_bar_selection_changed = pyqtSignal(list)  # 选中小节列表变化 [bar_num, ...]
+    sig_drag_range = pyqtSignal(float, float, bool)  # 拖动边界线 (start, end, active)
 
     # 常量 - 颜色
     BG_COLOR = QColor(40, 40, 40)
@@ -30,11 +32,13 @@ class TimelineWidget(QWidget):
     PLAYHEAD_COLOR = QColor(255, 0, 0)
     SELECT_COLOR = QColor(80, 150, 255, 80)   # 选区背景 (半透明蓝)
     SELECT_BORDER = QColor(80, 150, 255)      # 选区边框
+    BAR_SELECTED_COLOR = QColor(255, 255, 200, 100)  # 选中小节背景 (半透明黄)
+    DRAG_LINE_COLOR = QColor(255, 255, 0)     # 拖动边界线 (黄色)
 
-    # 常量 - 布局 (+50% 高度)
-    HEIGHT = 75              # 总高度 (增加以容纳两行)
-    ROW_BAR = 30             # 上行高度 (小节/BPM)
-    ROW_TIME = 45            # 下行高度 (秒数)
+    # 常量 - 布局 (节拍行 +25%, 时间行 -25%)
+    HEIGHT = 72              # 总高度 = 38 + 34
+    ROW_BAR = 38             # 上行高度 (小节/BPM) = 30 * 1.25
+    ROW_TIME = 34            # 下行高度 (秒数) = 45 * 0.75
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -64,6 +68,10 @@ class TimelineWidget(QWidget):
         self._drag_start: float = -1.0   # 拖动起点时间 (秒)
         self._drag_end: float = -1.0     # 拖动终点时间 (秒)
         self._is_dragging = False
+
+        # Ctrl+拖动选择小节状态
+        self._ctrl_dragging = False      # Ctrl+拖动模式
+        self._selected_bars: List[int] = []  # 选中小节编号列表
 
         self.setFixedHeight(self.HEIGHT)
         self.setMinimumWidth(100)
@@ -277,9 +285,20 @@ class TimelineWidget(QWidget):
         self._draw_time_row(painter, start_time, end_time, font_time)
 
         # ─────────────────────────────────────────────────────────────────────
-        # 选区 (拖动时绘制)
+        # 选中小节高亮 (Ctrl+拖动选中的小节)
         # ─────────────────────────────────────────────────────────────────────
-        if self._drag_start >= 0 and self._drag_end >= 0:
+        if self._selected_bars:
+            for bar_num in self._selected_bars:
+                bar_start, bar_end = self._get_bar_time_range(bar_num)
+                x1 = int((bar_start - start_time) * self.pixels_per_second)
+                x2 = int((bar_end - start_time) * self.pixels_per_second)
+                if x2 > x1 and x2 > 0 and x1 < self.width():
+                    painter.fillRect(x1, 0, x2 - x1, self.HEIGHT, self.BAR_SELECTED_COLOR)
+
+        # ─────────────────────────────────────────────────────────────────────
+        # 选区 (拖动时绘制，但 Ctrl+拖动时不显示蓝色选区)
+        # ─────────────────────────────────────────────────────────────────────
+        if self._drag_start >= 0 and self._drag_end >= 0 and not self._ctrl_dragging:
             sel_start = min(self._drag_start, self._drag_end)
             sel_end = max(self._drag_start, self._drag_end)
             x1 = int((sel_start - start_time) * self.pixels_per_second)
@@ -289,6 +308,20 @@ class TimelineWidget(QWidget):
                 painter.setPen(QPen(self.SELECT_BORDER, 1))
                 painter.drawLine(x1, 0, x1, self.HEIGHT)
                 painter.drawLine(x2, 0, x2, self.HEIGHT)
+
+        # ─────────────────────────────────────────────────────────────────────
+        # Ctrl+拖动时的边界线 (黄线)
+        # ─────────────────────────────────────────────────────────────────────
+        if self._ctrl_dragging and self._drag_start >= 0 and self._drag_end >= 0:
+            raw_start = min(self._drag_start, self._drag_end)
+            raw_end = max(self._drag_start, self._drag_end)
+            snapped_start = self._snap_bar_floor(raw_start)
+            snapped_end = self._snap_bar_ceil(raw_end)
+            x1 = int((snapped_start - start_time) * self.pixels_per_second)
+            x2 = int((snapped_end - start_time) * self.pixels_per_second)
+            painter.setPen(QPen(self.DRAG_LINE_COLOR, 2))
+            painter.drawLine(x1, 0, x1, self.HEIGHT)
+            painter.drawLine(x2, 0, x2, self.HEIGHT)
 
         # ─────────────────────────────────────────────────────────────────────
         # 播放头 (贯穿两行)
@@ -523,44 +556,150 @@ class TimelineWidget(QWidget):
         # 超出最后小节，返回总时长
         return self.total_duration
 
+    def _get_bar_at_time(self, time_sec: float) -> int:
+        """获取指定时间所在的小节编号"""
+        bar_num = 1
+        for bn, bt in self._bar_times:
+            if bt > time_sec:
+                break
+            bar_num = bn
+        return bar_num
+
+    def _get_bars_in_range(self, start_time: float, end_time: float) -> List[int]:
+        """获取时间范围内的所有小节编号"""
+        bars = []
+        for bn, bt in self._bar_times:
+            # 获取此小节的结束时间
+            next_bt = self.total_duration
+            for nbn, nbt in self._bar_times:
+                if nbn == bn + 1:
+                    next_bt = nbt
+                    break
+            # 小节与范围有交集
+            if bt < end_time and next_bt > start_time:
+                bars.append(bn)
+        return bars
+
+    def _get_bar_time_range(self, bar_num: int) -> Tuple[float, float]:
+        """获取指定小节的时间范围 (start, end)"""
+        start_time = 0.0
+        end_time = self.total_duration
+        for i, (bn, bt) in enumerate(self._bar_times):
+            if bn == bar_num:
+                start_time = bt
+                # 找下一个小节的开始时间作为结束
+                if i + 1 < len(self._bar_times):
+                    end_time = self._bar_times[i + 1][1]
+                break
+        return start_time, end_time
+
+    def get_selected_bars(self) -> List[int]:
+        """获取选中的小节列表"""
+        return list(self._selected_bars)
+
+    def set_selected_bars(self, bars: List[int]):
+        """设置选中的小节列表"""
+        self._selected_bars = list(bars)
+        self.update()
+
+    def clear_selected_bars(self):
+        """清除选中的小节"""
+        if self._selected_bars:
+            self._selected_bars = []
+            self.sig_bar_selection_changed.emit([])
+            self.update()
+
     def mousePressEvent(self, event):
         """点击/开始拖动（不吸附，记录精确位置）"""
         if event.button() == Qt.MouseButton.LeftButton:
             x = event.position().x()
             time_sec = (x + self.scroll_offset) / self.pixels_per_second
             time_sec = max(0, min(time_sec, self.total_duration))
-            # 记录精确位置（不吸附）
-            self._drag_start = time_sec
-            self._drag_end = time_sec
-            self._is_dragging = True
+
+            # 检查是否按住 Ctrl 键
+            ctrl_held = event.modifiers() & Qt.KeyboardModifier.ControlModifier
+
+            if ctrl_held:
+                # Ctrl+左键: 小节选择模式
+                self._ctrl_dragging = True
+                self._drag_start = time_sec
+                self._drag_end = time_sec
+                # 发射拖动边界信号（黄线）
+                snapped_start = self._snap_bar_floor(time_sec)
+                snapped_end = self._snap_bar_ceil(time_sec)
+                self.sig_drag_range.emit(snapped_start, snapped_end, True)
+            else:
+                # 普通左键: 跳转/选区模式
+                self._ctrl_dragging = False
+                self._drag_start = time_sec
+                self._drag_end = time_sec
+                self._is_dragging = True
             self.update()
 
     def mouseMoveEvent(self, event):
         """拖动选区（实时显示原始位置，不吸附预览）"""
-        if self._is_dragging:
-            x = event.position().x()
-            time_sec = (x + self.scroll_offset) / self.pixels_per_second
-            time_sec = max(0, min(time_sec, self.total_duration))
+        x = event.position().x()
+        time_sec = (x + self.scroll_offset) / self.pixels_per_second
+        time_sec = max(0, min(time_sec, self.total_duration))
+
+        if self._ctrl_dragging:
+            # Ctrl+拖动: 小节选择模式
+            self._drag_end = time_sec
+            # 发射拖动边界信号（黄线）
+            raw_start = min(self._drag_start, self._drag_end)
+            raw_end = max(self._drag_start, self._drag_end)
+            snapped_start = self._snap_bar_floor(raw_start)
+            snapped_end = self._snap_bar_ceil(raw_end)
+            self.sig_drag_range.emit(snapped_start, snapped_end, True)
+            self.update()
+        elif self._is_dragging:
             self._drag_end = time_sec
             self.update()
 
     def mouseReleaseEvent(self, event):
         """结束拖动并发射选择信号"""
-        if event.button() == Qt.MouseButton.LeftButton and self._is_dragging:
-            self._is_dragging = False
-            raw_start = min(self._drag_start, self._drag_end)
-            raw_end = max(self._drag_start, self._drag_end)
-            if abs(raw_end - raw_start) < 0.01:
-                # 单击 → 精确跳转（不吸附）
-                self.sig_seek.emit(raw_start)
-            else:
-                # 拖动 → 选区（start 向下取整，end 向上取整）
+        if event.button() == Qt.MouseButton.LeftButton:
+            if self._ctrl_dragging:
+                # Ctrl+拖动结束: 小节选择
+                self._ctrl_dragging = False
+                raw_start = min(self._drag_start, self._drag_end)
+                raw_end = max(self._drag_start, self._drag_end)
                 snapped_start = self._snap_bar_floor(raw_start)
                 snapped_end = self._snap_bar_ceil(raw_end)
-                self.sig_select_range.emit(snapped_start, snapped_end)
-            self._drag_start = -1.0
-            self._drag_end = -1.0
-            self.update()
+
+                # 获取范围内的小节
+                new_bars = self._get_bars_in_range(snapped_start, snapped_end)
+
+                # 累加选择（不清除原有）
+                for bar in new_bars:
+                    if bar not in self._selected_bars:
+                        self._selected_bars.append(bar)
+                self._selected_bars.sort()
+
+                # 发射信号
+                self.sig_bar_selection_changed.emit(list(self._selected_bars))
+                # 隐藏黄线
+                self.sig_drag_range.emit(0, 0, False)
+
+                self._drag_start = -1.0
+                self._drag_end = -1.0
+                self.update()
+            elif self._is_dragging:
+                self._is_dragging = False
+                raw_start = min(self._drag_start, self._drag_end)
+                raw_end = max(self._drag_start, self._drag_end)
+                if abs(raw_end - raw_start) < 0.01:
+                    # 单击 → 精确跳转（不吸附），同时清除小节选择
+                    self.clear_selected_bars()
+                    self.sig_seek.emit(raw_start)
+                else:
+                    # 拖动 → 选区（start 向下取整，end 向上取整）
+                    snapped_start = self._snap_bar_floor(raw_start)
+                    snapped_end = self._snap_bar_ceil(raw_end)
+                    self.sig_select_range.emit(snapped_start, snapped_end)
+                self._drag_start = -1.0
+                self._drag_end = -1.0
+                self.update()
 
     def get_bpm_text(self) -> str:
         """获取当前 BPM 显示文本"""

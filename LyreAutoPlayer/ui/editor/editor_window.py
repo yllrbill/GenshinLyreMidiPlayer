@@ -319,6 +319,24 @@ class EditorWindow(QMainWindow):
 
         toolbar2.addSeparator()
 
+        # 小节时值调整 (Bar Duration Adjust)
+        toolbar2.addWidget(QLabel(tr("bar_duration_label")))
+        self.spin_bar_duration_delta = QSpinBox()
+        self.spin_bar_duration_delta.setRange(-5000, 5000)
+        self.spin_bar_duration_delta.setSingleStep(50)
+        self.spin_bar_duration_delta.setValue(0)
+        self.spin_bar_duration_delta.setSuffix(" ms")
+        self.spin_bar_duration_delta.setFixedWidth(90)
+        self.spin_bar_duration_delta.setToolTip(tr("bar_duration_tooltip"))
+        toolbar2.addWidget(self.spin_bar_duration_delta)
+
+        self.btn_apply_bar_duration = QPushButton(tr("apply_bar_duration"))
+        self.btn_apply_bar_duration.setToolTip(tr("apply_bar_duration_tooltip"))
+        self.btn_apply_bar_duration.clicked.connect(self._apply_bar_duration_delta)
+        toolbar2.addWidget(self.btn_apply_bar_duration)
+
+        toolbar2.addSeparator()
+
         # 编辑风格选择
         toolbar2.addWidget(QLabel(" Style: "))
         self.cmb_edit_style = QComboBox()
@@ -496,6 +514,13 @@ class EditorWindow(QMainWindow):
 
         # 键盘拖拽选择音域 → 钢琴卷帘批量选择
         self.keyboard.sig_range_selected.connect(self.piano_roll.select_by_pitch_range)
+
+        # Bar selection: timeline → piano_roll
+        self.timeline.sig_bar_selection_changed.connect(self.piano_roll.set_selected_bars)
+        self.timeline.sig_drag_range.connect(self.piano_roll.set_drag_boundary)
+
+        # Notes changed → refresh key_list and timeline
+        self.piano_roll.sig_notes_changed.connect(self._on_notes_changed_refresh)
 
         # 按键列表开关
         self.chk_key_list.toggled.connect(self._on_key_list_toggled)
@@ -965,6 +990,41 @@ class EditorWindow(QMainWindow):
             self.key_list.set_total_duration(self.piano_roll.total_duration)
         # 重置 spinbox
         self.spin_duration_delta.setValue(0)
+
+    def _apply_bar_duration_delta(self):
+        """应用小节时值调整到选中小节内的音符"""
+        delta_ms = self.spin_bar_duration_delta.value()
+        if delta_ms == 0:
+            return
+        selected_bars = self.piano_roll.get_selected_bars()
+        if not selected_bars:
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.information(
+                self,
+                tr("no_bars_selected_title"),
+                tr("no_bars_selected_msg")
+            )
+            return
+        self.piano_roll.adjust_selected_bars_duration(delta_ms)
+        # 更新 key list
+        if self.chk_key_list.isChecked():
+            events = self.export_events()
+            self.key_list.set_events(events)
+            self.key_list.set_total_duration(self.piano_roll.total_duration)
+        # 更新 timeline duration
+        self.timeline.set_duration(self.piano_roll.total_duration)
+        # 重置 spinbox
+        self.spin_bar_duration_delta.setValue(0)
+
+    def _on_notes_changed_refresh(self):
+        """当音符变化时刷新 key_list 和 timeline"""
+        # 更新 key list
+        if self.chk_key_list.isChecked():
+            events = self.export_events()
+            self.key_list.set_events(events)
+            self.key_list.set_total_duration(self.piano_roll.total_duration)
+        # 更新 timeline duration
+        self.timeline.set_duration(self.piano_roll.total_duration)
 
     def _update_bar_lines(self):
         """更新钢琴卷帘的小节分隔线"""
