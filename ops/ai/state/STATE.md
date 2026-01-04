@@ -2,9 +2,9 @@
 
 ## Latest Task
 - TASK_ID: 20260103-midi-editor-pipeline
-- Status: DONE (Session 10 - Bug Fixes & New Features)
+- Status: DONE (Session 11 - Bar Duration Bug Fixes)
 - Pointer: ops/ai/tasks/20260103-midi-editor-pipeline
-- Latest Commit: `7b73a5d`
+- Latest Commit: `bd39a79`
 
 ## Previous Task
 - TASK_ID: 20260102-2138-main-mixin-refactor
@@ -12,9 +12,9 @@
 - Pointer: ops/ai/tasks/20260102-2138-main-mixin-refactor
 
 ## Current Focus
+- Session 11: Bar duration adjustment bug fixes (6 issues)
 - Session 10: Bug fixes (imports, timeline snap) + new features (duration adjust, auto-jitter)
 - Session 9: UI fixes (KeyList width, progress bar, auto-scroll, audio sync, toolbar)
-- Session 8: Bug fixes, i18n, keyboard config sync
 
 ## Completed Summary (MIDI Editor)
 - **Phase 1 钢琴卷帘骨架完成**: 6 个新文件 (~745 行)
@@ -63,7 +63,8 @@
 2. Phase 3-4: 高级编辑 + 超音域处理预览（如需继续）
 
 ## Recent Completions
-- Bug Fixes & New Features (Session 10, 2026-01-05) - **Committed: 7b73a5d**
+- Bar Duration Bug Fixes (Session 11, 2026-01-05) - **Committed: bd39a79**
+- Bug Fixes & New Features (Session 10, 2026-01-05) - Committed: 7b73a5d
 - UI Fixes & Auto-scroll (Session 9, 2026-01-05) - Committed: 7713727
 - Bug Fixes & i18n (Session 8, 2026-01-05)
 - KeyListWidget + Main GUI Cleanup (Session 7, 2026-01-04)
@@ -86,8 +87,9 @@
 ---
 
 ## Next Actions
-1. **用户测试**: 时间轴拖拽、时值调整、自动 jitter 功能
-2. Phase 3-4: 高级编辑 + 超音域处理预览（如需继续）
+1. **用户测试**: 小节时长调整 (Ctrl+拖拽选择多个小节, 拉伸/压缩)
+2. **验证**: 非连续小节 (1,2,5,6) 独立拉伸 + 累计平移
+3. Phase 3-4: 高级编辑 + 超音域处理预览（如需继续）
 
 ---
-*Last Updated: 2026-01-05 (Session 10 - Bug Fixes & New Features, DONE, Commit: 7b73a5d)*
+*Last Updated: 2026-01-05 (Session 11 - Bar Duration Bug Fixes, DONE, Commit: bd39a79)*

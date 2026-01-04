@@ -1,4 +1,60 @@
-# Execute Log - Session 6-10
+# Execute Log - Session 6-11
+
+---
+
+# Session 11 (2026-01-05) - Bar Duration Adjustment Bug Fixes
+
+## Session Info
+- Date: 2026-01-05
+- Latest Commit: `bd39a79` autosave: 2026-01-05 05:58:18
+- Focus: Bar duration adjustment algorithm fixes (6 bug fixes)
+- Status: DONE
+
+## Tasks Completed
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Fix 1 | Bar numbering: 1-based → 0-based conversion in piano_roll.py | DONE |
+| Fix 2 | Continuous interval grouping for non-contiguous bar selection | DONE |
+| Fix 3 | Delta calculation (delta_sec * bar_count) + interval overlap detection | DONE |
+| Fix 4 | Ctrl drag visuals: no blue rect, only yellow lines | DONE |
+| Fix 5 | i18n for "no bars selected" message | DONE |
+| Fix 6 | List modified files | DONE |
+
+## Changes Made
+
+### piano_roll.py
+- `_update_bar_overlay()`: Fixed bar numbering - changed `bar_num * _bar_duration_sec` to `(bar_num - 1) * _bar_duration_sec`
+- `adjust_selected_bars_duration()`: Complete rewrite with:
+  - Continuous interval grouping algorithm (e.g., [1,2,5,6] → [[1,2], [5,6]])
+  - Delta calculation: `delta_sec_per_bar * bar_count`
+  - Interval overlap detection instead of note center point
+  - Cumulative shift for notes between/after intervals
+
+### timeline.py
+- `paintEvent()`: Added `and not self._ctrl_dragging` condition to prevent blue rect during Ctrl+drag
+
+### translations.py
+- Added `no_bars_selected_title` translation key
+- Added `no_bars_selected_msg` translation key
+
+### editor_window.py
+- Updated "no bars selected" message to use `tr("no_bars_selected_title")` and `tr("no_bars_selected_msg")`
+
+## Files Modified (5)
+| File | Change |
+|------|--------|
+| piano_roll.py | Bar numbering fix + duration adjustment rewrite (+200 lines) |
+| timeline.py | Ctrl drag blue rect fix |
+| translations.py | +2 translation keys |
+| editor_window.py | Use tr() for no bars message |
+| undo_commands.py | (linter changes) |
+
+## Git Summary
+```
+bd39a79 autosave: 2026-01-05 05:58:18
+8 files changed, 1108 insertions(+), 35 deletions(-)
+```
 
 ---
 
