@@ -28,10 +28,10 @@ class TimelineWidget(QWidget):
     BPM_COLOR = QColor(255, 180, 80)          # BPM 文字 (橙色)
     PLAYHEAD_COLOR = QColor(255, 0, 0)
 
-    # 常量 - 布局
-    HEIGHT = 50              # 总高度 (增加以容纳两行)
-    ROW_BAR = 20             # 上行高度 (小节/BPM)
-    ROW_TIME = 30            # 下行高度 (秒数)
+    # 常量 - 布局 (+50% 高度)
+    HEIGHT = 75              # 总高度 (增加以容纳两行)
+    ROW_BAR = 30             # 上行高度 (小节/BPM)
+    ROW_TIME = 45            # 下行高度 (秒数)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -250,9 +250,11 @@ class TimelineWidget(QWidget):
         start_time = self.scroll_offset / self.pixels_per_second
         end_time = start_time + self.width() / self.pixels_per_second
 
-        # 字体 (BPM 字号根据 ROW_BAR 动态计算)
-        font_bar = QFont("Arial", 9, QFont.Weight.Bold)
-        font_time = QFont("Arial", 8)
+        # 字体 (根据行高动态计算)
+        bar_font_size = max(9, int(self.ROW_BAR * 0.4))  # ~12pt @ ROW_BAR=30
+        time_font_size = max(8, int(self.ROW_TIME * 0.25))  # ~11pt @ ROW_TIME=45
+        font_bar = QFont("Arial", bar_font_size, QFont.Weight.Bold)
+        font_time = QFont("Arial", time_font_size)
         bpm_font_size = max(9, int(self.ROW_BAR * 0.6))
         font_bpm = QFont("Arial", bpm_font_size, QFont.Weight.Bold)
 
@@ -288,7 +290,8 @@ class TimelineWidget(QWidget):
         painter.setFont(font_bpm)
         painter.setPen(self.BPM_COLOR)
         bpm_text = f"♩={int(self.bpm)}"
-        painter.drawText(4, 14, bpm_text)
+        bpm_y = int(row_bottom * 0.7)  # ~21 @ ROW_BAR=30
+        painter.drawText(4, bpm_y, bpm_text)
 
         # 使用 tick 精确计算拍子和小节
         tempo_events = self._tempo_events_tick
@@ -317,7 +320,8 @@ class TimelineWidget(QWidget):
             else:
                 # 拍线 (细)
                 painter.setPen(QPen(self.BEAT_LINE_COLOR, 1))
-                painter.drawLine(x, row_top + 10, x, row_bottom)
+                beat_line_top = row_top + int(self.ROW_BAR * 0.5)  # ~15 @ ROW_BAR=30
+                painter.drawLine(x, beat_line_top, x, row_bottom)
 
     def _generate_beat_ticks(self, start_time: float, end_time: float) -> List[Tuple[int, bool, int]]:
         """生成可见时间范围内的拍子 tick 列表 (优化版: 直接跳到可视区)
@@ -460,15 +464,18 @@ class TimelineWidget(QWidget):
                 # 主刻度
                 if abs(t % major_interval) < 0.001 or abs(t % major_interval - major_interval) < 0.001:
                     painter.setPen(QPen(self.MAJOR_TICK_COLOR, 1))
-                    painter.drawLine(x, row_top + 15, x, row_bottom)
+                    major_tick_top = row_top + int(self.ROW_TIME * 0.5)  # ~23 @ ROW_TIME=45
+                    painter.drawLine(x, major_tick_top, x, row_bottom)
                     # 时间标签
                     painter.setPen(self.TEXT_COLOR_DIM)
                     label = f"{int(t // 60)}:{int(t % 60):02d}" if t >= 60 else f"{t:.1f}s"
-                    painter.drawText(x + 2, row_top + 12, label)
+                    label_y = row_top + int(self.ROW_TIME * 0.4)  # ~18 @ ROW_TIME=45
+                    painter.drawText(x + 2, label_y, label)
                 else:
                     # 次刻度
                     painter.setPen(QPen(self.TICK_COLOR, 1))
-                    painter.drawLine(x, row_top + 22, x, row_bottom)
+                    minor_tick_top = row_top + int(self.ROW_TIME * 0.73)  # ~33 @ ROW_TIME=45
+                    painter.drawLine(x, minor_tick_top, x, row_bottom)
 
             t += minor_interval
 

@@ -1,39 +1,44 @@
 # Handoff - 20260103-midi-editor-pipeline
 
-## Status: DONE (Session 8 - Bug Fixes & i18n)
+## Status: DONE (Session 9 - UI Fixes & Auto-scroll)
+
+## Session 9 Summary (2026-01-05)
+
+**UI Fixes: KeyList width, progress bar, auto-scroll, audio sync, toolbar**
+
+Commit: `7713727` autosave: 2026-01-05 01:58:42
+
+修复了5个问题：
+1. **KeyLabelWidget width**: 50→80 匹配 keyboard widget 宽度
+2. **Progress bar highlighting**: 遍历所有 `_key_bars` 更新 played/current 状态
+3. **Auto-scroll**: playhead 超出视口 80% 时，滚动到 30% 位置
+4. **Audio checkbox sync**: main→editor 实时同步
+5. **Toolbar split**: 使用 `addToolBarBreak()` 分成两行
+
+### Session 9 Changes
+| Task | Description | Status |
+|------|-------------|--------|
+| 1 | KeyLabelWidget.setFixedWidth(80) | ✅ |
+| 2 | update_playback_time iterate all _key_bars | ✅ |
+| 3 | Auto-scroll 80%→30% logic | ✅ |
+| 4 | _sync_editor_audio() method + signal | ✅ |
+| 5 | toolbar2 with addToolBarBreak() | ✅ |
+
+### Key Files Modified
+| Path | Change |
+|------|--------|
+| `key_list_widget.py` | Width 80, iterate all bars, auto-scroll |
+| `piano_roll.py` | Auto-scroll for playhead |
+| `editor_window.py` | Toolbar split with addToolBarBreak() |
+| `main.py` | _sync_editor_audio() method + signal |
+
+---
 
 ## Session 8 Summary (2026-01-05)
 
 **Bug Fixes, i18n Improvements, Keyboard Config Sync**
 
-修复了7个问题：
-1. **Fix `_apply_input_style_jitter` crash**: 添加 `ApplyJitterCommand` 支持 undo/redo
-2. **KeyLabelWidget scroll sync**: 实现 `set_scroll_offset()` 方法
-3. **Keyboard config sync**: 添加 `set_keyboard_config(root, layout)` 方法
-4. **Menu i18n**: Apply Input Style Jitter 菜单使用 `tr()` 函数
-5. **effective_root calculation**: 包含八度偏移 `root + octave_shift * 12`
-6. **Real-time sync**: Main window 设置变更时自动同步编辑器
-7. **AttributeError fix**: 移除孤立的 `_update_style_params_display` 调用
-
-### Session 8 Changes
-| Task | Description | Status |
-|------|-------------|--------|
-| 1 | ApplyJitterCommand (undo_commands.py +90 lines) | ✅ |
-| 2 | KeyLabelWidget.set_scroll_offset (+15 lines) | ✅ |
-| 3 | EditorWindow.set_keyboard_config (+10 lines) | ✅ |
-| 4 | Menu i18n (tr("apply_jitter")) | ✅ |
-| 5 | effective_root = root + octave_shift * 12 | ✅ |
-| 6 | Signal connections + _sync_editor_keyboard_config | ✅ |
-| 7 | Remove orphaned _update_style_params_display call | ✅ |
-
-### Key Files Modified
-| Path | Delta | Purpose |
-|------|-------|---------|
-| `undo_commands.py` | +90 | ApplyJitterCommand class |
-| `key_list_widget.py` | +15 | scroll_offset support |
-| `editor_window.py` | +20 | set_keyboard_config, i18n menu |
-| `main.py` | +15 | _sync_editor_keyboard_config, fix crash |
-| `translations.py` | +5 | format string fix |
+修复了7个问题：ApplyJitterCommand, scroll sync, keyboard config sync, menu i18n, effective_root, real-time sync, AttributeError fix.
 
 ---
 
@@ -61,22 +66,22 @@
 | File | Path | Purpose |
 |------|------|---------|
 | context_pack.md | `evidence/context_pack.md` | 低 token 摘要 |
-| diff.patch | `evidence/diff.patch` | 2167 行，14 个文件变更 |
-| execute.md | `evidence/execute.md` | 执行日志，Session 6-8 |
+| diff.patch | `evidence/diff.patch` | 30 files, +4400/-2310 |
+| execute.md | `evidence/execute.md` | 执行日志，Session 6-9 |
 
 ## Verification Status
 
 | Item | Status |
 |------|--------|
 | Syntax check | ✅ PASS |
-| Startup test | ✅ PASS (AttributeError fixed) |
+| Startup test | ✅ PASS |
+| Git commit | ✅ `7713727` |
 | Runtime test | ⏳ 待用户手动测试 |
 
 ## Next Steps
 
-1. **用户测试**: 验证严格模式 + 自动暂停 + 倒计时 + KeyListWidget + Apply Jitter
-2. **Commit**: 变更已就绪，待用户确认后提交
-3. **Phase 3-4**: 高级编辑 + 超音域处理预览（如需继续）
+1. **用户测试**: 验证 KeyList 宽度、进度条高亮、自动滚动、音频同步、工具栏布局
+2. **Phase 3-4**: 高级编辑 + 超音域处理预览（如需继续）
 
 ---
-*Last Updated: 2026-01-05 Session 8 (Bug Fixes & i18n)*
+*Last Updated: 2026-01-05 Session 9 (UI Fixes & Auto-scroll)*

@@ -624,6 +624,7 @@ class MainWindow(
             # Connect signals to sync data back to main window
             self.editor_window.midi_loaded.connect(self._on_editor_midi_loaded)
             self.editor_window.bpm_changed.connect(self._on_editor_bpm_changed)
+            self.editor_window.audio_changed.connect(self._on_editor_audio_changed)
 
         self.editor_window.load_midi(path)
         # Sync keyboard config (effective root = root + octave_shift * 12)
@@ -682,7 +683,17 @@ class MainWindow(
         # Sync audio enabled state
         audio_enabled = self.chk_sound.isChecked()
         if hasattr(self.editor_window, 'chk_enable_audio'):
+            # Block signals to avoid recursive updates
+            self.editor_window.chk_enable_audio.blockSignals(True)
             self.editor_window.chk_enable_audio.setChecked(audio_enabled)
+            self.editor_window.chk_enable_audio.blockSignals(False)
+
+    def _on_editor_audio_changed(self, enabled: bool):
+        """Sync audio checkbox from editor (editor → main)."""
+        # Block signals to avoid recursive updates
+        self.chk_sound.blockSignals(True)
+        self.chk_sound.setChecked(enabled)
+        self.chk_sound.blockSignals(False)
 
     def on_browse_sf(self):
         settings = QSettings("LyreAutoPlayer", "LyreAutoPlayer")

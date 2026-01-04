@@ -6,7 +6,9 @@
       "Skill(ai-resume)",
       "Skill(ai-resume:*)",
       "Skill(ai-intake)",
-      "Skill(ai-intake:*)"
+      "Skill(ai-intake:*)",
+      "Skill(repo-push)",
+      "Skill(repo-push:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

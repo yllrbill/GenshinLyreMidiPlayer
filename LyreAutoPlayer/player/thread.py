@@ -172,6 +172,24 @@ class PlayerThread(QThread):
     def is_pause_pending(self) -> bool:
         return self._pause_pending
 
+    def get_bar_duration(self) -> float:
+        """Get current bar duration in seconds."""
+        return self._bar_duration
+
+    def get_current_bar(self) -> int:
+        """Get current bar index."""
+        return self._current_bar
+
+    def get_previous_bar_start_time(self) -> float:
+        """Calculate start time of previous bar (for resume from previous bar).
+
+        Returns:
+            Start time of previous bar in seconds, or 0.0 if at first bar.
+        """
+        if self._current_bar <= 1 or self._bar_duration <= 0:
+            return 0.0
+        return (self._current_bar - 1) * self._bar_duration
+
     def run(self):
         """Main playback loop."""
         if not self.events:
@@ -223,8 +241,8 @@ class PlayerThread(QThread):
             if ok:
                 time.sleep(0.2)
 
-        # Countdown
-        if self.cfg.countdown_sec > 0:
+        # Countdown (skip if skip_countdown is True, e.g., resume from previous bar)
+        if self.cfg.countdown_sec > 0 and not self.cfg.skip_countdown:
             self.log.emit(f"Countdown: {self.cfg.countdown_sec}s (switch to game now)")
             for i in range(self.cfg.countdown_sec, 0, -1):
                 if self._stop:
@@ -236,6 +254,8 @@ class PlayerThread(QThread):
                 self.log.emit(f"  ...{i}")
                 time.sleep(1)
             self.countdown_tick.emit(0)  # Countdown finished
+        elif self.cfg.skip_countdown:
+            self.log.emit("Skipping countdown (resume from previous bar)")
 
         # Disable IME for target window
         ime_disabled_hwnd = None
@@ -248,6 +268,19 @@ class PlayerThread(QThread):
         event_queue, notes_scheduled, notes_dropped = self._build_event_queue(
             note_to_key, avail_notes
         )
+
+        # Skip events before start_at_time (for resume from previous bar)
+        skipped_events = 0
+        if self.cfg.start_at_time > 0:
+            new_queue = []
+            for ev in event_queue:
+                if ev.time >= self.cfg.start_at_time:
+                    new_queue.append(ev)
+                else:
+                    skipped_events += 1
+            event_queue = new_queue
+            heapq.heapify(event_queue)
+            self.log.emit(f"Starting at {self.cfg.start_at_time:.2f}s, skipped {skipped_events} events")
 
         n_events = len(event_queue)
         self.log.emit(f"Playing {notes_scheduled} notes ({n_events} events)... (speed x{self.cfg.speed}, midi_dur={self.cfg.use_midi_duration})")
@@ -639,9 +672,11 @@ class PlayerThread(QThread):
                             mapped_time, 1.0, eight_bar_segments, segment_duration, beat_duration
                         )
                     boundary_time = mapped_time
+                # Add small epsilon to ensure pause_marker is processed before events at exact boundary
+                pause_marker_time = max(0.0, boundary_time - 0.001)  # 1ms epsilon
                 heapq.heappush(
                     event_queue,
-                    KeyEvent(boundary_time, 0, "pause_marker", "", 0, bar_index=bar_idx)
+                    KeyEvent(pause_marker_time, 0, "pause_marker", "", 0, bar_index=bar_idx)
                 )
 
         return event_queue, notes_scheduled, notes_dropped

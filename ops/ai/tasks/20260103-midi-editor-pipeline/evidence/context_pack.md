@@ -2,31 +2,32 @@
 
 ## Task
 - ID: 20260103-midi-editor-pipeline
-- Status: DONE (Session 8 - Bug Fixes & i18n)
+- Status: DONE (Session 9 - UI Fixes & Auto-scroll)
 - Last Updated: 2026-01-05
+- Latest Commit: `7713727`
 
-## Session 8 Summary (2026-01-05)
-Bug fixes, i18n improvements, keyboard config sync.
+## Session 9 Summary (2026-01-05)
+UI fixes: KeyList width, progress bar highlighting, auto-scroll, audio sync, toolbar layout.
 
 ### Tasks Completed
 | Task | Description | Status |
 |------|-------------|--------|
-| 1 | Fix `_apply_input_style_jitter` crash (add ApplyJitterCommand) | DONE |
-| 2 | Implement `KeyLabelWidget.set_scroll_offset` | DONE |
-| 3 | Add `set_keyboard_config` method for root/layout sync | DONE |
-| 4 | Menu i18n for Apply Input Style Jitter | DONE |
-| 5 | effective_root calculation with octave offset | DONE |
-| 6 | Real-time sync when main window settings change | DONE |
-| 7 | Fix `_update_style_params_display` AttributeError | DONE |
+| 1 | KeyLabelWidget width 50→80 (match keyboard) | DONE |
+| 2 | Progress bar note highlighting - iterate all bars | DONE |
+| 3 | Auto-scroll (80% threshold → 30% position) | DONE |
+| 4 | Audio checkbox sync main→editor | DONE |
+| 5 | Toolbar split into two rows | DONE |
 
 ### Key Changes
 | File | Change |
 |------|--------|
-| `undo_commands.py` | +ApplyJitterCommand class (+90 lines) |
-| `key_list_widget.py` | +set_scroll_offset() for vertical sync |
-| `editor_window.py` | +set_keyboard_config(), i18n menu |
-| `main.py` | +_sync_editor_keyboard_config(), fix startup crash |
-| `translations.py` | Fixed format string placeholders |
+| `key_list_widget.py` | Width 80, iterate all bars, auto-scroll |
+| `piano_roll.py` | Auto-scroll for playhead |
+| `editor_window.py` | Toolbar split with addToolBarBreak() |
+| `main.py` | _sync_editor_audio() method + signal |
+
+## Session 8 Summary (2026-01-05)
+Bug fixes, i18n improvements, keyboard config sync.
 
 ## Session 7 Summary (2026-01-04)
 Main GUI 清理 + KeyListWidget + i18n 更新。

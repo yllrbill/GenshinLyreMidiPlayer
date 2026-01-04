@@ -303,13 +303,16 @@ class KeyProgressWidget(QGraphicsView):
         self._playhead.setZValue(100)
 
     def _update_scene_size(self):
-        """更新场景大小"""
+        """更新场景大小（与 PianoRoll 保持一致的计算方式）"""
         if self._events:
             max_time = max(e["time"] + e.get("duration", 0.1) for e in self._events)
         else:
             max_time = 10.0
 
-        scene_width = max(max_time * self.pixels_per_second + 200, 800)
+        # 使用与 PianoRoll 相同的计算方式：max(content_width, viewport_width)
+        content_width = max_time * self.pixels_per_second + 100  # +100 与 piano_roll 一致
+        viewport_width = self.viewport().width()
+        scene_width = max(content_width, viewport_width)
         scene_height = max(len(self._key_rows) * self.row_height, 100)
 
         self.scene.setSceneRect(0, 0, scene_width, scene_height)
@@ -384,6 +387,11 @@ class KeyProgressWidget(QGraphicsView):
             self._playhead.setLine(0, 0, 0, height)
 
         self.horizontalScrollBar().setValue(0)
+
+    def resizeEvent(self, event):
+        """处理窗口大小变化，更新场景大小以匹配 PianoRoll"""
+        super().resizeEvent(event)
+        self._update_scene_size()
 
 
 class KeyLabelWidget(QWidget):

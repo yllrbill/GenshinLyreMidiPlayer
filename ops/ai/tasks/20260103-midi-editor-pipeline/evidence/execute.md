@@ -1,4 +1,53 @@
-# Execute Log - Session 6-8
+# Execute Log - Session 6-9
+
+---
+
+# Session 9 (2026-01-05) - UI Fixes & Auto-scroll
+
+## Session Info
+- Date: 2026-01-05
+- Commit: `7713727` autosave: 2026-01-05 01:58:42
+- Focus: KeyList width, progress bar highlighting, auto-scroll, audio sync, toolbar layout
+- Status: DONE
+
+## Tasks Completed
+
+| Task | Description | Status |
+|------|-------------|--------|
+| 1 | KeyLabelWidget width 50→80 (match keyboard) | DONE |
+| 2 | Progress bar note highlighting - iterate all bars | DONE |
+| 3 | Auto-scroll logic for playhead (80% threshold → 30% position) | DONE |
+| 4 | Audio checkbox sync main→editor | DONE |
+| 5 | Toolbar split into two rows | DONE |
+
+## Changes Made
+
+### key_list_widget.py
+- `KeyLabelWidget.setFixedWidth(80)` - match keyboard widget width
+- `update_playback_time()` - iterate all `_key_bars` to update played/current state
+- Auto-scroll: when playhead > 80% viewport, scroll to 30% position
+
+### piano_roll.py
+- `set_playhead_position()` - added auto_scroll parameter
+- Auto-scroll logic matching key_list_widget
+
+### editor_window.py
+- `addToolBarBreak()` after BPM control
+- New `toolbar2` for Pause/Resume/Octave/Input/Style/KeyList controls
+
+### main.py
+- Added `_sync_editor_audio()` method
+- Signal connection: `chk_sound.stateChanged` → `_sync_editor_audio`
+- Sync called on editor open
+
+## Files Modified (4)
+
+| File | Change |
+|------|--------|
+| key_list_widget.py | Width fix, iterate all bars, auto-scroll |
+| piano_roll.py | Auto-scroll for playhead |
+| editor_window.py | Toolbar split |
+| main.py | Audio checkbox sync |
 
 ---
 

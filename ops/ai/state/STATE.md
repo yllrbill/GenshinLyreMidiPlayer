@@ -2,8 +2,9 @@
 
 ## Latest Task
 - TASK_ID: 20260103-midi-editor-pipeline
-- Status: DONE (Session 7 - KeyListWidget & Cleanup)
+- Status: DONE (Session 9 - UI Fixes & Auto-scroll)
 - Pointer: ops/ai/tasks/20260103-midi-editor-pipeline
+- Latest Commit: `7713727`
 
 ## Previous Task
 - TASK_ID: 20260102-2138-main-mixin-refactor
@@ -11,9 +12,9 @@
 - Pointer: ops/ai/tasks/20260102-2138-main-mixin-refactor
 
 ## Current Focus
-- Session 7: Main GUI 清理 + KeyListWidget + i18n 更新
-- Session 6: 统一播放引擎 Phase 1-7 全部实现完成
-- Plan: `linked-gathering-glade.md`
+- Session 9: UI fixes (KeyList width, progress bar, auto-scroll, audio sync, toolbar)
+- Session 8: Bug fixes, i18n, keyboard config sync
+- Session 7: KeyListWidget + Main GUI cleanup
 
 ## Completed Summary (MIDI Editor)
 - **Phase 1 钢琴卷帘骨架完成**: 6 个新文件 (~745 行)
@@ -22,15 +23,19 @@
 - **Timeline Sync**: 加载时同步 BPM，确保对齐
 - **Unified Playback Engine**: Phase 1-7 全部完成
 
-## Session 7 Changes (KeyListWidget & Cleanup)
+## Session 9 Changes (UI Fixes & Auto-scroll)
 | Task | File | Changes |
 |------|------|---------|
-| 5 | `config_mixin.py`, `settings_preset_mixin.py` | Main GUI cleanup (removed widget refs) |
-| 6 | `ui/editor/key_list_widget.py` | NEW (+307 lines) |
-| 6 | `ui/editor/editor_window.py` | KeyListWidget integration |
-| 7 | `i18n/translations.py` | +6 translation keys |
+| 1 | `key_list_widget.py` | Width 50→80 (match keyboard) |
+| 2 | `key_list_widget.py` | iterate all _key_bars for highlighting |
+| 3 | `key_list_widget.py`, `piano_roll.py` | Auto-scroll 80%→30% |
+| 4 | `main.py` | _sync_editor_audio() + signal |
+| 5 | `editor_window.py` | toolbar split with addToolBarBreak() |
 
-## Session 6 Changes (Unified Playback Engine)
+## Session 8 Changes (Bug Fixes & i18n)
+- ApplyJitterCommand, scroll sync, keyboard config sync, menu i18n, effective_root, real-time sync, AttributeError fix
+
+## Session 6-7 Summary
 | Phase | File | Changes |
 |-------|------|---------|
 | 1 | `player/config.py` | +5 fields |
@@ -54,16 +59,15 @@
 3. **Path Handling (P2 - Low Risk)**: 版本索引依赖 `midi-change/index.json`
 
 ## Pending Tasks
-1. **用户测试**: 验证严格模式 + 自动暂停 + 倒计时 + KeyListWidget 功能
-2. **Commit**: Session 6-7 变更已就绪，待用户确认后提交
-3. Phase 3-4: 高级编辑 + 超音域处理预览（如需继续）
+1. **用户测试**: 验证 KeyList 宽度、进度条高亮、自动滚动、音频同步、工具栏布局
+2. Phase 3-4: 高级编辑 + 超音域处理预览（如需继续）
 
 ## Recent Completions
+- UI Fixes & Auto-scroll (Session 9, 2026-01-05) - **Committed: 7713727**
+- Bug Fixes & i18n (Session 8, 2026-01-05)
 - KeyListWidget + Main GUI Cleanup (Session 7, 2026-01-04)
 - Unified Playback Engine Phase 1-7 (Session 6, 2026-01-04)
 - Timeline Sync Fix (Session 5, 2026-01-04)
-- BPM Scaling 代码实现 (Session 4, 2026-01-04)
-- Phase 1-3 Implementation (Session 1-3, 2026-01-03/04)
 
 ## Evidence
 - Handoff: ops/ai/tasks/20260103-midi-editor-pipeline/handoff.md
@@ -82,10 +86,9 @@
 ---
 
 ## Next Actions
-1. **用户测试**: 验证严格模式 + 自动暂停 + 倒计时 + KeyListWidget 功能
-2. **Commit**: 待用户确认后提交 Session 6-7 变更
-3. Phase 3-4: 高级编辑 + 超音域处理预览（如需继续）
-4. 验证 BPM Scaling 效果 (Session 4 反馈)
+1. **用户测试**: 验证 KeyList 宽度、进度条高亮、自动滚动、音频同步、工具栏布局
+2. Phase 3-4: 高级编辑 + 超音域处理预览（如需继续）
+3. 验证 BPM Scaling 效果 (Session 4 反馈)
 
 ---
-*Last Updated: 2026-01-04 (Session 7 - KeyListWidget & Cleanup, DONE)*
+*Last Updated: 2026-01-05 (Session 9 - UI Fixes & Auto-scroll, DONE, Commit: 7713727)*

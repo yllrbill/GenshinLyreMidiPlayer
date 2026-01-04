@@ -50,6 +50,9 @@ class EditorWindow(QMainWindow):
     # Signal: emitted when BPM changes (for main window sync)
     bpm_changed = pyqtSignal(int)
 
+    # Signal: emitted when audio checkbox changes (for main window sync)
+    audio_changed = pyqtSignal(bool)
+
     # 编辑风格选项
     EDIT_STYLES = ["custom", "simplified", "transposed", "extended", "practice"]
 
@@ -191,6 +194,9 @@ class EditorWindow(QMainWindow):
         self.chk_enable_audio = QCheckBox("Audio")
         self.chk_enable_audio.setChecked(True)
         self.chk_enable_audio.setToolTip("Enable audio playback (F5 to toggle play)")
+        self.chk_enable_audio.stateChanged.connect(
+            lambda state: self.audio_changed.emit(state == Qt.CheckState.Checked.value)
+        )
         toolbar.addWidget(self.chk_enable_audio)
 
         toolbar.addSeparator()
@@ -1953,13 +1959,19 @@ class EditorWindow(QMainWindow):
         return sorted(events, key=lambda e: e["time"])
 
     def get_bar_duration(self) -> float:
-        """Calculate bar duration from current editor BPM.
+        """Calculate bar duration from current editor BPM and time signature.
 
         Returns:
-            Bar duration in seconds (assumes 4/4 time signature).
+            Bar duration in seconds.
         """
         bpm = self.sp_bpm.value() if hasattr(self, 'sp_bpm') else 120
-        beats_per_bar = 4  # Default 4/4
+        # Get time signature from timeline
+        numerator = self.timeline.time_sig_numerator if hasattr(self, 'timeline') else 4
+        denominator = self.timeline.time_sig_denominator if hasattr(self, 'timeline') else 4
+        # BPM is quarter-note based, adjust for denominator
+        # E.g., 3/4: 3 quarter notes = 3 * (60/BPM)
+        # E.g., 6/8: 6 eighth notes = 6 * (60/BPM) * (4/8) = 3 * (60/BPM)
+        beats_per_bar = numerator * (4.0 / denominator)
         return 60.0 / bpm * beats_per_bar
 
     def get_pause_bars(self) -> int:

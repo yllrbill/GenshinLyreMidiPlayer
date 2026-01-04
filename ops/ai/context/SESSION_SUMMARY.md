@@ -1,7 +1,7 @@
-- 背景/目标: 审核多份 Claude 输出的“实现总结/计划/修订摘要”，核对与代码一致性并给出修订建议。
-- 已完成: 使用 message-review 技能逐条比对代码与摘要，指出不一致处并生成可直接给 Claude 的提示词；最终确认 v3 版本摘要内容基本准确。
-- 关键修改: 无代码改动；主要是审计结论与修订指引（例如：统一播放引擎并非完全替代编辑器本地预览、i18n 仅在 parent 为 MainWindow 时生效、语法检查命令与 shell 匹配、Phase 5 方法归属 main.py）。
-- 相关文件: d:\dw11\piano\LyreAutoPlayer\ui\editor\editor_window.py（follow mode/倒计时 i18n 行为核对）, d:\dw11\piano\LyreAutoPlayer\ui\mixins\playback_mixin.py（统一播放连接核对）, d:\dw11\piano\LyreAutoPlayer\player\thread.py（自动暂停/倒计时逻辑核对）, d:\dw11\piano\LyreAutoPlayer\main.py（_on_strict_mode_changed 位置核对）, d:\dw11\piano\LyreAutoPlayer\ui\mixins\config_mixin.py（严格模式配置持久化核对）。
-- 验证: 未在本会话运行实际测试或语法检查；仅做代码阅读核对与摘要审计。
-- 风险/待办: 如需“语法验证 PASS”结论，需在目标 shell 中实际执行命令并记录 exit code；若要确保 i18n 提示一致，需确认 parent() 为 MainWindow 的场景覆盖。
-- 下一步: 由用户决定是否执行实机验证与提交；若继续开发严格跟谱/自动暂停等功能，建议基于 v3 摘要和现有实现继续推进。
+- 背景/目标: 使用 message-review 核对一系列 UI/播放改动摘要与代码一致性，重点关注 KeyListWidget 同步、自动翻页、Audio 勾选同步、i18n 菜单等问题。
+- 已完成: 多轮审计对照源码，确认多项修复已落地并指出残留风险；为每轮审计给出可直接发给 Claude 的修订提示词。
+- 关键修改: 仅审计未直接改代码；在当前 repo 中可见的改动包括 KeyListWidget 左侧宽度对齐、进度遍历更新与自动滚动参数、PianoRoll 自动翻页、编辑器工具栏拆分、菜单 i18n 使用 tr、主窗 effective_root 计算含八度偏移、root/octave/preset 实时同步、主窗→编辑器 Audio 勾选同步、ApplyJitterCommand 与抖动应用使用 QUndoStack。
+- 相关文件: LyreAutoPlayer/ui/editor/key_list_widget.py（KeyLabel 宽度、进度遍历、auto_scroll）、LyreAutoPlayer/ui/editor/piano_roll.py（播放头自动翻页）、LyreAutoPlayer/ui/editor/editor_window.py（菜单 i18n、工具栏换行、抖动应用）、LyreAutoPlayer/ui/editor/undo_commands.py（ApplyJitterCommand）、LyreAutoPlayer/main.py（effective_root 计算、键盘配置实时同步、Audio 同步）、LyreAutoPlayer/i18n/translations.py（apply_jitter 文案）。
+- 验证: 未运行测试或程序，仅代码审计。
+- 风险/待办: main.py 仍存在调用 _update_style_params_display 的残留风险（可能导致启动 AttributeError，需确认是否已删除）；自动翻页/进度变黑/Audio 同步等需要运行时验证；KeyList 与卷帘的对齐与滚动同步仍需人工确认。
+- 下一步: 手动运行应用验证 UI 对齐、自动翻页、进度变黑与 Audio 同步；如仍有崩溃则移除 _update_style_params_display 调用；必要时进一步调优播放头平滑度与同步细节。

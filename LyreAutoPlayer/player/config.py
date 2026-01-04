@@ -52,3 +52,5 @@ class PlayerConfig:
     auto_resume_countdown: int = 3        # 倒计时秒数
     bar_duration_override: float = 0.0    # 覆盖小节时长 (秒), 0=自动计算
     editor_bpm: int = 0                   # 编辑器 BPM, 0=使用 MIDI 原始值
+    start_at_time: float = 0.0            # 从指定时间开始播放 (秒)
+    skip_countdown: bool = False          # 跳过倒计时 (用于从上一小节恢复)
