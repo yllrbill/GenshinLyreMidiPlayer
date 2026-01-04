@@ -2,7 +2,7 @@
 
 ## Latest Task
 - TASK_ID: 20260103-midi-editor-pipeline
-- Status: DONE (Phase 1-3 + Git cleanup + SoundFont config)
+- Status: BLOCKED (BPM Scaling 未生效)
 - Pointer: ops/ai/tasks/20260103-midi-editor-pipeline
 
 ## Previous Task
@@ -11,10 +11,10 @@
 - Pointer: ops/ai/tasks/20260102-2138-main-mixin-refactor
 
 ## Current Focus
-- MIDI 编辑器 Phase 1-3 完成 + Git 清理 + SoundFont 配置
-- Session 3: 141MB sf2 从历史移除, WSL autocrlf 修复, soundfont_path 更新
-- Phase 3 已实现: 双击创建/移调/量化/撤销重做 (undo_commands.py)
-- 待验证: 音频预览功能 (LyreAutoPlayer GUI 已启动)
+- MIDI 编辑器 Phase 1-3 完成，**BPM 缩放未生效**
+- Session 4: BPM 缩放代码存在，但用户测试显示不起作用
+- **阻塞点**: 调 BPM 后秒数/音符长度不变，保存后仍原速
+- 待排查: 信号连接、`_base_bpm` 初始值、方法调用链
 
 ## Completed Summary (MIDI Editor Phase 1)
 - **Phase 1 钢琴卷帘骨架完成**: 6 个新文件 (~745 行)
@@ -75,10 +75,13 @@
 ---
 
 ## Next Actions
-1. 验证音频预览功能 (用户手动测试)
-2. Phase 4: 超音域处理预览
-3. 考虑 Git LFS 或外部下载方案管理 FluidR3_GM.sf2
-4. 清理 analyzetools/eop/ 多版本脚本 (可选)
+1. **[BLOCKER]** 排查 BPM 缩放不生效问题:
+   - 添加 debug print 到 `_on_bpm_changed()` 和 `_apply_global_bpm()`
+   - 验证信号连接是否正确触发
+   - 检查 `_base_bpm` 初始值
+2. 验证音频预览功能 (用户手动测试)
+3. Phase 4: 超音域处理预览
+4. 考虑 Git LFS 或外部下载方案管理 FluidR3_GM.sf2
 
 ---
-*Last Updated: 2026-01-04 (Session 3 - Git cleanup + WSL fix + SoundFont config)*
+*Last Updated: 2026-01-04 (Session 4 - BPM Scaling 未生效，待排查)*

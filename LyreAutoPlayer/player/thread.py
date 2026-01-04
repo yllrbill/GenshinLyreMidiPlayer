@@ -78,12 +78,12 @@ class PlayerThread(QThread):
     Signals:
         log(str): Emitted for log messages
         finished(): Emitted when playback completes
-        progress(int, int): Emitted with (current_event, total_events)
+        progress(float, float): Emitted with (current_time, total_duration)
         paused(): Emitted when playback is paused
     """
     log = pyqtSignal(str)
     finished = pyqtSignal()
-    progress = pyqtSignal(int, int)  # (current_event, total_events)
+    progress = pyqtSignal(float, float)  # (current_time, total_duration)
     paused = pyqtSignal()  # Emitted when actually paused (for UI update)
 
     def __init__(self, events: List[NoteEvent], cfg: PlayerConfig):
@@ -97,6 +97,8 @@ class PlayerThread(QThread):
         self._total_pause_time = 0.0
         self._bar_duration = 2.0  # Default bar duration (120BPM 4/4)
         self._current_bar = -1  # Current bar index
+        self._total_duration = 0.0  # Total playback duration (for progress)
+        self._last_progress_emit = 0.0  # Last time progress was emitted
 
         # Initialize InputManager v2 for reliable key handling in DirectX games
         self._input_manager = create_input_manager(
@@ -241,6 +243,12 @@ class PlayerThread(QThread):
 
         n_events = len(event_queue)
         self.log.emit(f"Playing {notes_scheduled} notes ({n_events} events)... (speed x{self.cfg.speed}, midi_dur={self.cfg.use_midi_duration})")
+
+        # Calculate total duration for progress tracking
+        if event_queue:
+            self._total_duration = max(ev.time for ev in event_queue)
+        else:
+            self._total_duration = 0.0
 
         if notes_dropped > 0:
             self.log.emit(f"Dropped {notes_dropped} out-of-range notes")
@@ -770,6 +778,12 @@ class PlayerThread(QThread):
 
             # Wait until event time
             now = time.perf_counter() - start - self._total_pause_time
+
+            # Emit progress (throttled to ~10 times/sec)
+            if now - self._last_progress_emit >= 0.1:
+                self.progress.emit(now, self._total_duration)
+                self._last_progress_emit = now
+
             dt = target_time - now
             while dt > 0 and not self._stop:
                 if self._paused:

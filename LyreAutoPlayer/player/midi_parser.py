@@ -21,6 +21,7 @@ def midi_to_events_with_duration(mid_path: str) -> List[NoteEvent]:
     """
     Parse MIDI into NoteEvent with duration.
     Tracks note_on/note_off pairs to calculate duration.
+    Supports CC64 sustain pedal (延音踏板).
 
     Args:
         mid_path: Path to MIDI file
@@ -32,30 +33,77 @@ def midi_to_events_with_duration(mid_path: str) -> List[NoteEvent]:
     tempo = 500000  # default 120 BPM
     t = 0.0
 
-    # Track active notes: {note: start_time}
-    active_notes: Dict[int, float] = {}
+    # Track active notes: {(note, channel): [(start_time, velocity), ...]}
+    active_notes: Dict[tuple, list] = {}
+    # Sustained notes (held by pedal): {(note, channel): [(start_time, velocity), ...]}
+    sustained_notes: Dict[tuple, list] = {}
+    # Sustain pedal state per channel
+    sustain_on: Dict[int, bool] = {}
     events: List[NoteEvent] = []
+
+    def append_note(note: int, start_time: float, end_time: float):
+        """Add a note event with duration."""
+        duration = max(0, end_time - start_time)
+        events.append(NoteEvent(time=start_time, note=note, duration=duration))
 
     merged = mido.merge_tracks(mid.tracks)
     for msg in merged:
         t += mido.tick2second(msg.time, mid.ticks_per_beat, tempo)
+
         if msg.type == "set_tempo":
             tempo = msg.tempo
-        elif msg.type == "note_on" and getattr(msg, "velocity", 0) > 0:
+            continue
+
+        # Handle sustain pedal (CC64)
+        if msg.type == "control_change" and msg.control == 64:
+            channel = getattr(msg, 'channel', 0)
+            is_on = msg.value >= 64
+            prev_on = sustain_on.get(channel, False)
+            sustain_on[channel] = is_on
+
+            # Pedal released: end all sustained notes
+            if prev_on and not is_on:
+                for key in list(sustained_notes.keys()):
+                    if key[1] != channel:
+                        continue
+                    for start_time, _ in sustained_notes[key]:
+                        append_note(key[0], start_time, t)
+                    del sustained_notes[key]
+            continue
+
+        if not hasattr(msg, 'note'):
+            continue
+
+        channel = getattr(msg, 'channel', 0)
+        key = (msg.note, channel)
+
+        if msg.type == "note_on" and getattr(msg, "velocity", 0) > 0:
             # Note on
-            active_notes[msg.note] = t
-            events.append(NoteEvent(time=t, note=msg.note, duration=0))
+            if key not in active_notes:
+                active_notes[key] = []
+            active_notes[key].append((t, msg.velocity))
+
         elif msg.type == "note_off" or (msg.type == "note_on" and getattr(msg, "velocity", 0) == 0):
             # Note off
-            note = msg.note
-            if note in active_notes:
-                start_time = active_notes.pop(note)
-                duration = t - start_time
-                # Find the event and update duration
-                for ev in reversed(events):
-                    if ev.note == note and ev.time == start_time:
-                        ev.duration = duration
-                        break
+            if key in active_notes and active_notes[key]:
+                start_time, velocity = active_notes[key].pop(0)  # FIFO
+                if sustain_on.get(channel, False):
+                    # Pedal is down: delay note end
+                    sustained_notes.setdefault(key, []).append((start_time, velocity))
+                else:
+                    # Normal note end
+                    append_note(msg.note, start_time, t)
+
+    # Handle remaining active notes (no note_off received)
+    for key, items in active_notes.items():
+        for start_time, _ in items:
+            # Use a small duration for notes without note_off
+            append_note(key[0], start_time, t + 0.1)
+
+    # Handle remaining sustained notes (pedal never released)
+    for key, items in sustained_notes.items():
+        for start_time, _ in items:
+            append_note(key[0], start_time, t + 0.1)
 
     events.sort(key=lambda x: x.time)
     return events

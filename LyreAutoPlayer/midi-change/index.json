@@ -5,7 +5,7 @@
       "saved_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\city-of-stars-星光之城-爱乐之城-原神风物之诗琴谱-原琴谱_custom.mid",
       "display_name": "City-of-Stars-星光之城-爱乐之城-原神风物之诗琴谱-原琴谱_custom",
       "edit_style": "custom",
-      "last_modified": "2026-01-03T22:41:48.578857",
+      "last_modified": "2026-01-04T17:52:34.964127",
       "source_file_size": 5682,
       "source_note_count": 626
     },
@@ -17,6 +17,60 @@
       "last_modified": "2026-01-04T04:36:49.977714",
       "source_file_size": 7348,
       "source_note_count": 916
+    },
+    {
+      "source_path": "d:\\dw11\\piano\\lyreautoplayer\\midi\\megalovania-undertale-ost.mid",
+      "saved_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\megalovania-undertale-ost_custom.mid",
+      "display_name": "Megalovania-Undertale-OST_custom",
+      "edit_style": "custom",
+      "last_modified": "2026-01-04T06:06:46.615497",
+      "source_file_size": 14888,
+      "source_note_count": 1755
+    },
+    {
+      "source_path": "d:\\dw11\\piano\\lyreautoplayer\\midi\\《凡人修仙传》op-不凡.mid",
+      "saved_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\《凡人修仙传》op-不凡_custom_custom.mid",
+      "display_name": "《凡人修仙传》op-不凡_custom_custom",
+      "edit_style": "custom",
+      "last_modified": "2026-01-04T06:26:55.490565",
+      "source_file_size": 7348,
+      "source_note_count": 916
+    },
+    {
+      "source_path": "d:\\dw11\\piano\\lyreautoplayer\\midi\\air-川--鸟之诗-bgm.mid",
+      "saved_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\air-川--鸟之诗-bgm_custom.mid",
+      "display_name": "AIR-川--鸟之诗-BGM_custom",
+      "edit_style": "custom",
+      "last_modified": "2026-01-04T16:33:15.056733",
+      "source_file_size": 5660,
+      "source_note_count": 636
+    },
+    {
+      "source_path": "d:\\dw11\\piano\\lyreautoplayer\\midi\\counting-stars-c调简单版.mid",
+      "saved_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\counting-stars-c调简单版_custom.mid",
+      "display_name": "Counting-Stars-C调简单版_custom",
+      "edit_style": "custom",
+      "last_modified": "2026-01-04T16:34:35.722796",
+      "source_file_size": 5228,
+      "source_note_count": 573
+    },
+    {
+      "source_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\counting-stars-c调简单版_custom.mid",
+      "saved_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\counting-stars-c调简单版_custom_custom.mid",
+      "display_name": "Counting-Stars-C调简单版_custom_custom",
+      "edit_style": "custom",
+      "last_modified": "2026-01-04T16:36:06.232498",
+      "source_file_size": 4595,
+      "source_note_count": 573
+    },
+    {
+      "source_path": "d:\\dw11\\piano\\lyreautoplayer\\midi\\level!.mid",
+      "saved_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\level!_custom.mid",
+      "display_name": "Level!_custom",
+      "edit_style": "custom",
+      "last_modified": "2026-01-04T17:53:25.156000",
+      "source_file_size": 16227,
+      "source_note_count": 2410
     }
   ]
 }

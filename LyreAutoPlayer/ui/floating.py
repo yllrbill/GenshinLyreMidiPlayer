@@ -229,6 +229,38 @@ class FloatingController(QWidget):
         self.btn_stop.setToolTip(tr("stop", lang))
         self.btn_open.setToolTip(tr("load_midi", lang))
 
+    def _sync_from_main(self):
+        """Sync state from main window (called when showing floating controller)."""
+        try:
+            # Sync file name
+            mid_path = getattr(self.main, 'mid_path', None)
+            if mid_path:
+                import os
+                self.set_file_name(os.path.basename(mid_path))
+            else:
+                self.set_file_name(None)
+
+            # Sync BPM from main window (with fallback)
+            bpm = getattr(self.main, 'current_bpm', 120)
+            self.set_bpm(bpm)
+
+            # Sync playback state
+            is_playing = False
+            is_paused = False
+            is_pending = False
+            thread = getattr(self.main, 'thread', None)
+            if thread and thread.isRunning():
+                is_playing = True
+                if hasattr(thread, 'is_paused') and thread.is_paused():
+                    is_paused = True
+                elif hasattr(thread, 'is_pause_pending') and thread.is_pause_pending():
+                    is_pending = True
+            self.update_playback_state(is_playing, is_paused, is_pending)
+
+        except Exception as e:
+            # Fail silently - floating controller should not crash main app
+            print(f"[FloatingController] _sync_from_main error: {e}")
+
     # Compatibility stubs for methods that may be called by main window
     def sync_speed(self, value: float):
         """Compatibility stub - speed control removed."""

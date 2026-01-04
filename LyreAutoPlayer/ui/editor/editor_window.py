@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
     QSplitter, QScrollBar, QComboBox, QSpinBox, QCheckBox
 )
 from PyQt6.QtGui import QAction, QIcon, QShortcut, QKeySequence
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 import mido
 
 # FluidSynth (optional)
@@ -38,6 +38,13 @@ from i18n import tr, LANG_ZH
 class EditorWindow(QMainWindow):
     """MIDI 编辑器主窗口"""
 
+    # Signal: emitted when MIDI is loaded (path, events_list)
+    # events_list is a list of dicts: [{"time": float, "note": int, "duration": float}, ...]
+    midi_loaded = pyqtSignal(str, list)
+
+    # Signal: emitted when BPM changes (for main window sync)
+    bpm_changed = pyqtSignal(int)
+
     # 编辑风格选项
     EDIT_STYLES = ["custom", "simplified", "transposed", "extended", "practice"]
 
@@ -53,6 +60,7 @@ class EditorWindow(QMainWindow):
         self.midi_file: Optional[mido.MidiFile] = None
         self.is_playing = False
         self.playback_time = 0.0
+        self._base_bpm = 120  # Base BPM for preview speed scaling
         self.edit_style = "custom"  # 编辑风格标签
 
         # FluidSynth 相关
@@ -186,17 +194,17 @@ class EditorWindow(QMainWindow):
 
         toolbar.addSeparator()
 
-        # BPM 控制 (仅影响网格显示和导出，不影响播放速度)
+        # BPM 控制 (影响网格显示、导出与预览速度)
         toolbar.addWidget(QLabel(" BPM: "))
         self.sp_bpm = QSpinBox()
         self.sp_bpm.setRange(20, 300)
         self.sp_bpm.setValue(120)  # 默认 120 BPM
-        self.sp_bpm.setFixedWidth(60)
+        self.sp_bpm.setFixedWidth(80)
         self.sp_bpm.setToolTip(
-            "Grid/Export BPM\n"
+            "Global BPM (Tempo)\n"
+            "• Scales all note times when changed\n"
             "• Affects timeline grid display\n"
-            "• Affects exported MIDI tempo\n"
-            "• Does NOT affect playback speed"
+            "• Affects exported MIDI tempo"
         )
         toolbar.addWidget(self.sp_bpm)
 
@@ -388,6 +396,10 @@ class EditorWindow(QMainWindow):
                 time_sig_events
             )
 
+            # 缓存 tempo 信息，供 BPM 变更时重建 timeline
+            self._ticks_per_beat = self.midi_file.ticks_per_beat
+            self._time_sig_events_tick = time_sig_events
+
             # 更新时间轴
             self.timeline.set_duration(self.piano_roll.total_duration)
             self.timeline.set_scale(self.piano_roll.pixels_per_second)
@@ -401,12 +413,17 @@ class EditorWindow(QMainWindow):
 
             # 更新 BPM spinbox（从 MIDI 文件读取）
             midi_bpm = int(self._get_current_bpm())
+            self._base_bpm = max(1, midi_bpm)
             self.sp_bpm.blockSignals(True)
             self.sp_bpm.setValue(midi_bpm)
             self.sp_bpm.blockSignals(False)
 
+            # 同步时间轴为单一 BPM，确保与钢琴卷帘小节线对齐
+            self._sync_timeline_tempo(midi_bpm)
+
             # 更新量化网格（使用新 MIDI 的 BPM）
             self._on_quantize_changed(self.cmb_quantize.currentText())
+            self._update_bar_lines()
 
             # 重置播放
             self.playback_time = 0.0
@@ -414,6 +431,17 @@ class EditorWindow(QMainWindow):
 
             # 设置焦点到钢琴卷帘，确保快捷键立即生效
             self.piano_roll.setFocus()
+
+            # Emit signal for main window sync
+            # Convert NoteItem list to event list format expected by PlayerThread
+            events_list = []
+            for item in self.piano_roll.notes:
+                events_list.append({
+                    "time": item.start_time,
+                    "note": item.note,
+                    "duration": item.duration
+                })
+            self.midi_loaded.emit(path, events_list)
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load MIDI:\n{e}")
@@ -583,19 +611,27 @@ class EditorWindow(QMainWindow):
     def _on_bpm_changed(self, value: int):
         """BPM 变化 (来自 spinbox)
 
-        更新时间轴显示和量化网格大小
+        Performs true BPM scaling: scales all note times and updates display.
         """
-        # 更新时间轴 BPM
-        self.timeline.set_bpm(value)
+        # Apply global BPM scaling (scales note times)
+        # 注: _apply_global_bpm() 内部调用 _sync_timeline_tempo() 更新时间轴
+        self._apply_global_bpm(value)
 
         # 重新计算量化网格（使用新 BPM）
         self._on_quantize_changed(self.cmb_quantize.currentText())
+        self._update_bar_lines()
+
+        # Notify main window of BPM change
+        self.bpm_changed.emit(value)
 
     def _on_timeline_bpm_changed(self, bpm: int):
         """BPM 变化 (来自时间轴右键菜单)
 
-        同步 spinbox 值和量化网格
+        Performs true BPM scaling and syncs spinbox value.
         """
+        # Apply global BPM scaling (scales note times)
+        self._apply_global_bpm(bpm)
+
         # 更新 spinbox (阻止循环信号)
         self.sp_bpm.blockSignals(True)
         self.sp_bpm.setValue(bpm)
@@ -603,6 +639,84 @@ class EditorWindow(QMainWindow):
 
         # 重新计算量化网格（使用新 BPM）
         self._on_quantize_changed(self.cmb_quantize.currentText())
+        self._update_bar_lines()
+
+        # Notify main window of BPM change
+        self.bpm_changed.emit(bpm)
+
+    def _update_bar_lines(self):
+        """更新钢琴卷帘的小节分隔线"""
+        bpm = max(1, int(self.sp_bpm.value()))
+        beats_per_bar = getattr(self.timeline, "time_sig_numerator", 4)
+        beat_unit = getattr(self.timeline, "time_sig_denominator", 4)
+        if beat_unit <= 0:
+            self.piano_roll.set_bar_duration(0.0)
+            return
+        seconds_per_beat = (60.0 / bpm) * (4.0 / beat_unit)
+        seconds_per_bar = seconds_per_beat * beats_per_bar
+        self.piano_roll.set_bar_duration(seconds_per_bar)
+
+    def _apply_global_bpm(self, new_bpm: int):
+        """Apply global BPM change by scaling all note times.
+
+        This method performs true BPM scaling:
+        - Scales all note start_time and duration by old_bpm / new_bpm
+        - Updates playback_time accordingly
+        - Updates total_duration
+        - Triggers piano roll redraw
+
+        Args:
+            new_bpm: The new BPM value
+        """
+        old_bpm = self._base_bpm
+        if old_bpm <= 0 or new_bpm <= 0:
+            return
+
+        # Skip if BPM hasn't actually changed
+        if old_bpm == new_bpm:
+            return
+
+        # Calculate scale factor: old_bpm / new_bpm
+        # Higher BPM = shorter times, lower BPM = longer times
+        scale = float(old_bpm) / float(new_bpm)
+
+        # Scale playback time
+        self.playback_time *= scale
+
+        # Scale all notes in piano roll
+        for note_item in self.piano_roll.notes:
+            note_item.start_time *= scale
+            note_item.duration *= scale
+
+        # Update total duration
+        if self.piano_roll.notes:
+            self.piano_roll.total_duration = max(
+                n.start_time + n.duration for n in self.piano_roll.notes
+            )
+        else:
+            self.piano_roll.total_duration *= scale
+
+        # Update base BPM to new value
+        self._base_bpm = new_bpm
+
+        # Trigger piano roll redraw
+        self.piano_roll._redraw_all()
+
+        # Update timeline duration
+        self.timeline.set_duration(self.piano_roll.total_duration)
+
+        # Update playhead position
+        self.piano_roll.set_playhead_position(self.playback_time)
+        self.timeline.set_playhead(self.playback_time)
+
+        # Update time label
+        self._update_time_label()
+
+        # 同步时间轴 tempo 信息以更新拍刻度
+        self._sync_timeline_tempo(new_bpm)
+
+        # Emit notes changed signal for undo tracking
+        self.piano_roll.sig_notes_changed.emit()
 
     def _get_current_bpm(self) -> float:
         """获取当前 BPM (从 MIDI 文件或默认 120)"""
@@ -612,6 +726,27 @@ class EditorWindow(QMainWindow):
                     if msg.type == "set_tempo":
                         return mido.tempo2bpm(msg.tempo)
         return 120.0
+
+    def _sync_timeline_tempo(self, new_bpm: int):
+        """同步时间轴的 tempo 信息以更新拍刻度。
+
+        当 BPM 变更时调用此方法，重建 tempo_events 并刷新时间轴。
+
+        Args:
+            new_bpm: 新的 BPM 值
+        """
+        if not hasattr(self, '_ticks_per_beat') or self._ticks_per_beat is None:
+            return
+        if not hasattr(self, '_time_sig_events_tick'):
+            self._time_sig_events_tick = [(0, 4, 4)]  # 默认 4/4
+
+        # 用新 BPM 构建 tempo_events (tick 0 处设置新速度)
+        tempo_events = [(0, mido.bpm2tempo(new_bpm))]
+        self.timeline.set_tempo_info(
+            self._ticks_per_beat,
+            tempo_events,
+            self._time_sig_events_tick
+        )
 
     def on_save_as(self):
         """另存为"""
@@ -1096,7 +1231,7 @@ class EditorWindow(QMainWindow):
             return
 
         prev_time = self.playback_time
-        self.playback_time += 0.016  # ~16ms
+        self.playback_time += 0.016  # ~16ms per tick (BPM scaling is applied to note times)
 
         # 检查是否结束
         if self.playback_time >= self.piano_roll.total_duration:

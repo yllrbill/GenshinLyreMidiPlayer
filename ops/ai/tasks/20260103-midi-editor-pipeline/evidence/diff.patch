@@ -1,51 +1,1021 @@
-diff --git a/.gitignore b/.gitignore
-index cee3cad..8191698 100644
---- a/.gitignore
-+++ b/.gitignore
-@@ -373,4 +373,7 @@ private/tasks/*
+diff --git a/LyreAutoPlayer/main.py b/LyreAutoPlayer/main.py
+index b0269bf..2650f5d 100644
+--- a/LyreAutoPlayer/main.py
++++ b/LyreAutoPlayer/main.py
+@@ -184,6 +184,11 @@ class MainWindow(
+         self.editor_window: Optional[EditorWindow] = None
+         self._current_input_style = "mechanical"
  
- # Claude Code runtime state
- .claude/state/
--.claude/private/LyreAutoPlayer/FluidR3_GM.sf2
-+.claude/private/
++        # Playback progress tracking (for floating controller)
++        self.current_time: float = 0.0
++        self.total_duration: float = 0.0
++        self.current_bpm: int = 120  # BPM for floating controller sync
 +
-+# Large binary files (use Git LFS or download separately)
-+LyreAutoPlayer/FluidR3_GM.sf2
+         self.init_ui()
+         self.apply_language()
+         self.refresh_windows()
+@@ -864,12 +869,42 @@ class MainWindow(
+         # Create or reuse editor window
+         if self.editor_window is None:
+             self.editor_window = EditorWindow(parent=None)
++            # Connect signals to sync data back to main window
++            self.editor_window.midi_loaded.connect(self._on_editor_midi_loaded)
++            self.editor_window.bpm_changed.connect(self._on_editor_bpm_changed)
+ 
+         self.editor_window.load_midi(path)
+         self.editor_window.show()
+         self.editor_window.raise_()
+         self.editor_window.activateWindow()
+ 
++    def _on_editor_midi_loaded(self, path: str, events_list: list):
++        """Called when editor loads a MIDI file - sync to main window."""
++        self.mid_path = path
++        # Convert dict list to NoteEvent list and sort by time
++        self.events = sorted(
++            [NoteEvent(time=ev["time"], note=ev["note"], duration=ev["duration"])
++             for ev in events_list],
++            key=lambda e: e.time
++        )
++        # Sync BPM from editor if available
++        if self.editor_window and hasattr(self.editor_window, 'sp_bpm'):
++            self.current_bpm = self.editor_window.sp_bpm.value()
++        # Update UI
++        filename = os.path.basename(path)
++        self.lbl_file.setText(filename)
++        self.append_log(f"[Editor] Synced MIDI: {filename} ({len(self.events)} notes)")
++        # Sync floating controller if visible
++        if self.floating_controller and self.floating_controller.isVisible():
++            self.floating_controller._sync_from_main()
++
++    def _on_editor_bpm_changed(self, bpm: int):
++        """Called when editor BPM changes - sync to main window and floating controller."""
++        self.current_bpm = bpm
++        # Sync floating controller if visible
++        if self.floating_controller and self.floating_controller.isVisible():
++            self.floating_controller._sync_from_main()
++
+     def on_browse_sf(self):
+         settings = QSettings("LyreAutoPlayer", "LyreAutoPlayer")
+         last_dir = settings.value(SETTINGS_SF_DIR, "")
 diff --git a/LyreAutoPlayer/midi-change/index.json b/LyreAutoPlayer/midi-change/index.json
-index 6caef19..0a58dfa 100644
+index 0a58dfa..937e8d9 100644
 --- a/LyreAutoPlayer/midi-change/index.json
 +++ b/LyreAutoPlayer/midi-change/index.json
-@@ -8,6 +8,15 @@
-       "last_modified": "2026-01-03T22:41:48.578857",
-       "source_file_size": 5682,
-       "source_note_count": 626
+@@ -17,6 +17,24 @@
+       "last_modified": "2026-01-04T04:36:49.977714",
+       "source_file_size": 7348,
+       "source_note_count": 916
++    },
++    {
++      "source_path": "d:\\dw11\\piano\\lyreautoplayer\\midi\\megalovania-undertale-ost.mid",
++      "saved_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\megalovania-undertale-ost_custom.mid",
++      "display_name": "Megalovania-Undertale-OST_custom",
++      "edit_style": "custom",
++      "last_modified": "2026-01-04T06:06:46.615497",
++      "source_file_size": 14888,
++      "source_note_count": 1755
 +    },
 +    {
 +      "source_path": "d:\\dw11\\piano\\lyreautoplayer\\midi\\《凡人修仙传》op-不凡.mid",
-+      "saved_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\《凡人修仙传》op-不凡_custom.mid",
-+      "display_name": "《凡人修仙传》OP-不凡_custom",
++      "saved_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\《凡人修仙传》op-不凡_custom_custom.mid",
++      "display_name": "《凡人修仙传》op-不凡_custom_custom",
 +      "edit_style": "custom",
-+      "last_modified": "2026-01-04T04:36:49.977714",
++      "last_modified": "2026-01-04T06:26:55.490565",
 +      "source_file_size": 7348,
 +      "source_note_count": 916
      }
    ]
  }
 \ No newline at end of file
-diff --git "a/LyreAutoPlayer/midi-change/\343\200\212\345\207\241\344\272\272\344\277\256\344\273\231\344\274\240\343\200\213OP-\344\270\215\345\207\241_custom.mid" "b/LyreAutoPlayer/midi-change/\343\200\212\345\207\241\344\272\272\344\277\256\344\273\231\344\274\240\343\200\213OP-\344\270\215\345\207\241_custom.mid"
-new file mode 100644
-index 0000000..5321b65
-Binary files /dev/null and "b/LyreAutoPlayer/midi-change/\343\200\212\345\207\241\344\272\272\344\277\256\344\273\231\344\274\240\343\200\213OP-\344\270\215\345\207\241_custom.mid" differ
+diff --git a/LyreAutoPlayer/player/midi_parser.py b/LyreAutoPlayer/player/midi_parser.py
+index 59a0f7d..d49f459 100644
+--- a/LyreAutoPlayer/player/midi_parser.py
++++ b/LyreAutoPlayer/player/midi_parser.py
+@@ -21,6 +21,7 @@ def midi_to_events_with_duration(mid_path: str) -> List[NoteEvent]:
+     """
+     Parse MIDI into NoteEvent with duration.
+     Tracks note_on/note_off pairs to calculate duration.
++    Supports CC64 sustain pedal (延音踏板).
+ 
+     Args:
+         mid_path: Path to MIDI file
+@@ -32,30 +33,77 @@ def midi_to_events_with_duration(mid_path: str) -> List[NoteEvent]:
+     tempo = 500000  # default 120 BPM
+     t = 0.0
+ 
+-    # Track active notes: {note: start_time}
+-    active_notes: Dict[int, float] = {}
++    # Track active notes: {(note, channel): [(start_time, velocity), ...]}
++    active_notes: Dict[tuple, list] = {}
++    # Sustained notes (held by pedal): {(note, channel): [(start_time, velocity), ...]}
++    sustained_notes: Dict[tuple, list] = {}
++    # Sustain pedal state per channel
++    sustain_on: Dict[int, bool] = {}
+     events: List[NoteEvent] = []
+ 
++    def append_note(note: int, start_time: float, end_time: float):
++        """Add a note event with duration."""
++        duration = max(0, end_time - start_time)
++        events.append(NoteEvent(time=start_time, note=note, duration=duration))
++
+     merged = mido.merge_tracks(mid.tracks)
+     for msg in merged:
+         t += mido.tick2second(msg.time, mid.ticks_per_beat, tempo)
++
+         if msg.type == "set_tempo":
+             tempo = msg.tempo
+-        elif msg.type == "note_on" and getattr(msg, "velocity", 0) > 0:
++            continue
++
++        # Handle sustain pedal (CC64)
++        if msg.type == "control_change" and msg.control == 64:
++            channel = getattr(msg, 'channel', 0)
++            is_on = msg.value >= 64
++            prev_on = sustain_on.get(channel, False)
++            sustain_on[channel] = is_on
++
++            # Pedal released: end all sustained notes
++            if prev_on and not is_on:
++                for key in list(sustained_notes.keys()):
++                    if key[1] != channel:
++                        continue
++                    for start_time, _ in sustained_notes[key]:
++                        append_note(key[0], start_time, t)
++                    del sustained_notes[key]
++            continue
++
++        if not hasattr(msg, 'note'):
++            continue
++
++        channel = getattr(msg, 'channel', 0)
++        key = (msg.note, channel)
++
++        if msg.type == "note_on" and getattr(msg, "velocity", 0) > 0:
+             # Note on
+-            active_notes[msg.note] = t
+-            events.append(NoteEvent(time=t, note=msg.note, duration=0))
++            if key not in active_notes:
++                active_notes[key] = []
++            active_notes[key].append((t, msg.velocity))
++
+         elif msg.type == "note_off" or (msg.type == "note_on" and getattr(msg, "velocity", 0) == 0):
+             # Note off
+-            note = msg.note
+-            if note in active_notes:
+-                start_time = active_notes.pop(note)
+-                duration = t - start_time
+-                # Find the event and update duration
+-                for ev in reversed(events):
+-                    if ev.note == note and ev.time == start_time:
+-                        ev.duration = duration
+-                        break
++            if key in active_notes and active_notes[key]:
++                start_time, velocity = active_notes[key].pop(0)  # FIFO
++                if sustain_on.get(channel, False):
++                    # Pedal is down: delay note end
++                    sustained_notes.setdefault(key, []).append((start_time, velocity))
++                else:
++                    # Normal note end
++                    append_note(msg.note, start_time, t)
++
++    # Handle remaining active notes (no note_off received)
++    for key, items in active_notes.items():
++        for start_time, _ in items:
++            # Use a small duration for notes without note_off
++            append_note(key[0], start_time, t + 0.1)
++
++    # Handle remaining sustained notes (pedal never released)
++    for key, items in sustained_notes.items():
++        for start_time, _ in items:
++            append_note(key[0], start_time, t + 0.1)
+ 
+     events.sort(key=lambda x: x.time)
+     return events
+diff --git a/LyreAutoPlayer/player/thread.py b/LyreAutoPlayer/player/thread.py
+index ad0e886..36a7606 100644
+--- a/LyreAutoPlayer/player/thread.py
++++ b/LyreAutoPlayer/player/thread.py
+@@ -78,12 +78,12 @@ class PlayerThread(QThread):
+     Signals:
+         log(str): Emitted for log messages
+         finished(): Emitted when playback completes
+-        progress(int, int): Emitted with (current_event, total_events)
++        progress(float, float): Emitted with (current_time, total_duration)
+         paused(): Emitted when playback is paused
+     """
+     log = pyqtSignal(str)
+     finished = pyqtSignal()
+-    progress = pyqtSignal(int, int)  # (current_event, total_events)
++    progress = pyqtSignal(float, float)  # (current_time, total_duration)
+     paused = pyqtSignal()  # Emitted when actually paused (for UI update)
+ 
+     def __init__(self, events: List[NoteEvent], cfg: PlayerConfig):
+@@ -97,6 +97,8 @@ class PlayerThread(QThread):
+         self._total_pause_time = 0.0
+         self._bar_duration = 2.0  # Default bar duration (120BPM 4/4)
+         self._current_bar = -1  # Current bar index
++        self._total_duration = 0.0  # Total playback duration (for progress)
++        self._last_progress_emit = 0.0  # Last time progress was emitted
+ 
+         # Initialize InputManager v2 for reliable key handling in DirectX games
+         self._input_manager = create_input_manager(
+@@ -242,6 +244,12 @@ class PlayerThread(QThread):
+         n_events = len(event_queue)
+         self.log.emit(f"Playing {notes_scheduled} notes ({n_events} events)... (speed x{self.cfg.speed}, midi_dur={self.cfg.use_midi_duration})")
+ 
++        # Calculate total duration for progress tracking
++        if event_queue:
++            self._total_duration = max(ev.time for ev in event_queue)
++        else:
++            self._total_duration = 0.0
++
+         if notes_dropped > 0:
+             self.log.emit(f"Dropped {notes_dropped} out-of-range notes")
+ 
+@@ -770,6 +778,12 @@ class PlayerThread(QThread):
+ 
+             # Wait until event time
+             now = time.perf_counter() - start - self._total_pause_time
++
++            # Emit progress (throttled to ~10 times/sec)
++            if now - self._last_progress_emit >= 0.1:
++                self.progress.emit(now, self._total_duration)
++                self._last_progress_emit = now
++
+             dt = target_time - now
+             while dt > 0 and not self._stop:
+                 if self._paused:
 diff --git a/LyreAutoPlayer/settings.json b/LyreAutoPlayer/settings.json
-index 9554d67..9bec5de 100644
+index 9bec5de..ecbcc9d 100644
 --- a/LyreAutoPlayer/settings.json
 +++ b/LyreAutoPlayer/settings.json
-@@ -18,7 +18,7 @@
+@@ -14,12 +14,12 @@
+   "countdown_sec": 2,
+   "keyboard_preset": "36-key",
+   "use_midi_duration": true,
+-  "play_sound": false,
++  "play_sound": true,
    "velocity": 90,
-   "input_style": "natural",
+-  "input_style": "natural",
++  "input_style": "mechanical",
    "enable_diagnostics": false,
--  "soundfont_path": "D:\\dw11\\piano\\LyreAutoPlayer\\FluidR3_GM.sf2",
-+  "soundfont_path": "C:\\soundfonts\\FluidR3_GM.sf2",
-   "last_midi_path": "D:/dw11/piano/LyreAutoPlayer/midi/Sis puella magica!.mid",
+   "soundfont_path": "C:\\soundfonts\\FluidR3_GM.sf2",
+-  "last_midi_path": "D:/dw11/piano/LyreAutoPlayer/midi/Sis puella magica!.mid",
++  "last_midi_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\《凡人修仙传》op-不凡_custom.mid",
    "input_manager": {},
    "error_config": {
+     "enabled": false,
+diff --git a/LyreAutoPlayer/ui/editor/editor_window.py b/LyreAutoPlayer/ui/editor/editor_window.py
+index dcac2b1..f7a727a 100644
+--- a/LyreAutoPlayer/ui/editor/editor_window.py
++++ b/LyreAutoPlayer/ui/editor/editor_window.py
+@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
+     QSplitter, QScrollBar, QComboBox, QSpinBox, QCheckBox
+ )
+ from PyQt6.QtGui import QAction, QIcon, QShortcut, QKeySequence
+-from PyQt6.QtCore import Qt, QTimer
++from PyQt6.QtCore import Qt, QTimer, pyqtSignal
+ import mido
+ 
+ # FluidSynth (optional)
+@@ -38,6 +38,13 @@ from i18n import tr, LANG_ZH
+ class EditorWindow(QMainWindow):
+     """MIDI 编辑器主窗口"""
+ 
++    # Signal: emitted when MIDI is loaded (path, events_list)
++    # events_list is a list of dicts: [{"time": float, "note": int, "duration": float}, ...]
++    midi_loaded = pyqtSignal(str, list)
++
++    # Signal: emitted when BPM changes (for main window sync)
++    bpm_changed = pyqtSignal(int)
++
+     # 编辑风格选项
+     EDIT_STYLES = ["custom", "simplified", "transposed", "extended", "practice"]
+ 
+@@ -53,6 +60,7 @@ class EditorWindow(QMainWindow):
+         self.midi_file: Optional[mido.MidiFile] = None
+         self.is_playing = False
+         self.playback_time = 0.0
++        self._base_bpm = 120  # Base BPM for preview speed scaling
+         self.edit_style = "custom"  # 编辑风格标签
+ 
+         # FluidSynth 相关
+@@ -186,17 +194,17 @@ class EditorWindow(QMainWindow):
+ 
+         toolbar.addSeparator()
+ 
+-        # BPM 控制 (仅影响网格显示和导出，不影响播放速度)
++        # BPM 控制 (影响网格显示、导出与预览速度)
+         toolbar.addWidget(QLabel(" BPM: "))
+         self.sp_bpm = QSpinBox()
+         self.sp_bpm.setRange(20, 300)
+         self.sp_bpm.setValue(120)  # 默认 120 BPM
+-        self.sp_bpm.setFixedWidth(60)
++        self.sp_bpm.setFixedWidth(80)
+         self.sp_bpm.setToolTip(
+-            "Grid/Export BPM\n"
++            "Global BPM (Tempo)\n"
++            "• Scales all note times when changed\n"
+             "• Affects timeline grid display\n"
+-            "• Affects exported MIDI tempo\n"
+-            "• Does NOT affect playback speed"
++            "• Affects exported MIDI tempo"
+         )
+         toolbar.addWidget(self.sp_bpm)
+ 
+@@ -401,12 +409,14 @@ class EditorWindow(QMainWindow):
+ 
+             # 更新 BPM spinbox（从 MIDI 文件读取）
+             midi_bpm = int(self._get_current_bpm())
++            self._base_bpm = max(1, midi_bpm)
+             self.sp_bpm.blockSignals(True)
+             self.sp_bpm.setValue(midi_bpm)
+             self.sp_bpm.blockSignals(False)
+ 
+             # 更新量化网格（使用新 MIDI 的 BPM）
+             self._on_quantize_changed(self.cmb_quantize.currentText())
++            self._update_bar_lines()
+ 
+             # 重置播放
+             self.playback_time = 0.0
+@@ -415,6 +425,17 @@ class EditorWindow(QMainWindow):
+             # 设置焦点到钢琴卷帘，确保快捷键立即生效
+             self.piano_roll.setFocus()
+ 
++            # Emit signal for main window sync
++            # Convert NoteItem list to event list format expected by PlayerThread
++            events_list = []
++            for item in self.piano_roll.notes:
++                events_list.append({
++                    "time": item.start_time,
++                    "note": item.note,
++                    "duration": item.duration
++                })
++            self.midi_loaded.emit(path, events_list)
++
+         except Exception as e:
+             QMessageBox.critical(self, "Error", f"Failed to load MIDI:\n{e}")
+ 
+@@ -583,19 +604,29 @@ class EditorWindow(QMainWindow):
+     def _on_bpm_changed(self, value: int):
+         """BPM 变化 (来自 spinbox)
+ 
+-        更新时间轴显示和量化网格大小
++        Performs true BPM scaling: scales all note times and updates display.
+         """
++        # Apply global BPM scaling (scales note times)
++        self._apply_global_bpm(value)
++
+         # 更新时间轴 BPM
+         self.timeline.set_bpm(value)
+ 
+         # 重新计算量化网格（使用新 BPM）
+         self._on_quantize_changed(self.cmb_quantize.currentText())
++        self._update_bar_lines()
++
++        # Notify main window of BPM change
++        self.bpm_changed.emit(value)
+ 
+     def _on_timeline_bpm_changed(self, bpm: int):
+         """BPM 变化 (来自时间轴右键菜单)
+ 
+-        同步 spinbox 值和量化网格
++        Performs true BPM scaling and syncs spinbox value.
+         """
++        # Apply global BPM scaling (scales note times)
++        self._apply_global_bpm(bpm)
++
+         # 更新 spinbox (阻止循环信号)
+         self.sp_bpm.blockSignals(True)
+         self.sp_bpm.setValue(bpm)
+@@ -603,6 +634,81 @@ class EditorWindow(QMainWindow):
+ 
+         # 重新计算量化网格（使用新 BPM）
+         self._on_quantize_changed(self.cmb_quantize.currentText())
++        self._update_bar_lines()
++
++        # Notify main window of BPM change
++        self.bpm_changed.emit(bpm)
++
++    def _update_bar_lines(self):
++        """更新钢琴卷帘的小节分隔线"""
++        bpm = max(1, int(self.sp_bpm.value()))
++        beats_per_bar = getattr(self.timeline, "time_sig_numerator", 4)
++        beat_unit = getattr(self.timeline, "time_sig_denominator", 4)
++        if beat_unit <= 0:
++            self.piano_roll.set_bar_duration(0.0)
++            return
++        seconds_per_beat = (60.0 / bpm) * (4.0 / beat_unit)
++        seconds_per_bar = seconds_per_beat * beats_per_bar
++        self.piano_roll.set_bar_duration(seconds_per_bar)
++
++    def _apply_global_bpm(self, new_bpm: int):
++        """Apply global BPM change by scaling all note times.
++
++        This method performs true BPM scaling:
++        - Scales all note start_time and duration by old_bpm / new_bpm
++        - Updates playback_time accordingly
++        - Updates total_duration
++        - Triggers piano roll redraw
++
++        Args:
++            new_bpm: The new BPM value
++        """
++        old_bpm = self._base_bpm
++        if old_bpm <= 0 or new_bpm <= 0:
++            return
++
++        # Skip if BPM hasn't actually changed
++        if old_bpm == new_bpm:
++            return
++
++        # Calculate scale factor: old_bpm / new_bpm
++        # Higher BPM = shorter times, lower BPM = longer times
++        scale = float(old_bpm) / float(new_bpm)
++
++        # Scale playback time
++        self.playback_time *= scale
++
++        # Scale all notes in piano roll
++        for note_item in self.piano_roll.notes:
++            note_item.start_time *= scale
++            note_item.duration *= scale
++
++        # Update total duration
++        if self.piano_roll.notes:
++            self.piano_roll.total_duration = max(
++                n.start_time + n.duration for n in self.piano_roll.notes
++            )
++        else:
++            self.piano_roll.total_duration *= scale
++
++        # Update base BPM to new value
++        self._base_bpm = new_bpm
++
++        # Trigger piano roll redraw
++        self.piano_roll._redraw_all()
++
++        # Update timeline duration
++        self.timeline.set_duration(self.piano_roll.total_duration)
++
++        # Update playhead position
++        self.piano_roll.set_playhead_position(self.playback_time)
++        self.timeline.set_playhead(self.playback_time)
++
++        # Update time label
++        self._update_time_label()
++
++        # Emit notes changed signal for undo tracking
++        self.piano_roll.sig_notes_changed.emit()
+ 
+     def _get_current_bpm(self) -> float:
+         """获取当前 BPM (从 MIDI 文件或默认 120)"""
+@@ -1096,7 +1202,7 @@ class EditorWindow(QMainWindow):
+             return
+ 
+         prev_time = self.playback_time
+-        self.playback_time += 0.016  # ~16ms
++        self.playback_time += 0.016  # ~16ms per tick (BPM scaling is applied to note times)
+ 
+         # 检查是否结束
+         if self.playback_time >= self.piano_roll.total_duration:
+diff --git a/LyreAutoPlayer/ui/editor/piano_roll.py b/LyreAutoPlayer/ui/editor/piano_roll.py
+index 8b40200..6387d37 100644
+--- a/LyreAutoPlayer/ui/editor/piano_roll.py
++++ b/LyreAutoPlayer/ui/editor/piano_roll.py
+@@ -37,6 +37,7 @@ class PianoRollWidget(QGraphicsView):
+     GRID_LINE_EF = QColor(220, 120, 120)       # E-F 边界分隔线 - 鲜亮红加粗
+     GRID_LINE_C_SECONDARY = QColor(90, 150, 90)    # C 音双线副线
+     GRID_LINE_EF_SECONDARY = QColor(150, 80, 80)   # E-F 双线副线
++    GRID_BAR_LINE = QColor(255, 255, 255, 120)     # 小节竖线（半透明白）
+     PLAYHEAD_COLOR = QColor(255, 0, 0)
+     BG_COLOR = QColor(30, 30, 30)
+ 
+@@ -65,6 +66,7 @@ class PianoRollWidget(QGraphicsView):
+         # MIDI 数据
+         self.midi_file: Optional[mido.MidiFile] = None
+         self.total_duration = 0.0
++        self._bar_duration_sec = 0.0
+ 
+         # 剪贴板 (复制粘贴用)
+         self._clipboard: List[dict] = []
+@@ -370,6 +372,15 @@ class PianoRollWidget(QGraphicsView):
+         if self.notes or self.total_duration > 0:
+             self._redraw_all()
+ 
++    def set_bar_duration(self, seconds_per_bar: float):
++        """设置每小节时长（用于绘制竖线）"""
++        seconds_per_bar = max(0.0, float(seconds_per_bar))
++        if abs(self._bar_duration_sec - seconds_per_bar) < 1e-6:
++            return
++        self._bar_duration_sec = seconds_per_bar
++        if self.notes or self.total_duration > 0:
++            self._redraw_all()
++
+     def _draw_grid(self):
+         """绘制网格背景 - 增强对比度版
+ 
+@@ -444,6 +455,20 @@ class PianoRollWidget(QGraphicsView):
+                 line.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+                 self._grid_items.append(line)
+ 
++        # 3. 绘制小节竖线
++        if self._bar_duration_sec > 1e-6:
++            scene_height = (note_max - note_min + 1) * self.pixels_per_note
++            pen = QPen(self.GRID_BAR_LINE, 1.0)
++            t = 0.0
++            max_t = self.total_duration + self._bar_duration_sec
++            while t <= max_t:
++                x = t * self.pixels_per_second
++                line = self.scene.addLine(x, 0, x, scene_height, pen)
++                line.setZValue(-9)
++                line.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
++                self._grid_items.append(line)
++                t += self._bar_duration_sec
++
+     def _create_playhead(self):
+         """创建播放头"""
+         scene_height = (self.NOTE_RANGE[1] - self.NOTE_RANGE[0] + 1) * self.pixels_per_note
+diff --git a/LyreAutoPlayer/ui/editor/timeline.py b/LyreAutoPlayer/ui/editor/timeline.py
+index 47527f6..6e2f61e 100644
+--- a/LyreAutoPlayer/ui/editor/timeline.py
++++ b/LyreAutoPlayer/ui/editor/timeline.py
+@@ -511,7 +511,7 @@ class TimelineWidget(QWidget):
+             bar_num = bn
+ 
+         # 创建菜单项
+-        # 注意: BPM 影响网格显示和导出，不影响实时播放速度
++        # 注意: BPM 影响网格显示、导出与预览播放速度
+         # 真正的 tempo map 编辑（按小节变速）暂未实现
+         act_set_bpm = menu.addAction(f"Set BPM (Grid/Export) at Bar {bar_num}...")
+         act_set_global_bpm = menu.addAction("Set Global BPM (Grid/Export)...")
+@@ -531,7 +531,7 @@ class TimelineWidget(QWidget):
+     def _prompt_set_bpm_at_bar(self, bar_num: int, time_sec: float):
+         """弹出对话框设置全局 BPM (应用到整个曲目)
+ 
+-        注意：BPM 影响网格显示、量化和导出，不影响实时播放速度。
++        注意：BPM 影响网格显示、量化、导出与预览播放速度。
+         真正的按小节 tempo map 编辑暂未实现。
+         """
+         bpm, ok = QInputDialog.getInt(
+@@ -539,11 +539,11 @@ class TimelineWidget(QWidget):
+             f"Set BPM (Grid/Export)",
+             f"Set BPM for grid display and export:\n"
+             f"(Clicked at bar {bar_num})\n\n"
+-            f"Note: Does not change playback speed.",
++            f"Note: Affects preview playback speed.",
+             int(self.bpm), 20, 300
+         )
+         if ok:
+-            # 修改全局 BPM (影响网格和导出，不影响播放速度)
++            # 修改全局 BPM (影响网格、导出与预览速度)
+             self.set_bpm(bpm)
+             self.sig_bpm_changed.emit(bpm)
+ 
+diff --git a/LyreAutoPlayer/ui/floating.py b/LyreAutoPlayer/ui/floating.py
+index 0942c32..c343dff 100644
+--- a/LyreAutoPlayer/ui/floating.py
++++ b/LyreAutoPlayer/ui/floating.py
+@@ -229,6 +229,38 @@ class FloatingController(QWidget):
+         self.btn_stop.setToolTip(tr("stop", lang))
+         self.btn_open.setToolTip(tr("load_midi", lang))
+ 
++    def _sync_from_main(self):
++        """Sync state from main window (called when showing floating controller)."""
++        try:
++            # Sync file name
++            mid_path = getattr(self.main, 'mid_path', None)
++            if mid_path:
++                import os
++                self.set_file_name(os.path.basename(mid_path))
++            else:
++                self.set_file_name(None)
++
++            # Sync BPM from main window (with fallback)
++            bpm = getattr(self.main, 'current_bpm', 120)
++            self.set_bpm(bpm)
++
++            # Sync playback state
++            is_playing = False
++            is_paused = False
++            is_pending = False
++            thread = getattr(self.main, 'thread', None)
++            if thread and thread.isRunning():
++                is_playing = True
++                if hasattr(thread, 'is_paused') and thread.is_paused():
++                    is_paused = True
++                elif hasattr(thread, 'is_pause_pending') and thread.is_pause_pending():
++                    is_pending = True
++            self.update_playback_state(is_playing, is_paused, is_pending)
++
++        except Exception as e:
++            # Fail silently - floating controller should not crash main app
++            print(f"[FloatingController] _sync_from_main error: {e}")
++
+     # Compatibility stubs for methods that may be called by main window
+     def sync_speed(self, value: float):
+         """Compatibility stub - speed control removed."""
+diff --git a/LyreAutoPlayer/ui/mixins/playback_mixin.py b/LyreAutoPlayer/ui/mixins/playback_mixin.py
+index 247a506..122b667 100644
+--- a/LyreAutoPlayer/ui/mixins/playback_mixin.py
++++ b/LyreAutoPlayer/ui/mixins/playback_mixin.py
+@@ -28,6 +28,7 @@ class PlaybackMixin:
+         self.thread.log.connect(self.append_log)
+         self.thread.finished.connect(self.on_finished)
+         self.thread.paused.connect(self._on_thread_paused)
++        self.thread.progress.connect(self._on_progress_update)
+ 
+         self.btn_start.setEnabled(False)
+         self.btn_stop.setEnabled(True)
+@@ -72,9 +73,14 @@ class PlaybackMixin:
+         if self.thread and self.thread.isRunning():
+             self.thread.stop()
+             self.append_log(tr("stopping", self.lang))
++            # Reset progress tracking
++            self.current_time = 0.0
++            self.total_duration = 0.0
+             # Reset playback state in floating controller
+             if self.floating_controller:
+                 self.floating_controller.update_playback_state(False)
++                if self.floating_controller.isVisible():
++                    self.floating_controller._update_progress()
+             # Notify diagnostics window of playback stop
+             if self.diagnostics_window:
+                 self.diagnostics_window.on_playback_stopped()
+@@ -95,15 +101,28 @@ class PlaybackMixin:
+         """Called when playback finishes."""
+         self.btn_start.setEnabled(True)
+         self.btn_stop.setEnabled(False)
++        # Reset progress tracking
++        self.current_time = 0.0
++        self.total_duration = 0.0
+         # Reset playback state in floating controller
+         if self.floating_controller:
+             self.floating_controller.update_playback_state(False)
++            if self.floating_controller.isVisible():
++                self.floating_controller._update_progress()
+ 
+     def _on_thread_paused(self: "MainWindow"):
+         """Called when playback thread actually pauses (at bar end)."""
+         if self.floating_controller:
+             self.floating_controller.update_playback_state(True, is_paused=True)
+ 
++    def _on_progress_update(self: "MainWindow", current_time: float, total_duration: float):
++        """Called when playback progress updates."""
++        self.current_time = current_time
++        self.total_duration = total_duration
++        # Update floating controller progress if visible
++        if self.floating_controller and self.floating_controller.isVisible():
++            self.floating_controller._update_progress()
++
+     def on_octave_up(self: "MainWindow"):
+         """Shortcut handler: increase octave shift."""
+         idx = self.cmb_octave.currentIndex()
+diff --git a/ops/ai/state/STATE.md b/ops/ai/state/STATE.md
+index 4c10519..0142b6a 100644
+--- a/ops/ai/state/STATE.md
++++ b/ops/ai/state/STATE.md
+@@ -2,7 +2,7 @@
+ 
+ ## Latest Task
+ - TASK_ID: 20260103-midi-editor-pipeline
+-- Status: DONE (Phase 1-3 + Git cleanup + SoundFont config)
++- Status: BLOCKED (BPM Scaling 未生效)
+ - Pointer: ops/ai/tasks/20260103-midi-editor-pipeline
+ 
+ ## Previous Task
+@@ -11,10 +11,10 @@
+ - Pointer: ops/ai/tasks/20260102-2138-main-mixin-refactor
+ 
+ ## Current Focus
+-- MIDI 编辑器 Phase 1-3 完成 + Git 清理 + SoundFont 配置
+-- Session 3: 141MB sf2 从历史移除, WSL autocrlf 修复, soundfont_path 更新
+-- Phase 3 已实现: 双击创建/移调/量化/撤销重做 (undo_commands.py)
+-- 待验证: 音频预览功能 (LyreAutoPlayer GUI 已启动)
++- MIDI 编辑器 Phase 1-3 完成，**BPM 缩放未生效**
++- Session 4: BPM 缩放代码存在，但用户测试显示不起作用
++- **阻塞点**: 调 BPM 后秒数/音符长度不变，保存后仍原速
++- 待排查: 信号连接、`_base_bpm` 初始值、方法调用链
+ 
+ ## Completed Summary (MIDI Editor Phase 1)
+ - **Phase 1 钢琴卷帘骨架完成**: 6 个新文件 (~745 行)
+@@ -75,10 +75,13 @@
+ ---
+ 
+ ## Next Actions
+-1. 验证音频预览功能 (用户手动测试)
+-2. Phase 4: 超音域处理预览
+-3. 考虑 Git LFS 或外部下载方案管理 FluidR3_GM.sf2
+-4. 清理 analyzetools/eop/ 多版本脚本 (可选)
++1. **[BLOCKER]** 排查 BPM 缩放不生效问题:
++   - 添加 debug print 到 `_on_bpm_changed()` 和 `_apply_global_bpm()`
++   - 验证信号连接是否正确触发
++   - 检查 `_base_bpm` 初始值
++2. 验证音频预览功能 (用户手动测试)
++3. Phase 4: 超音域处理预览
++4. 考虑 Git LFS 或外部下载方案管理 FluidR3_GM.sf2
+ 
+ ---
+-*Last Updated: 2026-01-04 (Session 3 - Git cleanup + WSL fix + SoundFont config)*
++*Last Updated: 2026-01-04 (Session 4 - BPM Scaling 未生效，待排查)*
+diff --git a/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/context_pack.md b/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/context_pack.md
+index 3f0ffca..ec92fa2 100644
+--- a/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/context_pack.md
++++ b/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/context_pack.md
+@@ -4,7 +4,10 @@
+ 20260103-midi-editor-pipeline
+ 
+ ## Status
+-DONE - Phase 1 + 1.5 + 2 + Optimization Fixes + Session 2 (2026-01-04)
++**BLOCKED** - BPM Scaling 存在问题 (Session 4, 2026-01-04)
++
++### 用户反馈
++> 调 BPM 后秒数/音符长度不变，保存后仍原速
+ 
+ ## Goal
+ 实现钢琴卷帘编辑器基础编辑功能 + 时间轴BPM/小节显示
+@@ -87,3 +90,37 @@ e41d2d6 feat(editor): complete MIDI editor Phase 1-3 implementation
+ - mido (MIDI解析)
+ - PyQt6 (GUI)
+ - fluidsynth (音频预览, 需 C:\soundfonts\FluidR3_GM.sf2)
++
++## Session 4 Changes (2026-01-04 - BPM Scaling) - **未验证**
++
++| Category | Status | Notes |
++|----------|--------|-------|
++| BPM Scaling | ❌ 未生效 | `_apply_global_bpm()` 方法存在，但用户测试显示不起作用 |
++| Signal Flow | ⚠️ 代码审查 | 信号连接代码存在，未实际验证触发 |
++| Save Path | ⚠️ 代码审查 | `_rebuild_midi_from_notes()` 代码存在，保存后仍原速 |
++| Code Status | ✅ 实际运行 | 无 debug print (grep exit 1); 语法检查通过 (py_compile exit 0) |
++
++### 已知问题
++1. **BPM 调整不生效**: 改变 BPM spinbox 后，音符时长/位置不变
++2. **保存后原速**: 保存的 MIDI 文件仍按原始速度播放
++
++### BPM Scaling Formula
++```python
++scale = old_bpm / new_bpm
++note_item.start_time *= scale
++note_item.duration *= scale
++playback_time *= scale
++```
++
++### Key Method (editor_window.py:648-711)
++```python
++def _apply_global_bpm(self, new_bpm: int):
++    # Scale all note times when BPM changes
++    # Updates: notes, playback_time, total_duration, timeline
++```
++
++### Diff Stats (当前未提交变更 2026-01-04)
++```
++14 files changed, 1283 insertions(+), 78 deletions(-)
++```
++> 注: 包含 Session 1-4 所有未提交变更 + ops/ai 文档更新
+diff --git a/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/diff.patch b/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/diff.patch
+index e7e3c93..3c91112 100644
+--- a/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/diff.patch
++++ b/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/diff.patch
+@@ -1,51 +0,0 @@
+-diff --git a/.gitignore b/.gitignore
+-index cee3cad..8191698 100644
+---- a/.gitignore
+-+++ b/.gitignore
+-@@ -373,4 +373,7 @@ private/tasks/*
+- 
+- # Claude Code runtime state
+- .claude/state/
+--.claude/private/LyreAutoPlayer/FluidR3_GM.sf2
+-+.claude/private/
+-+
+-+# Large binary files (use Git LFS or download separately)
+-+LyreAutoPlayer/FluidR3_GM.sf2
+-diff --git a/LyreAutoPlayer/midi-change/index.json b/LyreAutoPlayer/midi-change/index.json
+-index 6caef19..0a58dfa 100644
+---- a/LyreAutoPlayer/midi-change/index.json
+-+++ b/LyreAutoPlayer/midi-change/index.json
+-@@ -8,6 +8,15 @@
+-       "last_modified": "2026-01-03T22:41:48.578857",
+-       "source_file_size": 5682,
+-       "source_note_count": 626
+-+    },
+-+    {
+-+      "source_path": "d:\\dw11\\piano\\lyreautoplayer\\midi\\《凡人修仙传》op-不凡.mid",
+-+      "saved_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\《凡人修仙传》op-不凡_custom.mid",
+-+      "display_name": "《凡人修仙传》OP-不凡_custom",
+-+      "edit_style": "custom",
+-+      "last_modified": "2026-01-04T04:36:49.977714",
+-+      "source_file_size": 7348,
+-+      "source_note_count": 916
+-     }
+-   ]
+- }
+-\ No newline at end of file
+-diff --git "a/LyreAutoPlayer/midi-change/\343\200\212\345\207\241\344\272\272\344\277\256\344\273\231\344\274\240\343\200\213OP-\344\270\215\345\207\241_custom.mid" "b/LyreAutoPlayer/midi-change/\343\200\212\345\207\241\344\272\272\344\277\256\344\273\231\344\274\240\343\200\213OP-\344\270\215\345\207\241_custom.mid"
+-new file mode 100644
+-index 0000000..5321b65
+-Binary files /dev/null and "b/LyreAutoPlayer/midi-change/\343\200\212\345\207\241\344\272\272\344\277\256\344\273\231\344\274\240\343\200\213OP-\344\270\215\345\207\241_custom.mid" differ
+-diff --git a/LyreAutoPlayer/settings.json b/LyreAutoPlayer/settings.json
+-index 9554d67..9bec5de 100644
+---- a/LyreAutoPlayer/settings.json
+-+++ b/LyreAutoPlayer/settings.json
+-@@ -18,7 +18,7 @@
+-   "velocity": 90,
+-   "input_style": "natural",
+-   "enable_diagnostics": false,
+--  "soundfont_path": "D:\\dw11\\piano\\LyreAutoPlayer\\FluidR3_GM.sf2",
+-+  "soundfont_path": "C:\\soundfonts\\FluidR3_GM.sf2",
+-   "last_midi_path": "D:/dw11/piano/LyreAutoPlayer/midi/Sis puella magica!.mid",
+-   "input_manager": {},
+-   "error_config": {
+diff --git a/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/execute.md b/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/execute.md
+index 57e337d..5ac398c 100644
+--- a/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/execute.md
++++ b/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/execute.md
+@@ -1,50 +1,84 @@
+-# Execute Log - Session 2026-01-04
++# Execute Log - Session 4 (BPM Scaling) - **未生效**
+ 
+-## Git Status (Final)
++## Date: 2026-01-04
++
++## 用户反馈 (实际测试结果)
++> 调 BPM 后秒数/音符长度不变，保存后仍原速
++
++**结论**: BPM 缩放功能代码存在，但实际运行时不生效。
++
++## Git Status (Updated)
+ ```
+ $ git status --short
+-(clean - all committed)
++M LyreAutoPlayer/main.py
++ M LyreAutoPlayer/midi-change/index.json
++ M LyreAutoPlayer/player/midi_parser.py
++ M LyreAutoPlayer/player/thread.py
++ M LyreAutoPlayer/settings.json
++ M LyreAutoPlayer/ui/editor/editor_window.py
++ M LyreAutoPlayer/ui/editor/piano_roll.py
++ M LyreAutoPlayer/ui/editor/timeline.py
++ M LyreAutoPlayer/ui/floating.py
++ M LyreAutoPlayer/ui/mixins/playback_mixin.py
++ M ops/ai/state/STATE.md
++ M ops/ai/tasks/20260103-midi-editor-pipeline/evidence/context_pack.md
++ M ops/ai/tasks/20260103-midi-editor-pipeline/evidence/diff.patch
++ M ops/ai/tasks/20260103-midi-editor-pipeline/handoff.md
++?? LyreAutoPlayer/midi-change/Megalovania-Undertale-OST_custom.mid
++?? LyreAutoPlayer/midi-change/《凡人修仙传》op-不凡_custom_custom.mid
++```
+ 
+-$ git log --oneline -5
++## Recent Commits
++```
++$ git log -3 --oneline
++b7e218e docs: update task evidence and state for Session 3
+ 80f31e1 chore: update midi index and add new midi file
+ bc83ada chore: update soundfont path
+-9ece6c7 fix: correct .gitignore rules for private dir and sf2 file
+-e41d2d6 feat(editor): complete MIDI editor Phase 1-3 implementation
+-0743cef chore: add .aiexclude to minimize AI context noise
+ ```
+ 
+-## Key Operations Performed
++## Key Changes (Session 4)
+ 
+-### 1. Git Filter-Branch (Large File Removal)
+-```
+-$ git filter-branch --force --index-filter "git rm --cached LyreAutoPlayer/FluidR3_GM.sf2" -- origin/main..HEAD
+-影响: 从 3 个未推送 commit 中移除 141MB sf2 文件
+-```
++### BPM Scaling Implementation
++- **File**: `LyreAutoPlayer/ui/editor/editor_window.py`
++- **Method**: `_apply_global_bpm(new_bpm: int)`
++- **Formula**: `scale = old_bpm / new_bpm`
++- **Affected fields**:
++  - `note_item.start_time *= scale`
++  - `note_item.duration *= scale`
++  - `playback_time *= scale`
++  - `total_duration` recalculated
+ 
+-### 2. WSL Line Ending Fix
+-```
+-Before: wsl git status | wc -l = 284
+-After:  wsl git status | wc -l = 2
+-根因: core.autocrlf 配置不一致 (Windows=true, WSL=unset)
+-修复: git config core.autocrlf true && git checkout -- .
+-```
++### Signal Flow (代码审查验证，未实际运行验证)
++1. `sp_bpm.valueChanged` → `_on_bpm_changed()` → `_apply_global_bpm()` - 代码存在
++2. `timeline.sig_bpm_changed` → `_on_timeline_bpm_changed()` → `_apply_global_bpm()` - 代码存在
+ 
+-### 3. .gitignore Correction (9ece6c7)
+-```
+-恢复: .claude/private/
+-新增: LyreAutoPlayer/FluidR3_GM.sf2
+-```
++### Save Path (代码审查验证，未实际运行验证)
++- `_rebuild_midi_from_notes()` 代码中使用 `note_item.start_time` 和 `note_item.duration`
++- **用户反馈: 保存后仍原速，缩放未生效**
++
++### BPM Scaling Logic Verification (Code Review)
++> 注: 以下为代码审查验证，非实际运行测试脚本
+ 
+-### 4. SoundFont Path Update (bc83ada)
++**验证公式**:
++- 120 → 60 BPM: `scale = 120/60 = 2.0` → 时间 ×2
++- 120 → 240 BPM: `scale = 120/240 = 0.5` → 时间 ×0.5
++
++**代码路径确认** (editor_window.py:654-711):
++1. `_apply_global_bpm()` 计算 `scale = old_bpm / new_bpm`
++2. 遍历 `piano_roll.notes` 缩放 `start_time` 和 `duration`
++3. 调用 `_redraw_all()` 更新几何
++4. `_rebuild_midi_from_notes()` 直接使用缩放后的值保存
++
++## Syntax Check (实际运行 2026-01-04)
+ ```
+-settings.json:21 -> C:\soundfonts\FluidR3_GM.sf2
++$ cd d:/dw11/piano/LyreAutoPlayer && python -m py_compile ui/editor/editor_window.py 2>&1; echo "Exit code: $?"
++Exit code: 0
+ ```
++> py_compile 成功时无输出，仅返回 exit code 0
+ 
+-### 5. Cleanup
++## Debug Print Check (实际运行 2026-01-04)
+ ```
+-删除: C:/soundfonts/fluid-soundfont.zip (131MB)
++$ grep -n "\[BPM\]" d:/dw11/piano/LyreAutoPlayer/ui/editor/editor_window.py 2>&1; echo "Exit code: $?"
++Exit code: 1
+ ```
+-
+-## Audio Verification
+-- LyreAutoPlayer GUI 已启动
+-- 待用户手动验证音频预览功能
++> grep 未找到匹配时返回 exit code 1，无输出表示代码中不存在 [BPM] 调试打印
+diff --git a/ops/ai/tasks/20260103-midi-editor-pipeline/handoff.md b/ops/ai/tasks/20260103-midi-editor-pipeline/handoff.md
+index 75069a2..8aba262 100644
+--- a/ops/ai/tasks/20260103-midi-editor-pipeline/handoff.md
++++ b/ops/ai/tasks/20260103-midi-editor-pipeline/handoff.md
+@@ -1,6 +1,6 @@
+ # Handoff - 20260103-midi-editor-pipeline
+ 
+-## Status: DONE (Phase 1 + 1.5 + 2 + Timeline优化)
++## Status: BLOCKED (BPM Scaling 未生效)
+ 
+ ## Summary
+ MIDI 编辑管线任务。Phase 1 + Phase 1.5 + Phase 2 已完成。
+@@ -447,13 +447,53 @@ bc83ada chore: update soundfont path
+ e41d2d6 feat(editor): complete MIDI editor Phase 1-3 implementation
+ ```
+ 
++## Session 4 (2026-01-04 - BPM Scaling) - **未生效**
++
++### 用户反馈
++> 调 BPM 后秒数/音符长度不变，保存后仍原速
++
++### Implementation (代码审查，未实际验证)
++| Item | Description | Status |
++|------|-------------|--------|
++| Method | `_apply_global_bpm(new_bpm: int)` in editor_window.py:654+ | ⚠️ 代码存在 |
++| Formula | `scale = old_bpm / new_bpm` | ⚠️ 代码存在 |
++| Affected | `note_item.start_time`, `note_item.duration`, `playback_time` | ❌ 未生效 |
++| Updates | `total_duration`, timeline, piano_roll redraw | ❌ 未生效 |
++
++### Signal Flow (代码审查验证)
++```
++sp_bpm.valueChanged → _on_bpm_changed() → _apply_global_bpm()  # 代码存在，未验证触发
++timeline.sig_bpm_changed → _on_timeline_bpm_changed() → _apply_global_bpm()  # 代码存在，未验证触发
++```
++
++### Verification
++- [ ] ❌ BPM change scales note times - **用户反馈: 不生效**
++- [ ] ❌ `_rebuild_midi_from_notes()` saves scaled times - **用户反馈: 保存后仍原速**
++- [ ] ⚠️ Timeline and piano_roll update geometry - **未验证**
++- [x] ✅ 无 [BPM] debug print (grep exit 1, 实际运行 2026-01-04)
++
++### 待排查
++1. `_on_bpm_changed()` 是否被调用？
++2. `_apply_global_bpm()` 是否被调用？
++3. 信号连接是否正确？
++4. `_base_bpm` 初始值是否正确？
++
+ ## Evidence Index
+ | File | Path | Summary |
+ |------|------|---------|
+ | context_pack.md | evidence/ | Planner 最小阅读摘要 |
+-| execute.log | evidence/ | 执行日志 (Session 3) |
+-| diff.patch | evidence/ | git diff (e41d2d6..HEAD) |
++| execute.md | evidence/ | 执行日志 (Session 4) |
++| diff.patch | evidence/ | git diff (current changes) |
++
++---
++
++## Verification Note
++
++**历史语法检查说明**: Session 1-3 的 `[OK] Syntax check passed` 为人工记录格式，非原始命令输出。
++实际 `py_compile` 成功时无 stdout 输出，仅返回 exit code 0。
++
++**Session 4 实际运行记录**: 见 `evidence/execute.md`，包含原始命令和 exit code。
+ 
+ ---
+ *Created: 2026-01-03*
+-*Updated: 2026-01-04 (Session 3 - Git cleanup + WSL fix + SoundFont path)*
++*Updated: 2026-01-04 (Session 4 - BPM Scaling implementation, 证据文档一致性修正)*

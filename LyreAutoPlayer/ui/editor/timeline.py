@@ -511,7 +511,7 @@ class TimelineWidget(QWidget):
             bar_num = bn
 
         # 创建菜单项
-        # 注意: BPM 影响网格显示和导出，不影响实时播放速度
+        # 注意: BPM 影响网格显示、导出与预览播放速度
         # 真正的 tempo map 编辑（按小节变速）暂未实现
         act_set_bpm = menu.addAction(f"Set BPM (Grid/Export) at Bar {bar_num}...")
         act_set_global_bpm = menu.addAction("Set Global BPM (Grid/Export)...")
@@ -531,7 +531,7 @@ class TimelineWidget(QWidget):
     def _prompt_set_bpm_at_bar(self, bar_num: int, time_sec: float):
         """弹出对话框设置全局 BPM (应用到整个曲目)
 
-        注意：BPM 影响网格显示、量化和导出，不影响实时播放速度。
+        注意：BPM 影响网格显示、量化、导出与预览播放速度。
         真正的按小节 tempo map 编辑暂未实现。
         """
         bpm, ok = QInputDialog.getInt(
@@ -539,11 +539,11 @@ class TimelineWidget(QWidget):
             f"Set BPM (Grid/Export)",
             f"Set BPM for grid display and export:\n"
             f"(Clicked at bar {bar_num})\n\n"
-            f"Note: Does not change playback speed.",
+            f"Note: Affects preview playback speed.",
             int(self.bpm), 20, 300
         )
         if ok:
-            # 修改全局 BPM (影响网格和导出，不影响播放速度)
+            # 修改全局 BPM (影响网格、导出与预览速度)
             self.set_bpm(bpm)
             self.sig_bpm_changed.emit(bpm)
 

@@ -37,6 +37,7 @@ class PianoRollWidget(QGraphicsView):
     GRID_LINE_EF = QColor(220, 120, 120)       # E-F 边界分隔线 - 鲜亮红加粗
     GRID_LINE_C_SECONDARY = QColor(90, 150, 90)    # C 音双线副线
     GRID_LINE_EF_SECONDARY = QColor(150, 80, 80)   # E-F 双线副线
+    GRID_BAR_LINE = QColor(255, 255, 255, 120)     # 小节竖线（半透明白）
     PLAYHEAD_COLOR = QColor(255, 0, 0)
     BG_COLOR = QColor(30, 30, 30)
 
@@ -65,6 +66,7 @@ class PianoRollWidget(QGraphicsView):
         # MIDI 数据
         self.midi_file: Optional[mido.MidiFile] = None
         self.total_duration = 0.0
+        self._bar_duration_sec = 0.0
 
         # 剪贴板 (复制粘贴用)
         self._clipboard: List[dict] = []
@@ -370,6 +372,15 @@ class PianoRollWidget(QGraphicsView):
         if self.notes or self.total_duration > 0:
             self._redraw_all()
 
+    def set_bar_duration(self, seconds_per_bar: float):
+        """设置每小节时长（用于绘制竖线）"""
+        seconds_per_bar = max(0.0, float(seconds_per_bar))
+        if abs(self._bar_duration_sec - seconds_per_bar) < 1e-6:
+            return
+        self._bar_duration_sec = seconds_per_bar
+        if self.notes or self.total_duration > 0:
+            self._redraw_all()
+
     def _draw_grid(self):
         """绘制网格背景 - 增强对比度版
 
@@ -443,6 +454,20 @@ class PianoRollWidget(QGraphicsView):
                 line = self.scene.addLine(0, y, scene_width, y, pen)
                 line.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
                 self._grid_items.append(line)
+
+        # 3. 绘制小节竖线
+        if self._bar_duration_sec > 1e-6:
+            scene_height = (note_max - note_min + 1) * self.pixels_per_note
+            pen = QPen(self.GRID_BAR_LINE, 1.0)
+            t = 0.0
+            max_t = self.total_duration + self._bar_duration_sec
+            while t <= max_t:
+                x = t * self.pixels_per_second
+                line = self.scene.addLine(x, 0, x, scene_height, pen)
+                line.setZValue(-9)
+                line.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+                self._grid_items.append(line)
+                t += self._bar_duration_sec
 
     def _create_playhead(self):
         """创建播放头"""

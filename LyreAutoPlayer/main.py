@@ -184,6 +184,11 @@ class MainWindow(
         self.editor_window: Optional[EditorWindow] = None
         self._current_input_style = "mechanical"
 
+        # Playback progress tracking (for floating controller)
+        self.current_time: float = 0.0
+        self.total_duration: float = 0.0
+        self.current_bpm: int = 120  # BPM for floating controller sync
+
         self.init_ui()
         self.apply_language()
         self.refresh_windows()
@@ -864,11 +869,41 @@ class MainWindow(
         # Create or reuse editor window
         if self.editor_window is None:
             self.editor_window = EditorWindow(parent=None)
+            # Connect signals to sync data back to main window
+            self.editor_window.midi_loaded.connect(self._on_editor_midi_loaded)
+            self.editor_window.bpm_changed.connect(self._on_editor_bpm_changed)
 
         self.editor_window.load_midi(path)
         self.editor_window.show()
         self.editor_window.raise_()
         self.editor_window.activateWindow()
+
+    def _on_editor_midi_loaded(self, path: str, events_list: list):
+        """Called when editor loads a MIDI file - sync to main window."""
+        self.mid_path = path
+        # Convert dict list to NoteEvent list and sort by time
+        self.events = sorted(
+            [NoteEvent(time=ev["time"], note=ev["note"], duration=ev["duration"])
+             for ev in events_list],
+            key=lambda e: e.time
+        )
+        # Sync BPM from editor if available
+        if self.editor_window and hasattr(self.editor_window, 'sp_bpm'):
+            self.current_bpm = self.editor_window.sp_bpm.value()
+        # Update UI
+        filename = os.path.basename(path)
+        self.lbl_file.setText(filename)
+        self.append_log(f"[Editor] Synced MIDI: {filename} ({len(self.events)} notes)")
+        # Sync floating controller if visible
+        if self.floating_controller and self.floating_controller.isVisible():
+            self.floating_controller._sync_from_main()
+
+    def _on_editor_bpm_changed(self, bpm: int):
+        """Called when editor BPM changes - sync to main window and floating controller."""
+        self.current_bpm = bpm
+        # Sync floating controller if visible
+        if self.floating_controller and self.floating_controller.isVisible():
+            self.floating_controller._sync_from_main()
 
     def on_browse_sf(self):
         settings = QSettings("LyreAutoPlayer", "LyreAutoPlayer")

@@ -4,7 +4,10 @@
 20260103-midi-editor-pipeline
 
 ## Status
-DONE - Phase 1 + 1.5 + 2 + Optimization Fixes + Session 2 (2026-01-04)
+**BLOCKED** - BPM Scaling 存在问题 (Session 4, 2026-01-04)
+
+### 用户反馈
+> 调 BPM 后秒数/音符长度不变，保存后仍原速
 
 ## Goal
 实现钢琴卷帘编辑器基础编辑功能 + 时间轴BPM/小节显示
@@ -87,3 +90,37 @@ e41d2d6 feat(editor): complete MIDI editor Phase 1-3 implementation
 - mido (MIDI解析)
 - PyQt6 (GUI)
 - fluidsynth (音频预览, 需 C:\soundfonts\FluidR3_GM.sf2)
+
+## Session 4 Changes (2026-01-04 - BPM Scaling) - **未验证**
+
+| Category | Status | Notes |
+|----------|--------|-------|
+| BPM Scaling | ❌ 未生效 | `_apply_global_bpm()` 方法存在，但用户测试显示不起作用 |
+| Signal Flow | ⚠️ 代码审查 | 信号连接代码存在，未实际验证触发 |
+| Save Path | ⚠️ 代码审查 | `_rebuild_midi_from_notes()` 代码存在，保存后仍原速 |
+| Code Status | ✅ 实际运行 | 无 debug print (grep exit 1); 语法检查通过 (py_compile exit 0) |
+
+### 已知问题
+1. **BPM 调整不生效**: 改变 BPM spinbox 后，音符时长/位置不变
+2. **保存后原速**: 保存的 MIDI 文件仍按原始速度播放
+
+### BPM Scaling Formula
+```python
+scale = old_bpm / new_bpm
+note_item.start_time *= scale
+note_item.duration *= scale
+playback_time *= scale
+```
+
+### Key Method (editor_window.py:648-711)
+```python
+def _apply_global_bpm(self, new_bpm: int):
+    # Scale all note times when BPM changes
+    # Updates: notes, playback_time, total_duration, timeline
+```
+
+### Diff Stats (当前未提交变更 2026-01-04)
+```
+14 files changed, 1283 insertions(+), 78 deletions(-)
+```
+> 注: 包含 Session 1-4 所有未提交变更 + ops/ai 文档更新

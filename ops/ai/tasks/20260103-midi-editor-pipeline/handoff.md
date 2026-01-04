@@ -1,6 +1,6 @@
 # Handoff - 20260103-midi-editor-pipeline
 
-## Status: DONE (Phase 1 + 1.5 + 2 + Timeline优化)
+## Status: BLOCKED (BPM Scaling 未生效)
 
 ## Summary
 MIDI 编辑管线任务。Phase 1 + Phase 1.5 + Phase 2 已完成。
@@ -447,13 +447,53 @@ bc83ada chore: update soundfont path
 e41d2d6 feat(editor): complete MIDI editor Phase 1-3 implementation
 ```
 
+## Session 4 (2026-01-04 - BPM Scaling) - **未生效**
+
+### 用户反馈
+> 调 BPM 后秒数/音符长度不变，保存后仍原速
+
+### Implementation (代码审查，未实际验证)
+| Item | Description | Status |
+|------|-------------|--------|
+| Method | `_apply_global_bpm(new_bpm: int)` in editor_window.py:654+ | ⚠️ 代码存在 |
+| Formula | `scale = old_bpm / new_bpm` | ⚠️ 代码存在 |
+| Affected | `note_item.start_time`, `note_item.duration`, `playback_time` | ❌ 未生效 |
+| Updates | `total_duration`, timeline, piano_roll redraw | ❌ 未生效 |
+
+### Signal Flow (代码审查验证)
+```
+sp_bpm.valueChanged → _on_bpm_changed() → _apply_global_bpm()  # 代码存在，未验证触发
+timeline.sig_bpm_changed → _on_timeline_bpm_changed() → _apply_global_bpm()  # 代码存在，未验证触发
+```
+
+### Verification
+- [ ] ❌ BPM change scales note times - **用户反馈: 不生效**
+- [ ] ❌ `_rebuild_midi_from_notes()` saves scaled times - **用户反馈: 保存后仍原速**
+- [ ] ⚠️ Timeline and piano_roll update geometry - **未验证**
+- [x] ✅ 无 [BPM] debug print (grep exit 1, 实际运行 2026-01-04)
+
+### 待排查
+1. `_on_bpm_changed()` 是否被调用？
+2. `_apply_global_bpm()` 是否被调用？
+3. 信号连接是否正确？
+4. `_base_bpm` 初始值是否正确？
+
 ## Evidence Index
 | File | Path | Summary |
 |------|------|---------|
 | context_pack.md | evidence/ | Planner 最小阅读摘要 |
-| execute.log | evidence/ | 执行日志 (Session 3) |
-| diff.patch | evidence/ | git diff (e41d2d6..HEAD) |
+| execute.md | evidence/ | 执行日志 (Session 4) |
+| diff.patch | evidence/ | git diff (current changes) |
+
+---
+
+## Verification Note
+
+**历史语法检查说明**: Session 1-3 的 `[OK] Syntax check passed` 为人工记录格式，非原始命令输出。
+实际 `py_compile` 成功时无 stdout 输出，仅返回 exit code 0。
+
+**Session 4 实际运行记录**: 见 `evidence/execute.md`，包含原始命令和 exit code。
 
 ---
 *Created: 2026-01-03*
-*Updated: 2026-01-04 (Session 3 - Git cleanup + WSL fix + SoundFont path)*
+*Updated: 2026-01-04 (Session 4 - BPM Scaling implementation, 证据文档一致性修正)*

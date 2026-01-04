@@ -28,6 +28,7 @@ class PlaybackMixin:
         self.thread.log.connect(self.append_log)
         self.thread.finished.connect(self.on_finished)
         self.thread.paused.connect(self._on_thread_paused)
+        self.thread.progress.connect(self._on_progress_update)
 
         self.btn_start.setEnabled(False)
         self.btn_stop.setEnabled(True)
@@ -72,9 +73,14 @@ class PlaybackMixin:
         if self.thread and self.thread.isRunning():
             self.thread.stop()
             self.append_log(tr("stopping", self.lang))
+            # Reset progress tracking
+            self.current_time = 0.0
+            self.total_duration = 0.0
             # Reset playback state in floating controller
             if self.floating_controller:
                 self.floating_controller.update_playback_state(False)
+                if self.floating_controller.isVisible():
+                    self.floating_controller._update_progress()
             # Notify diagnostics window of playback stop
             if self.diagnostics_window:
                 self.diagnostics_window.on_playback_stopped()
@@ -95,14 +101,27 @@ class PlaybackMixin:
         """Called when playback finishes."""
         self.btn_start.setEnabled(True)
         self.btn_stop.setEnabled(False)
+        # Reset progress tracking
+        self.current_time = 0.0
+        self.total_duration = 0.0
         # Reset playback state in floating controller
         if self.floating_controller:
             self.floating_controller.update_playback_state(False)
+            if self.floating_controller.isVisible():
+                self.floating_controller._update_progress()
 
     def _on_thread_paused(self: "MainWindow"):
         """Called when playback thread actually pauses (at bar end)."""
         if self.floating_controller:
             self.floating_controller.update_playback_state(True, is_paused=True)
+
+    def _on_progress_update(self: "MainWindow", current_time: float, total_duration: float):
+        """Called when playback progress updates."""
+        self.current_time = current_time
+        self.total_duration = total_duration
+        # Update floating controller progress if visible
+        if self.floating_controller and self.floating_controller.isVisible():
+            self.floating_controller._update_progress()
 
     def on_octave_up(self: "MainWindow"):
         """Shortcut handler: increase octave shift."""
