@@ -109,13 +109,6 @@ def build_main_tab(window: "MainWindow") -> QWidget:
     window.lbl_preset = QLabel()
     form.addRow(window.lbl_preset, window.cmb_preset)
 
-    # Input style selector
-    window.cmb_input_style = QComboBox()
-    window._rebuild_style_combo(window.cmb_input_style)
-    window.cmb_input_style.currentIndexChanged.connect(window.on_input_style_changed)
-    window.lbl_input_style = QLabel()
-    form.addRow(window.lbl_input_style, window.cmb_input_style)
-
     # Countdown
     window.sp_countdown = QSpinBox()
     window.sp_countdown.setRange(0, 10)
@@ -169,48 +162,42 @@ def build_main_tab(window: "MainWindow") -> QWidget:
 
     layout.addWidget(window.grp_sound)
 
-    # --- Quick Error Select Group ---
-    window.grp_quick_error = QGroupBox()
-    quick_err_layout = QHBoxLayout(window.grp_quick_error)
+    # --- Strict Mode / Auto-Pause Group ---
+    window.grp_strict_mode = QGroupBox()
+    strict_form = QFormLayout(window.grp_strict_mode)
 
-    window.chk_quick_error_enable = QCheckBox()
-    window.chk_quick_error_enable.setChecked(False)
-    window.chk_quick_error_enable.stateChanged.connect(window._on_quick_error_enable_changed)
-    quick_err_layout.addWidget(window.chk_quick_error_enable)
+    # Strict mode checkbox (default ON)
+    window.chk_strict_mode = QCheckBox()
+    window.chk_strict_mode.setChecked(True)
+    window.chk_strict_mode.stateChanged.connect(window._on_strict_mode_changed)
+    window.lbl_strict_mode = QLabel()
+    strict_form.addRow(window.lbl_strict_mode, window.chk_strict_mode)
 
-    window.chk_quick_wrong = QCheckBox()
-    window.chk_quick_wrong.setChecked(True)
-    window.chk_quick_wrong.stateChanged.connect(window._sync_quick_errors_to_tab5)
-    quick_err_layout.addWidget(window.chk_quick_wrong)
+    # Auto-pause interval selector
+    pause_row = QHBoxLayout()
+    window.cmb_pause_bars = QComboBox()
+    window.cmb_pause_bars.addItem("Disabled", 0)
+    window.cmb_pause_bars.addItem("Every bar", 1)
+    window.cmb_pause_bars.addItem("Every 2 bars", 2)
+    window.cmb_pause_bars.addItem("Every 4 bars", 4)
+    window.cmb_pause_bars.addItem("Every 8 bars", 8)
+    window.cmb_pause_bars.setCurrentIndex(0)
+    window.lbl_pause_bars = QLabel()
+    pause_row.addWidget(window.cmb_pause_bars)
+    strict_form.addRow(window.lbl_pause_bars, pause_row)
 
-    window.chk_quick_miss = QCheckBox()
-    window.chk_quick_miss.setChecked(True)
-    window.chk_quick_miss.stateChanged.connect(window._sync_quick_errors_to_tab5)
-    quick_err_layout.addWidget(window.chk_quick_miss)
+    # Auto-resume countdown spinner
+    countdown_row = QHBoxLayout()
+    window.sp_auto_resume_countdown = QSpinBox()
+    window.sp_auto_resume_countdown.setRange(1, 10)
+    window.sp_auto_resume_countdown.setValue(3)
+    window.sp_auto_resume_countdown.setSuffix(" sec")
+    window.lbl_auto_resume_countdown = QLabel()
+    countdown_row.addWidget(window.sp_auto_resume_countdown)
+    countdown_row.addStretch()
+    strict_form.addRow(window.lbl_auto_resume_countdown, countdown_row)
 
-    window.chk_quick_extra = QCheckBox()
-    window.chk_quick_extra.setChecked(True)
-    window.chk_quick_extra.stateChanged.connect(window._sync_quick_errors_to_tab5)
-    quick_err_layout.addWidget(window.chk_quick_extra)
-
-    window.chk_quick_pause = QCheckBox()
-    window.chk_quick_pause.setChecked(True)
-    window.chk_quick_pause.stateChanged.connect(window._sync_quick_errors_to_tab5)
-    quick_err_layout.addWidget(window.chk_quick_pause)
-
-    quick_err_layout.addStretch()
-    layout.addWidget(window.grp_quick_error)
-
-    # --- Quick 8-Bar Style Toggle ---
-    eight_bar_quick_row = QHBoxLayout()
-    window.chk_quick_eight_bar = QCheckBox()
-    window.chk_quick_eight_bar.setChecked(False)
-    window.chk_quick_eight_bar.stateChanged.connect(window._on_quick_eight_bar_changed)
-    window.lbl_quick_eight_bar = QLabel()
-    eight_bar_quick_row.addWidget(window.chk_quick_eight_bar)
-    eight_bar_quick_row.addWidget(window.lbl_quick_eight_bar)
-    eight_bar_quick_row.addStretch()
-    layout.addLayout(eight_bar_quick_row)
+    layout.addWidget(window.grp_strict_mode)
 
     # --- Settings Presets Group ---
     window.grp_presets = QGroupBox()

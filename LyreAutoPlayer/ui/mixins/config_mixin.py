@@ -30,16 +30,21 @@ class ConfigMixin:
 
     def collect_cfg(self: "MainWindow") -> PlayerConfig:
         """Collect current UI values into PlayerConfig."""
-        # Build error config from UI
+        # Check if strict mode is enabled
+        strict_mode = getattr(self, '_strict_mode', False)
+        if hasattr(self, 'chk_strict_mode'):
+            strict_mode = self.chk_strict_mode.isChecked()
+
+        # Build error config (feature removed from main GUI - always disabled)
         error_cfg = ErrorConfig(
-            enabled=self._error_enabled,
-            errors_per_8bars=self._error_freq,
-            wrong_note=self.chk_wrong_note.isChecked(),
-            miss_note=self.chk_miss_note.isChecked(),
-            extra_note=self.chk_extra_note.isChecked(),
-            pause_error=self.chk_pause_error.isChecked(),
-            pause_min_ms=self.sp_pause_min.value(),
-            pause_max_ms=self.sp_pause_max.value(),
+            enabled=False,
+            errors_per_8bars=0,
+            wrong_note=False,
+            miss_note=False,
+            extra_note=False,
+            pause_error=False,
+            pause_min_ms=100,
+            pause_max_ms=500,
         )
 
         octave_min = int(self.sp_octave_min.value())
@@ -47,17 +52,32 @@ class ConfigMixin:
         if octave_min > octave_max:
             octave_min, octave_max = octave_max, octave_min
 
+        # Build eight-bar style (disabled in strict mode)
+        eight_bar = self._collect_eight_bar_style()
+        if strict_mode:
+            eight_bar.enabled = False
+
+        # Get pause_every_bars from UI if available
+        pause_every_bars = 0
+        if hasattr(self, 'cmb_pause_bars'):
+            pause_every_bars = self.cmb_pause_bars.currentData() or 0
+
+        # Get auto_resume_countdown from UI if available
+        auto_resume_countdown = 3
+        if hasattr(self, 'sp_auto_resume_countdown'):
+            auto_resume_countdown = self.sp_auto_resume_countdown.value()
+
         return PlayerConfig(
             root_mid_do=int(self.cmb_root.currentData()),
             octave_shift=int(self.cmb_octave.currentData()),
             transpose=int(self.sp_transpose.value()),
-            speed=float(self.sp_speed.value()),
+            speed=1.0 if strict_mode else float(self.sp_speed.value()),
             accidental_policy=str(self.cmb_policy.currentText()),
             octave_min_note=octave_min,
             octave_max_note=octave_max,
             octave_range_auto=self.chk_octave_range_auto.isChecked(),
             press_ms=int(self.sp_press.value()),
-            use_midi_duration=self.chk_midi_duration.isChecked(),
+            use_midi_duration=True if strict_mode else self.chk_midi_duration.isChecked(),
             keyboard_preset=str(self.cmb_preset.currentData()),
             countdown_sec=int(self.sp_countdown.value()),
             target_hwnd=self.cmb_window.currentData(),
@@ -66,34 +86,31 @@ class ConfigMixin:
             soundfont_path=self.soundfont_path,
             instrument=str(self.cmb_instrument.currentText()),
             velocity=int(self.sp_velocity.value()),
-            input_style=self._current_input_style,
+            input_style="mechanical" if strict_mode else self._current_input_style,
             error_config=error_cfg,
             enable_diagnostics=self._enable_diagnostics,
-            eight_bar_style=self._collect_eight_bar_style(),
+            eight_bar_style=eight_bar,
+            strict_mode=strict_mode,
+            pause_every_bars=pause_every_bars,
+            auto_resume_countdown=auto_resume_countdown,
         )
 
     def _collect_eight_bar_style(self: "MainWindow") -> EightBarStyle:
-        """Collect eight-bar style settings from UI."""
-        pattern_data = self.cmb_eight_bar_pattern.currentData()
-        mode_data = self.cmb_eight_bar_mode.currentData()
-        clamp_min = self.sp_eight_bar_clamp_min.value()
-        clamp_max = self.sp_eight_bar_clamp_max.value()
-        if clamp_min > clamp_max:
-            clamp_min, clamp_max = clamp_max, clamp_min
+        """Return default disabled eight-bar style (feature removed from main GUI)."""
         return EightBarStyle(
-            enabled=self.chk_eight_bar_enabled.isChecked(),
-            mode=mode_data if mode_data else "warp",
-            selection_pattern=pattern_data if pattern_data else "skip2_pick1",
-            speed_mult_min=self.sp_speed_min.value() / 100.0,
-            speed_mult_max=self.sp_speed_max.value() / 100.0,
-            timing_mult_min=self.sp_timing_var_min.value() / 100.0,
-            timing_mult_max=self.sp_timing_var_max.value() / 100.0,
-            duration_mult_min=self.sp_dur_var_min.value() / 100.0,
-            duration_mult_max=self.sp_dur_var_max.value() / 100.0,
-            clamp_enabled=self.chk_eight_bar_clamp.isChecked(),
-            clamp_min=clamp_min / 100.0,
-            clamp_max=clamp_max / 100.0,
-            show_indicator=self.chk_show_indicator.isChecked(),
+            enabled=False,
+            mode="warp",
+            selection_pattern="skip2_pick1",
+            speed_mult_min=0.95,
+            speed_mult_max=1.05,
+            timing_mult_min=0.95,
+            timing_mult_max=1.05,
+            duration_mult_min=0.95,
+            duration_mult_max=1.05,
+            clamp_enabled=False,
+            clamp_min=0.85,
+            clamp_max=1.15,
+            show_indicator=False,
         )
 
     def save_settings(self: "MainWindow"):
@@ -217,13 +234,10 @@ class ConfigMixin:
             if "play_sound" in settings:
                 self.chk_sound.setChecked(settings["play_sound"])
 
-            # Apply input style
+            # Apply input style (only store the value - UI controls removed from main GUI)
             if "input_style" in settings:
                 style_name = settings["input_style"]
                 self._current_input_style = style_name
-                self._select_style_in_combo(self.cmb_input_style, style_name)
-                self._select_style_in_combo(self.cmb_style_tab, style_name)
-                self._update_style_params_display(style_name)
 
             # Apply soundfont path
             if "soundfont_path" in settings and settings["soundfont_path"]:
@@ -253,71 +267,30 @@ class ConfigMixin:
             if "input_manager" in settings:
                 self._input_manager_params = settings["input_manager"]
 
-            # Apply error_config (nested structure)
+            # Apply error_config (feature removed from main GUI - just store internal state)
             if "error_config" in settings:
                 ec = settings["error_config"]
                 if "enabled" in ec:
                     self._error_enabled = ec["enabled"]
-                    self.chk_error_enabled.setChecked(ec["enabled"])
-                    self.chk_quick_error_enable.setChecked(ec["enabled"])
                 if "errors_per_8bars" in ec:
                     self._error_freq = ec["errors_per_8bars"]
-                    self.sp_error_freq.setValue(ec["errors_per_8bars"])
-                if "wrong_note" in ec:
-                    self.chk_wrong_note.setChecked(ec["wrong_note"])
-                    self.chk_quick_wrong.setChecked(ec["wrong_note"])
-                if "miss_note" in ec:
-                    self.chk_miss_note.setChecked(ec["miss_note"])
-                    self.chk_quick_miss.setChecked(ec["miss_note"])
-                if "extra_note" in ec:
-                    self.chk_extra_note.setChecked(ec["extra_note"])
-                    self.chk_quick_extra.setChecked(ec["extra_note"])
-                if "pause_error" in ec:
-                    self.chk_pause_error.setChecked(ec["pause_error"])
-                    self.chk_quick_pause.setChecked(ec["pause_error"])
-                if "pause_min_ms" in ec:
-                    self.sp_pause_min.setValue(ec["pause_min_ms"])
-                if "pause_max_ms" in ec:
-                    self.sp_pause_max.setValue(ec["pause_max_ms"])
 
-            # Apply eight_bar_config (nested structure)
-            if "eight_bar_config" in settings:
-                ebc = settings["eight_bar_config"]
-                if "enabled" in ebc:
-                    self.chk_eight_bar_enabled.setChecked(ebc["enabled"])
-                    self.chk_quick_eight_bar.setChecked(ebc["enabled"])
-                if "mode" in ebc:
-                    mode = ebc["mode"]
-                    for i in range(self.cmb_eight_bar_mode.count()):
-                        if self.cmb_eight_bar_mode.itemData(i) == mode:
-                            self.cmb_eight_bar_mode.setCurrentIndex(i)
+            # Apply eight_bar_config (feature removed from main GUI - skip widget updates)
+
+            # Apply strict_mode_config (nested structure)
+            if "strict_mode_config" in settings:
+                smc = settings["strict_mode_config"]
+                if "enabled" in smc and hasattr(self, 'chk_strict_mode'):
+                    self.chk_strict_mode.setChecked(smc["enabled"])
+                    self._strict_mode = smc["enabled"]
+                if "pause_every_bars" in smc and hasattr(self, 'cmb_pause_bars'):
+                    pause_bars = smc["pause_every_bars"]
+                    for i in range(self.cmb_pause_bars.count()):
+                        if self.cmb_pause_bars.itemData(i) == pause_bars:
+                            self.cmb_pause_bars.setCurrentIndex(i)
                             break
-                if "pattern" in ebc:
-                    pattern = ebc["pattern"]
-                    for i in range(self.cmb_eight_bar_pattern.count()):
-                        if self.cmb_eight_bar_pattern.itemData(i) == pattern:
-                            self.cmb_eight_bar_pattern.setCurrentIndex(i)
-                            break
-                if "speed_min" in ebc:
-                    self.sp_speed_min.setValue(ebc["speed_min"])
-                if "speed_max" in ebc:
-                    self.sp_speed_max.setValue(ebc["speed_max"])
-                if "timing_min" in ebc:
-                    self.sp_timing_var_min.setValue(ebc["timing_min"])
-                if "timing_max" in ebc:
-                    self.sp_timing_var_max.setValue(ebc["timing_max"])
-                if "duration_min" in ebc:
-                    self.sp_dur_var_min.setValue(ebc["duration_min"])
-                if "duration_max" in ebc:
-                    self.sp_dur_var_max.setValue(ebc["duration_max"])
-                if "clamp_enabled" in ebc:
-                    self.chk_eight_bar_clamp.setChecked(ebc["clamp_enabled"])
-                if "clamp_min" in ebc:
-                    self.sp_eight_bar_clamp_min.setValue(ebc["clamp_min"])
-                if "clamp_max" in ebc:
-                    self.sp_eight_bar_clamp_max.setValue(ebc["clamp_max"])
-                if "show_indicator" in ebc:
-                    self.chk_show_indicator.setChecked(ebc["show_indicator"])
+                if "auto_resume_countdown" in smc and hasattr(self, 'sp_auto_resume_countdown'):
+                    self.sp_auto_resume_countdown.setValue(smc["auto_resume_countdown"])
 
             # Unconditionally sync diagnostics state after loading
             self._sync_diagnostics_state()

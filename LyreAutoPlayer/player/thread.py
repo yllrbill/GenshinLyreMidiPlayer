@@ -85,6 +85,9 @@ class PlayerThread(QThread):
     finished = pyqtSignal()
     progress = pyqtSignal(float, float)  # (current_time, total_duration)
     paused = pyqtSignal()  # Emitted when actually paused (for UI update)
+    resumed = pyqtSignal()  # Emitted when playback resumes (for UI update)
+    countdown_tick = pyqtSignal(int)  # remaining seconds (0=countdown finished)
+    auto_pause_at_bar = pyqtSignal(int)  # bar_index where auto-paused
 
     def __init__(self, events: List[NoteEvent], cfg: PlayerConfig):
         super().__init__()
@@ -155,11 +158,13 @@ class PlayerThread(QThread):
             # Cancel pending pause
             self._pause_pending = False
             self.log.emit("Pause cancelled")
+            self.resumed.emit()  # Notify UI
         elif self._paused:
             pause_duration = time.perf_counter() - self._pause_start
             self._total_pause_time += pause_duration
             self._paused = False
             self.log.emit(f"Resumed (paused {pause_duration:.1f}s)")
+            self.resumed.emit()  # Notify UI
 
     def is_paused(self) -> bool:
         return self._paused
@@ -223,11 +228,14 @@ class PlayerThread(QThread):
             self.log.emit(f"Countdown: {self.cfg.countdown_sec}s (switch to game now)")
             for i in range(self.cfg.countdown_sec, 0, -1):
                 if self._stop:
+                    self.countdown_tick.emit(0)  # Clear countdown UI
                     self.log.emit("Stopped during countdown.")
                     self.finished.emit()
                     return
+                self.countdown_tick.emit(i)  # Notify UI of countdown
                 self.log.emit(f"  ...{i}")
                 time.sleep(1)
+            self.countdown_tick.emit(0)  # Countdown finished
 
         # Disable IME for target window
         ime_disabled_hwnd = None
@@ -381,6 +389,11 @@ class PlayerThread(QThread):
                 self._bar_duration = bar_duration
             except Exception:
                 pass
+
+        # Override bar duration from editor BPM (Pitfall #2: must be before event queue build)
+        if self.cfg.bar_duration_override > 0:
+            self._bar_duration = self.cfg.bar_duration_override
+            self.log.emit(f"Using editor bar duration: {self._bar_duration:.3f}s")
 
         # 8-bar style setup
         eight_bar = self.cfg.eight_bar_style
@@ -790,6 +803,10 @@ class PlayerThread(QThread):
                     break
                 time.sleep(min(dt, 0.02))
                 now = time.perf_counter() - start - self._total_pause_time
+                # Emit progress at ~10Hz for smooth playhead updates
+                if now - self._last_progress_emit >= 0.1:
+                    self.progress.emit(now, self._total_duration)
+                    self._last_progress_emit = now
                 dt = target_time - now
 
             if self._paused:
@@ -811,13 +828,40 @@ class PlayerThread(QThread):
                 processed_bar = next_event.bar_index
 
                 if next_event.event_type == "pause_marker":
-                    if self._pause_pending:
+                    # Check if auto-pause should trigger at this bar
+                    should_auto_pause = (
+                        self.cfg.pause_every_bars > 0 and
+                        next_event.bar_index > 0 and
+                        next_event.bar_index % self.cfg.pause_every_bars == 0
+                    )
+
+                    if self._pause_pending or should_auto_pause:
                         self.log.emit(
-                            f"[Pause] pending at bar {next_event.bar_index} (t={next_event.time:.3f}s)"
+                            f"[Pause] {'auto-' if should_auto_pause else 'pending '}at bar {next_event.bar_index} (t={next_event.time:.3f}s)"
                         )
-                        self._do_pause()
                         self._release_all_pressed(pressed_keys, fs, chan)
+                        self._do_pause()
+                        self.auto_pause_at_bar.emit(next_event.bar_index)
                         paused_now = True
+
+                        if should_auto_pause:
+                            # Auto-pause countdown (倒计时结束自动继续，F5可提前跳过)
+                            countdown_interrupted = False
+                            for remaining in range(self.cfg.auto_resume_countdown, 0, -1):
+                                if self._stop:
+                                    break
+                                if not self._paused:  # User pressed F5 to skip
+                                    self.countdown_tick.emit(0)  # Clear countdown UI
+                                    countdown_interrupted = True
+                                    break
+                                self.countdown_tick.emit(remaining)
+                                time.sleep(1.0)
+
+                            # Auto-resume after countdown (if still paused and not interrupted)
+                            if self._paused and not self._stop and not countdown_interrupted:
+                                self.countdown_tick.emit(0)
+                                self.resume()  # 自动继续
+
                         break
                     continue
 

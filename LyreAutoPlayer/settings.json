@@ -19,32 +19,37 @@
   "input_style": "mechanical",
   "enable_diagnostics": false,
   "soundfont_path": "C:\\soundfonts\\FluidR3_GM.sf2",
-  "last_midi_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\level!_custom.mid",
+  "last_midi_path": "D:/dw11/piano/LyreAutoPlayer/midi/Canon-In-C-卡农-原神风物之诗琴谱-原琴谱.mid",
   "input_manager": {},
   "error_config": {
     "enabled": false,
     "errors_per_8bars": 1,
-    "wrong_note": true,
-    "miss_note": true,
-    "extra_note": true,
-    "pause_error": true,
-    "pause_min_ms": 200,
+    "wrong_note": false,
+    "miss_note": false,
+    "extra_note": false,
+    "pause_error": false,
+    "pause_min_ms": 100,
     "pause_max_ms": 500
   },
   "eight_bar_config": {
     "enabled": false,
-    "mode": "beat_lock",
-    "pattern": "continuous",
-    "speed_min": 85,
-    "speed_max": 103,
-    "timing_min": 85,
-    "timing_max": 103,
-    "duration_min": 85,
-    "duration_max": 103,
-    "clamp_enabled": true,
+    "mode": "warp",
+    "pattern": "skip2_pick1",
+    "speed_min": 95,
+    "speed_max": 105,
+    "timing_min": 95,
+    "timing_max": 105,
+    "duration_min": 95,
+    "duration_max": 105,
+    "clamp_enabled": false,
     "clamp_min": 85,
     "clamp_max": 115,
-    "show_indicator": true
+    "show_indicator": false
+  },
+  "strict_mode_config": {
+    "enabled": true,
+    "pause_every_bars": 0,
+    "auto_resume_countdown": 3
   },
   "custom_styles": [
     {

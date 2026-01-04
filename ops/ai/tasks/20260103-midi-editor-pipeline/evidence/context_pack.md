@@ -1,126 +1,80 @@
-# Context Pack - 20260103-midi-editor-pipeline
+# Context Pack - MIDI Editor Pipeline
 
-## Task ID
-20260103-midi-editor-pipeline
+## Task
+- ID: 20260103-midi-editor-pipeline
+- Status: DONE (Session 8 - Bug Fixes & i18n)
+- Last Updated: 2026-01-05
 
-## Status
-**BLOCKED** - BPM Scaling 存在问题 (Session 4, 2026-01-04)
+## Session 8 Summary (2026-01-05)
+Bug fixes, i18n improvements, keyboard config sync.
 
-### 用户反馈
-> 调 BPM 后秒数/音符长度不变，保存后仍原速
+### Tasks Completed
+| Task | Description | Status |
+|------|-------------|--------|
+| 1 | Fix `_apply_input_style_jitter` crash (add ApplyJitterCommand) | DONE |
+| 2 | Implement `KeyLabelWidget.set_scroll_offset` | DONE |
+| 3 | Add `set_keyboard_config` method for root/layout sync | DONE |
+| 4 | Menu i18n for Apply Input Style Jitter | DONE |
+| 5 | effective_root calculation with octave offset | DONE |
+| 6 | Real-time sync when main window settings change | DONE |
+| 7 | Fix `_update_style_params_display` AttributeError | DONE |
 
-## Goal
-实现钢琴卷帘编辑器基础编辑功能 + 时间轴BPM/小节显示
+### Key Changes
+| File | Change |
+|------|--------|
+| `undo_commands.py` | +ApplyJitterCommand class (+90 lines) |
+| `key_list_widget.py` | +set_scroll_offset() for vertical sync |
+| `editor_window.py` | +set_keyboard_config(), i18n menu |
+| `main.py` | +_sync_editor_keyboard_config(), fix startup crash |
+| `translations.py` | Fixed format string placeholders |
 
-## Key Files (按重要性排序)
-| File | Lines Changed | Purpose |
-|------|---------------|---------|
-| ui/editor/timeline.py | +191 | 时间轴: BPM显示/小节号/拍刻度 (优化可视范围) |
-| ui/editor/piano_roll.py | +34 | 钢琴卷帘: 选择/移动/网格 (scene宽度修复) |
-| ui/editor/note_item.py | +41 | 音符图形: 拖拽/边界/"音符"标签 |
-| ui/editor/editor_window.py | +6 | 主窗口: tempo传递到timeline |
+## Session 7 Summary (2026-01-04)
+Main GUI 清理 + KeyListWidget + i18n 更新。
 
-## Phase 1.5 Timeline Features
-1. BPM显示 (动态字号基于ROW_BAR)
-2. 小节号显示 (基于time_signature)
-3. 拍刻度线 (下拍粗线/其他细线)
-4. 秒刻度保留 (不回归)
+## Session 6 Summary
+统一播放引擎 Phase 1-7 全部实现完成。
 
-## Optimization Fixes (Final Session)
-| Issue | Fix |
-|-------|-----|
-| `_generate_beat_ticks()` 性能 | 直接跳到可视tick范围,不从0迭代 |
-| "音符"标签显示条件 | 仅蓝色普通状态 (非selected/out_of_range) |
-| 网格右侧空白 | scene宽度 = max(content, scroll_offset + viewport) |
-| 窗口大小变化 | 添加resizeEvent()触发网格重绘 |
+## Implementation Status
 
-## Key Methods Added
-```python
-# timeline.py
-def _second_to_tick(self, t: float) -> int  # 秒转tick (逆向查tempo_map)
-def _generate_beat_ticks(start, end) -> List[Tuple[int, bool, int]]  # 可视范围拍子
+### Unified Playback Engine (Plan: linked-gathering-glade.md)
 
-# note_item.py
-def paint(painter, option, widget)  # 自定义绘制+居中"音符"标签
+| Phase | Description | Key File | Status |
+|-------|-------------|----------|--------|
+| 1 | Config fields | `player/config.py` | ✅ |
+| 2 | Auto-pause signals | `player/thread.py` | ✅ |
+| 3 | Follow mode | `ui/editor/editor_window.py` | ✅ |
+| 4 | Signal connections | `ui/mixins/playback_mixin.py` | ✅ |
+| 5 | Strict mode toggle | `main.py` | ✅ |
+| 6 | Countdown overlay | `ui/editor/countdown_overlay.py` | ✅ |
+| 7 | Settings persistence | `config_mixin.py`, `settings_preset_mixin.py` | ✅ |
 
-# piano_roll.py
-def _calc_scene_width() -> float  # scroll_offset + viewport_width
-def resizeEvent(event)  # 窗口大小变化时重绘
-```
+### Key Features Implemented
+- **严格跟谱模式**: 开启后禁用 speed/error/8-bar 控件
+- **自动小节暂停**: 支持每 1/2/4/8 小节暂停
+- **倒计时覆盖**: 编辑器全屏半透明 + 悬浮窗数字显示
+- **跟随模式**: 编辑器跟随主窗口 PlayerThread，禁用本地音频
+- **输入风格抖动**: Apply Jitter with undo/redo support
+- **键盘配置同步**: Main window → Editor real-time sync
 
-## Acceptance Checklist
-- [x] 时间轴显示秒数刻度
-- [x] 时间轴显示BPM (默认120)
-- [x] 时间轴显示小节号与拍刻度线
-- [x] MIDI tempo/time_signature正确解析
-- [x] UI高度对齐 (corner = timeline)
-- [x] 拍子生成仅限可视范围 (性能)
-- [x] 音符标签仅普通状态显示
-- [x] 网格覆盖滚动位置+视口
-- [x] 语法检查通过
+## File Index
 
-## Session 2 Changes (2026-01-04)
+### New Files
+| Path | Lines | Purpose |
+|------|-------|---------|
+| `ui/editor/countdown_overlay.py` | 66 | 倒计时覆盖组件 |
+| `ui/editor/key_list_widget.py` | 533 | 按键序列进度显示 |
 
-| Category | Changes |
-|----------|---------|
-| Shortcuts Help | 补全 `_show_shortcuts_help()` 所有快捷键; Space pan 模式焦点说明; Alt+Click/Drag 说明 |
-| BPM/Tempo 文案 | spinbox tooltip 明确仅影响网格/导出; 右键菜单 "Set BPM (Grid/Export)"; 保存对话框提示 |
-| Path Handling 文档 | STATE.md Known Issues P2 风险降级; handoff.md 多重回退策略; Search Constraints 章节 |
-| 新功能 | Audio checkbox 静音预览; HumanizeCommand (H/Shift+H/Ctrl+H); floating.py 简化版 UI |
+### Modified Files (Session 8)
+| Path | Delta | Purpose |
+|------|-------|---------|
+| `undo_commands.py` | +90 | ApplyJitterCommand |
+| `editor_window.py` | +20 | set_keyboard_config, i18n |
+| `main.py` | +15 | sync_editor_keyboard_config |
+| `translations.py` | +5 | format string fix |
+| `key_list_widget.py` | +15 | scroll_offset |
 
-## Session 3 Changes (2026-01-04 Late)
+## Next Steps (for Planner)
 
-| Category | Changes |
-|----------|---------|
-| Large File Removal | FluidR3_GM.sf2 (141MB) 从 git 历史移除 (filter-branch) |
-| WSL Fix | core.autocrlf 配置同步, 284→2 虚假变更消除 |
-| .gitignore | 修正 .claude/private/ 规则 + 添加 sf2 排除 |
-| SoundFont Path | settings.json 改用 C:\soundfonts\FluidR3_GM.sf2 |
-| Audio Verification | GUI 已启动, 待用户确认音频预览 |
-
-## Git Commits (Session 3)
-```
-80f31e1 chore: update midi index and add new midi file
-bc83ada chore: update soundfont path
-9ece6c7 fix: correct .gitignore rules for private dir and sf2 file
-e41d2d6 feat(editor): complete MIDI editor Phase 1-3 implementation
-```
-
-## Dependencies
-- mido (MIDI解析)
-- PyQt6 (GUI)
-- fluidsynth (音频预览, 需 C:\soundfonts\FluidR3_GM.sf2)
-
-## Session 4 Changes (2026-01-04 - BPM Scaling) - **未验证**
-
-| Category | Status | Notes |
-|----------|--------|-------|
-| BPM Scaling | ❌ 未生效 | `_apply_global_bpm()` 方法存在，但用户测试显示不起作用 |
-| Signal Flow | ⚠️ 代码审查 | 信号连接代码存在，未实际验证触发 |
-| Save Path | ⚠️ 代码审查 | `_rebuild_midi_from_notes()` 代码存在，保存后仍原速 |
-| Code Status | ✅ 实际运行 | 无 debug print (grep exit 1); 语法检查通过 (py_compile exit 0) |
-
-### 已知问题
-1. **BPM 调整不生效**: 改变 BPM spinbox 后，音符时长/位置不变
-2. **保存后原速**: 保存的 MIDI 文件仍按原始速度播放
-
-### BPM Scaling Formula
-```python
-scale = old_bpm / new_bpm
-note_item.start_time *= scale
-note_item.duration *= scale
-playback_time *= scale
-```
-
-### Key Method (editor_window.py:648-711)
-```python
-def _apply_global_bpm(self, new_bpm: int):
-    # Scale all note times when BPM changes
-    # Updates: notes, playback_time, total_duration, timeline
-```
-
-### Diff Stats (当前未提交变更 2026-01-04)
-```
-14 files changed, 1283 insertions(+), 78 deletions(-)
-```
-> 注: 包含 Session 1-4 所有未提交变更 + ops/ai 文档更新
+1. **用户测试**: 验证严格模式 + 自动暂停 + 倒计时 + KeyListWidget 功能
+2. **Commit**: 变更已就绪，待用户确认后提交
+3. **Phase 3-4**: 高级编辑 + 超音域处理预览（如需继续）

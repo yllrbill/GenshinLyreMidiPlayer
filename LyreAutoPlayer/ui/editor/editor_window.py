@@ -9,6 +9,7 @@ Features:
 import os
 import sys
 import json
+import random
 from pathlib import Path
 from typing import Optional, Dict
 from datetime import datetime
@@ -32,7 +33,11 @@ except ImportError:
 from .piano_roll import PianoRollWidget
 from .timeline import TimelineWidget
 from .keyboard import KeyboardWidget
+from .countdown_overlay import CountdownOverlay
+from .key_list_widget import KeyListWidget
+from .undo_commands import ApplyJitterCommand
 from i18n import tr, LANG_ZH
+from style_manager import get_style_names, INPUT_STYLES
 
 
 class EditorWindow(QMainWindow):
@@ -68,6 +73,14 @@ class EditorWindow(QMainWindow):
         self._sfid = -1  # SoundFont ID
         self._chan = 0   # MIDI channel
         self._active_notes: Dict[int, int] = {}  # 音符 -> 发声计数
+
+        # Unified playback: follow mode state
+        self._follow_mode = False  # Following PlayerThread (not local timer)
+        self._main_window = None   # Reference to main window
+        self._audio_was_enabled = True  # Remember audio state before follow mode
+
+        # Octave shift: track previous value for delta calculation
+        self._prev_octave_shift = 0
 
         self._setup_ui()
         self._setup_toolbar()
@@ -105,17 +118,38 @@ class EditorWindow(QMainWindow):
 
         main_layout.addLayout(timeline_row)
 
-        # 键盘 + 卷帘
-        content_row = QHBoxLayout()
-        content_row.setSpacing(0)
+        # 纵向 Splitter: 上=键盘+卷帘，下=按键进度窗
+        self.main_splitter = QSplitter(Qt.Orientation.Vertical)
+        self.main_splitter.setStyleSheet("QSplitter::handle { background-color: #444; height: 4px; }")
+
+        # 上部: 键盘 + 卷帘
+        top_widget = QWidget()
+        top_layout = QHBoxLayout(top_widget)
+        top_layout.setContentsMargins(0, 0, 0, 0)
+        top_layout.setSpacing(0)
 
         self.keyboard = KeyboardWidget()
-        content_row.addWidget(self.keyboard)
+        top_layout.addWidget(self.keyboard)
 
         self.piano_roll = PianoRollWidget()
-        content_row.addWidget(self.piano_roll)
+        top_layout.addWidget(self.piano_roll)
 
-        main_layout.addLayout(content_row)
+        self.main_splitter.addWidget(top_widget)
+
+        # 下部: 按键进度窗
+        self.key_list = KeyListWidget()
+        self.main_splitter.addWidget(self.key_list)
+
+        # 设置 splitter 比例 (默认按键进度窗隐藏)
+        self.main_splitter.setSizes([500, 0])
+        self.main_splitter.setCollapsible(0, False)  # 上部不可折叠
+        self.main_splitter.setCollapsible(1, True)   # 下部可折叠
+
+        main_layout.addWidget(self.main_splitter)
+
+        # Countdown overlay (displayed during auto-pause countdown)
+        self._countdown_overlay = CountdownOverlay(self.piano_roll)
+        self._countdown_overlay.setGeometry(self.piano_roll.rect())
 
         # 播放计时器
         self.playback_timer = QTimer()
@@ -208,15 +242,73 @@ class EditorWindow(QMainWindow):
         )
         toolbar.addWidget(self.sp_bpm)
 
-        toolbar.addSeparator()
+        # ─── 第二行工具栏 ───
+        self.addToolBarBreak()
+        toolbar2 = QToolBar("Secondary Toolbar")
+        toolbar2.setMovable(False)
+        self.addToolBar(toolbar2)
+
+        # Auto-pause interval (每 N 小节暂停)
+        toolbar2.addWidget(QLabel(" Pause: "))
+        self.cmb_pause_bars = QComboBox()
+        self.cmb_pause_bars.addItem("Off", 0)
+        self.cmb_pause_bars.addItem("1 bar", 1)
+        self.cmb_pause_bars.addItem("2 bars", 2)
+        self.cmb_pause_bars.addItem("4 bars", 4)
+        self.cmb_pause_bars.addItem("8 bars", 8)
+        self.cmb_pause_bars.setCurrentIndex(0)
+        self.cmb_pause_bars.setFixedWidth(70)
+        self.cmb_pause_bars.setToolTip("Auto-pause every N bars for practice")
+        toolbar2.addWidget(self.cmb_pause_bars)
+
+        # Auto-resume countdown
+        toolbar2.addWidget(QLabel(" Resume: "))
+        self.sp_auto_resume = QSpinBox()
+        self.sp_auto_resume.setRange(1, 10)
+        self.sp_auto_resume.setValue(3)
+        self.sp_auto_resume.setSuffix("s")
+        self.sp_auto_resume.setFixedWidth(50)
+        self.sp_auto_resume.setToolTip("Countdown seconds before auto-resume")
+        toolbar2.addWidget(self.sp_auto_resume)
+
+        toolbar2.addSeparator()
+
+        # Overall octave shift (-2 to +2)
+        toolbar2.addWidget(QLabel(" Octave: "))
+        self.sp_octave_shift = QSpinBox()
+        self.sp_octave_shift.setRange(-2, 2)
+        self.sp_octave_shift.setValue(0)
+        self.sp_octave_shift.setFixedWidth(50)
+        self.sp_octave_shift.setToolTip("Transpose all notes by octaves (±12 semitones)")
+        toolbar2.addWidget(self.sp_octave_shift)
+
+        toolbar2.addSeparator()
+
+        # Input style for playback (输入风格)
+        toolbar2.addWidget(QLabel(" Input: "))
+        self.cmb_input_style = QComboBox()
+        self._populate_input_styles()
+        self.cmb_input_style.setFixedWidth(100)
+        self.cmb_input_style.setToolTip("Input style affects timing variations during playback")
+        toolbar2.addWidget(self.cmb_input_style)
+
+        toolbar2.addSeparator()
 
         # 编辑风格选择
-        toolbar.addWidget(QLabel(" Style: "))
+        toolbar2.addWidget(QLabel(" Style: "))
         self.cmb_edit_style = QComboBox()
         self.cmb_edit_style.addItems(self.EDIT_STYLES)
         self.cmb_edit_style.setCurrentText(self.edit_style)
         self.cmb_edit_style.setFixedWidth(100)
-        toolbar.addWidget(self.cmb_edit_style)
+        toolbar2.addWidget(self.cmb_edit_style)
+
+        toolbar2.addSeparator()
+
+        # 按键列表开关
+        self.chk_key_list = QCheckBox("Key List")
+        self.chk_key_list.setToolTip("Show/hide the key sequence list")
+        self.chk_key_list.setChecked(False)
+        toolbar2.addWidget(self.chk_key_list)
 
     def _setup_menus(self):
         """设置菜单栏"""
@@ -235,6 +327,14 @@ class EditorWindow(QMainWindow):
         act_transpose_ext.setShortcut("Shift+T")
         act_transpose_ext.setToolTip("Move selected notes to fit within extended range (C4-C7, 3 octaves)")
         act_transpose_ext.triggered.connect(lambda: self._do_transpose(60, 96))
+
+        edit_menu.addSeparator()
+
+        # Apply input style (humanization)
+        act_apply_style = edit_menu.addAction(tr("apply_jitter"))
+        act_apply_style.setShortcut("H")
+        act_apply_style.setToolTip(tr("apply_jitter_tooltip"))
+        act_apply_style.triggered.connect(self._apply_input_style_jitter)
 
         edit_menu.addSeparator()
 
@@ -347,6 +447,7 @@ class EditorWindow(QMainWindow):
         self.cmb_quantize.currentTextChanged.connect(self._on_quantize_changed)
         self.sp_bpm.valueChanged.connect(self._on_bpm_changed)
         self.timeline.sig_bpm_changed.connect(self._on_timeline_bpm_changed)
+        self.sp_octave_shift.valueChanged.connect(self._on_octave_shift_changed)
 
         # 同步滚动
         self.piano_roll.horizontalScrollBar().valueChanged.connect(
@@ -355,8 +456,16 @@ class EditorWindow(QMainWindow):
         self.piano_roll.verticalScrollBar().valueChanged.connect(
             lambda v: self.keyboard.set_scroll_offset(v)
         )
+        # 按键进度窗水平滚动同步
+        self.piano_roll.horizontalScrollBar().valueChanged.connect(
+            lambda v: self.key_list.set_scroll_offset(v)
+        )
+        # 双向同步：按键进度窗滚动也同步到 PianoRoll
+        self.key_list.sig_scroll_changed.connect(
+            lambda v: self._sync_scroll_from_key_list(v)
+        )
 
-        # 同步缩放 (Ctrl+滚轮 → 时间轴 + 滑条)
+        # 同步缩放 (Ctrl+滚轮 → 时间轴 + 滑条 + 按键进度窗)
         self.piano_roll.sig_zoom_changed.connect(self._on_piano_roll_zoom)
 
         # 同步行高变化 (Ctrl+Up/Down / [ ] → 键盘)
@@ -364,6 +473,39 @@ class EditorWindow(QMainWindow):
 
         # 键盘拖拽选择音域 → 钢琴卷帘批量选择
         self.keyboard.sig_range_selected.connect(self.piano_roll.select_by_pitch_range)
+
+        # 按键列表开关
+        self.chk_key_list.toggled.connect(self._on_key_list_toggled)
+
+    def _on_key_list_toggled(self, checked: bool):
+        """切换按键进度窗显示"""
+        if checked:
+            # 显示按键进度窗 (设置合适的高度)
+            sizes = self.main_splitter.sizes()
+            total = sum(sizes)
+            # 底部按键窗占 30% 高度
+            key_list_height = min(200, total // 3)
+            self.main_splitter.setSizes([total - key_list_height, key_list_height])
+            # 更新按键列表内容
+            events = self.export_events()
+            self.key_list.set_events(events)
+            # 同步缩放
+            self.key_list.set_scale(self.piano_roll.pixels_per_second)
+        else:
+            # 隐藏按键进度窗
+            sizes = self.main_splitter.sizes()
+            total = sum(sizes)
+            self.main_splitter.setSizes([total, 0])
+
+    def set_keyboard_config(self, root_note: int, layout_name: str):
+        """设置键盘配置 (同步到 KeyListWidget)
+
+        Args:
+            root_note: 根音 MIDI 编号 (如 60 = C4)
+            layout_name: 布局名称 (如 "21-key" 或 "36-key")
+        """
+        self.key_list.set_root_note(root_note)
+        self.key_list.set_layout(layout_name)
 
     def load_midi(self, path: str, source_path: Optional[str] = None):
         """加载 MIDI 文件
@@ -418,6 +560,12 @@ class EditorWindow(QMainWindow):
             self.sp_bpm.setValue(midi_bpm)
             self.sp_bpm.blockSignals(False)
 
+            # 重置八度平移
+            self._prev_octave_shift = 0
+            self.sp_octave_shift.blockSignals(True)
+            self.sp_octave_shift.setValue(0)
+            self.sp_octave_shift.blockSignals(False)
+
             # 同步时间轴为单一 BPM，确保与钢琴卷帘小节线对齐
             self._sync_timeline_tempo(midi_bpm)
 
@@ -442,6 +590,9 @@ class EditorWindow(QMainWindow):
                     "duration": item.duration
                 })
             self.midi_loaded.emit(path, events_list)
+
+            # 更新按键列表
+            self.key_list.set_events(events_list)
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load MIDI:\n{e}")
@@ -643,6 +794,125 @@ class EditorWindow(QMainWindow):
 
         # Notify main window of BPM change
         self.bpm_changed.emit(bpm)
+
+    def _on_octave_shift_changed(self, value: int):
+        """八度平移变化 - 实际修改音符数据
+
+        When octave shift changes, actually transpose all notes by the delta.
+        This modifies the underlying MIDI data, not just playback mapping.
+        """
+        delta = value - self._prev_octave_shift
+        if delta == 0:
+            return
+
+        # Calculate semitone shift (octave = 12 semitones)
+        semitone_shift = delta * 12
+
+        # Transpose all notes
+        for note_item in self.piano_roll.notes:
+            note_item.note = max(0, min(127, note_item.note + semitone_shift))
+
+        # Update previous value
+        self._prev_octave_shift = value
+
+        # Refresh display
+        self.piano_roll._refresh_notes()
+
+        # Update key list if visible
+        if self.chk_key_list.isChecked():
+            events = self.export_events()
+            self.key_list.set_events(events)
+
+        # Log the change
+        self.statusBar().showMessage(
+            f"Transposed all notes by {delta:+d} octave(s) ({semitone_shift:+d} semitones)", 3000
+        )
+
+    def _apply_input_style_jitter(self):
+        """Apply input style timing jitter to notes (humanization).
+
+        Gets the selected input style and applies random timing offset
+        to selected notes (or all notes if none selected).
+        Also applies duration variation based on the style.
+        Uses QUndoCommand for proper undo/redo support.
+        """
+        # Get selected input style
+        style_name = self.cmb_input_style.currentText()
+        style = INPUT_STYLES.get(style_name)
+
+        if style is None:
+            QMessageBox.warning(
+                self, tr("input_style"),
+                tr("style_not_found_msg").format(name=style_name)
+            )
+            return
+
+        # Check if style has any variation
+        min_offset, max_offset = style.timing_offset_ms
+        duration_var = style.duration_variation
+
+        if min_offset == 0 and max_offset == 0 and duration_var == 0.0:
+            QMessageBox.information(
+                self, tr("input_style"),
+                tr("style_no_variation").format(name=style_name)
+            )
+            return
+
+        # Get target notes (selected or all)
+        selected = [item for item in self.piano_roll.notes if item.isSelected()]
+        if selected:
+            target_notes = selected
+        else:
+            target_notes = list(self.piano_roll.notes)
+
+        if not target_notes:
+            QMessageBox.information(
+                self, tr("input_style"),
+                tr("no_notes_to_jitter")
+            )
+            return
+
+        # Prepare note data for undo command
+        notes_data = []
+        for item in target_notes:
+            notes_data.append({
+                "note": item.note,
+                "start": item.start_time,
+                "duration": item.duration,
+                "velocity": item.velocity
+            })
+
+        # Create and execute undo command
+        cmd = ApplyJitterCommand(
+            self.piano_roll,
+            notes_data,
+            timing_offset_ms=style.timing_offset_ms,
+            duration_variation=duration_var,
+            style_name=style_name
+        )
+        self.piano_roll.undo_stack.push(cmd)
+
+        # Update key list if visible
+        if self.chk_key_list.isChecked():
+            events = self.export_events()
+            self.key_list.set_events(events)
+
+        # Emit notes changed for tracking
+        self.piano_roll.sig_notes_changed.emit()
+
+        # Log the change
+        scope = tr("scope_selected") if selected else tr("scope_all")
+        self.statusBar().showMessage(
+            tr("jitter_applied").format(
+                style=style_name,
+                count=len(target_notes),
+                scope=scope,
+                min_offset=min_offset,
+                max_offset=max_offset,
+                duration_pct=abs(duration_var) * 100
+            ),
+            5000
+        )
 
     def _update_bar_lines(self):
         """更新钢琴卷帘的小节分隔线"""
@@ -1088,6 +1358,12 @@ class EditorWindow(QMainWindow):
         如果 Audio checkbox 被勾选，会尝试初始化音频引擎并播放声音。
         如果未勾选或音频初始化失败，仍然可以进行视觉预览（播放头移动）。
         """
+        # In follow mode, delegate to main window (F5 toggle)
+        if self._follow_mode:
+            if self._main_window:
+                self._main_window.on_toggle_play_pause()
+            return
+
         if self.is_playing:
             self.is_playing = False
             self.playback_timer.stop()
@@ -1135,6 +1411,8 @@ class EditorWindow(QMainWindow):
         self.timeline.set_playhead(0.0)
         self.act_play.setText("Play")
         self._update_time_label()
+        # 重置按键列表
+        self.key_list.reset()
 
     def on_seek(self, time_sec: float):
         """跳转到指定时间"""
@@ -1142,6 +1420,9 @@ class EditorWindow(QMainWindow):
         self.piano_roll.set_playhead_position(time_sec)
         self.timeline.set_playhead(time_sec)
         self._update_time_label()
+        # 更新按键列表进度
+        if self.chk_key_list.isChecked():
+            self.key_list.update_playback_time(time_sec)
         # 同步音符发声状态
         if self.is_playing:
             self._sync_notes_at_time(time_sec)
@@ -1199,6 +1480,17 @@ class EditorWindow(QMainWindow):
         self.piano_roll.pixels_per_second = float(value)
         self.piano_roll._refresh_notes()
         self.timeline.set_scale(float(value))
+        # 同步按键进度窗
+        if self.chk_key_list.isChecked():
+            self.key_list.set_scale(float(value))
+
+    def _sync_scroll_from_key_list(self, value: int):
+        """从按键进度窗同步水平滚动到 PianoRollWidget"""
+        self.piano_roll.horizontalScrollBar().blockSignals(True)
+        self.piano_roll.horizontalScrollBar().setValue(value)
+        self.piano_roll.horizontalScrollBar().blockSignals(False)
+        # 同步时间轴
+        self.timeline.set_scroll_offset(value)
 
     def _on_piano_roll_zoom(self, pixels_per_second: float):
         """缩放变化 (来自 Ctrl+滚轮)"""
@@ -1208,6 +1500,9 @@ class EditorWindow(QMainWindow):
         self.zoom_slider.blockSignals(True)
         self.zoom_slider.setValue(int(pixels_per_second))
         self.zoom_slider.blockSignals(False)
+        # 同步按键进度窗
+        if self.chk_key_list.isChecked():
+            self.key_list.set_scale(pixels_per_second)
 
     def _on_row_height_changed(self, pixels_per_note: float):
         """行高变化 (来自 Ctrl+Up/Down 或 [ ])"""
@@ -1264,6 +1559,10 @@ class EditorWindow(QMainWindow):
         self.piano_roll.set_playhead_position(self.playback_time)
         self.timeline.set_playhead(self.playback_time)
         self._update_time_label()
+
+        # 更新按键列表进度
+        if self.chk_key_list.isChecked():
+            self.key_list.update_playback_time(self.playback_time)
 
     def _update_time_label(self):
         """更新时间显示"""
@@ -1598,3 +1897,164 @@ class EditorWindow(QMainWindow):
             "Index Maintenance",
             "\n".join(lines)
         )
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Unified Playback: Follow Mode Methods
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def set_follow_mode(self, follow: bool):
+        """Switch to follow mode (disable local playback + audio).
+
+        In follow mode, the editor follows PlayerThread signals instead of
+        using its internal QTimer-based playback.
+        """
+        self._follow_mode = follow
+        if follow:
+            # Stop local playback timer
+            self.playback_timer.stop()
+            self._release_all_notes()  # Stop FluidSynth
+
+            # Save original audio state before disabling (Pitfall #5)
+            self._audio_was_enabled = self.chk_enable_audio.isChecked()
+
+            # Force disable audio checkbox (禁止双重发声)
+            self.chk_enable_audio.setChecked(False)
+            self.chk_enable_audio.setEnabled(False)
+
+            self.is_playing = True  # Visual state
+            self.act_play.setText("Pause")
+        else:
+            # Restore audio checkbox to original state (Pitfall #5)
+            self.chk_enable_audio.setEnabled(True)
+            if hasattr(self, '_audio_was_enabled'):
+                self.chk_enable_audio.setChecked(self._audio_was_enabled)
+
+            self.is_playing = False
+            self.act_play.setText("Play")
+
+    def export_events(self) -> list:
+        """Export current piano_roll notes as event list for PlayerThread.
+
+        Returns:
+            List of note event dicts sorted by time.
+        """
+        # Sync drag offsets to notes data (Pitfall #1)
+        self.piano_roll._sync_notes_from_graphics()
+
+        events = []
+        for note_item in self.piano_roll.notes:
+            events.append({
+                "time": note_item.start_time,
+                "note": note_item.note,
+                "duration": note_item.duration,
+                "velocity": getattr(note_item, 'velocity', 80),
+                "channel": getattr(note_item, 'channel', 0),
+            })
+        return sorted(events, key=lambda e: e["time"])
+
+    def get_bar_duration(self) -> float:
+        """Calculate bar duration from current editor BPM.
+
+        Returns:
+            Bar duration in seconds (assumes 4/4 time signature).
+        """
+        bpm = self.sp_bpm.value() if hasattr(self, 'sp_bpm') else 120
+        beats_per_bar = 4  # Default 4/4
+        return 60.0 / bpm * beats_per_bar
+
+    def get_pause_bars(self) -> int:
+        """Get auto-pause interval (bars).
+
+        Returns:
+            Number of bars between auto-pauses (0 = disabled).
+        """
+        return self.cmb_pause_bars.currentData() if hasattr(self, 'cmb_pause_bars') else 0
+
+    def get_auto_resume_countdown(self) -> int:
+        """Get auto-resume countdown seconds.
+
+        Returns:
+            Countdown seconds before auto-resume.
+        """
+        return self.sp_auto_resume.value() if hasattr(self, 'sp_auto_resume') else 3
+
+    def get_octave_shift(self) -> int:
+        """Get overall octave shift.
+
+        Returns:
+            Octave shift (-2 to +2).
+        """
+        return self.sp_octave_shift.value() if hasattr(self, 'sp_octave_shift') else 0
+
+    def get_input_style(self) -> str:
+        """Get selected input style for playback.
+
+        Returns:
+            Input style name (e.g., 'mechanical', 'gentle').
+        """
+        if hasattr(self, 'cmb_input_style'):
+            return self.cmb_input_style.currentText()
+        return "mechanical"
+
+    def _populate_input_styles(self):
+        """Populate input style combo box from registry."""
+        self.cmb_input_style.clear()
+        styles = get_style_names()
+        self.cmb_input_style.addItems(styles)
+        # Default to 'mechanical' if available
+        if "mechanical" in styles:
+            self.cmb_input_style.setCurrentText("mechanical")
+
+    def on_external_progress(self, current_time: float, total_duration: float):
+        """Called by PlayerThread.progress signal.
+
+        Updates playhead position in the editor without playing audio.
+        """
+        if not self._follow_mode:
+            return
+
+        self.playback_time = current_time
+        self.piano_roll.set_playhead_position(current_time)
+        self.timeline.set_playhead(current_time)
+        self._update_time_label()
+        # 更新按键列表进度
+        if self.chk_key_list.isChecked():
+            self.key_list.update_playback_time(current_time)
+        # NO FluidSynth audio in follow mode (已禁用)
+
+    def on_external_paused(self):
+        """Called when PlayerThread pauses."""
+        if self._follow_mode:
+            self.act_play.setText("Play")
+
+    def on_external_resumed(self):
+        """Called when PlayerThread resumes (after pause or auto-pause countdown)."""
+        if self._follow_mode:
+            self.act_play.setText("Pause")
+            # Clear countdown overlay when resumed
+            self._countdown_overlay.hide_countdown()
+
+    def on_external_stopped(self):
+        """Called when PlayerThread finishes."""
+        self.set_follow_mode(False)
+        self.on_stop()
+
+    def update_countdown(self, remaining: int):
+        """Called by PlayerThread.countdown_tick signal.
+
+        Args:
+            remaining: Seconds remaining (0 = countdown finished)
+        """
+        if remaining > 0:
+            # Update hint text with i18n (get lang from parent/main window)
+            lang = getattr(self.parent(), "lang", LANG_ZH)
+            self._countdown_overlay.update_hint_text(tr("press_f5_continue", lang))
+            self._countdown_overlay.show_countdown(remaining)
+        else:
+            self._countdown_overlay.hide_countdown()
+
+    def resizeEvent(self, event):
+        """Handle resize to keep countdown overlay sized correctly."""
+        super().resizeEvent(event)
+        # Update overlay geometry to match piano_roll
+        self._countdown_overlay.setGeometry(self.piano_roll.rect())

@@ -2,7 +2,7 @@
 
 ## Latest Task
 - TASK_ID: 20260103-midi-editor-pipeline
-- Status: BLOCKED (BPM Scaling 未生效)
+- Status: DONE (Session 7 - KeyListWidget & Cleanup)
 - Pointer: ops/ai/tasks/20260103-midi-editor-pipeline
 
 ## Previous Task
@@ -11,57 +11,64 @@
 - Pointer: ops/ai/tasks/20260102-2138-main-mixin-refactor
 
 ## Current Focus
-- MIDI 编辑器 Phase 1-3 完成，**BPM 缩放未生效**
-- Session 4: BPM 缩放代码存在，但用户测试显示不起作用
-- **阻塞点**: 调 BPM 后秒数/音符长度不变，保存后仍原速
-- 待排查: 信号连接、`_base_bpm` 初始值、方法调用链
+- Session 7: Main GUI 清理 + KeyListWidget + i18n 更新
+- Session 6: 统一播放引擎 Phase 1-7 全部实现完成
+- Plan: `linked-gathering-glade.md`
 
-## Completed Summary (MIDI Editor Phase 1)
+## Completed Summary (MIDI Editor)
 - **Phase 1 钢琴卷帘骨架完成**: 6 个新文件 (~745 行)
-- ui/editor/note_item.py: NoteItem (QGraphicsRectItem)
-- ui/editor/piano_roll.py: PianoRollWidget (QGraphicsView)
-- ui/editor/timeline.py: TimelineWidget
-- ui/editor/keyboard.py: KeyboardWidget
-- ui/editor/editor_window.py: EditorWindow (含保存/索引)
-- Syntax check: OK
-- Import check: OK (`from ui.editor import EditorWindow`)
+- **Phase 1.5 main.py 集成**: 版本选择弹窗
+- **Phase 2 基础编辑**: 选择/移动/删除/复制粘贴
+- **Timeline Sync**: 加载时同步 BPM，确保对齐
+- **Unified Playback Engine**: Phase 1-7 全部完成
+
+## Session 7 Changes (KeyListWidget & Cleanup)
+| Task | File | Changes |
+|------|------|---------|
+| 5 | `config_mixin.py`, `settings_preset_mixin.py` | Main GUI cleanup (removed widget refs) |
+| 6 | `ui/editor/key_list_widget.py` | NEW (+307 lines) |
+| 6 | `ui/editor/editor_window.py` | KeyListWidget integration |
+| 7 | `i18n/translations.py` | +6 translation keys |
+
+## Session 6 Changes (Unified Playback Engine)
+| Phase | File | Changes |
+|-------|------|---------|
+| 1 | `player/config.py` | +5 fields |
+| 2 | `player/thread.py` | +2 signals, auto-pause |
+| 3 | `ui/editor/editor_window.py` | follow mode, export |
+| 4 | `ui/mixins/playback_mixin.py` | signal connections |
+| 5 | `main.py` | strict mode UI disable |
+| 6 | `ui/editor/countdown_overlay.py` | NEW (+66 lines) |
+| 7 | `config_mixin.py`, `settings_preset_mixin.py` | persistence |
 
 ## 行数统计（当前）
-- main.py: 1050 行 (原 2206 → 1556 → 1039 → 1050)
-- ui/tab_builders.py: 575 行 (新增)
-- i18n/translations.py: 173 行 (+5 新翻译键)
+- main.py: 1050 行
+- ui/tab_builders.py: 575 行
+- i18n/translations.py: 179 行 (+6)
 - ui/mixins/ 合计 910 行（7 files）
-  - config_mixin.py: 337
-  - settings_preset_mixin.py: 295
-  - playback_mixin.py: 153
-  - hotkeys_mixin.py: 68
-  - language_mixin.py: 24
-  - __init__.py: 18
-  - logs_mixin.py: 15
+- ui/editor/ 合计 ~1900 行（7 files, +key_list_widget.py 307 行）
 
 ## Known Issues / Technical Debt
-1. ~~**Field Drift Risk**: save_settings vs _collect_current_settings 字段结构不同~~ ✅ 已解决
-2. ~~LyreAutoPlayer 目录策略性未纳入 git 跟踪~~ ✅ 已纳入 git 跟踪
-3. **Path Handling (P2 - Low Risk)**: 版本索引仍依赖 `midi-change/index.json`，但已实现多重回退策略：
-   - 路径规范化匹配 (`os.path.normcase`)
-   - 文件名 + edit_style + 元数据验证 (file_size + note_count)
-   - 文件名前缀 + 有效风格兜底
-   - 当 index.json 缺失或元数据变化过大时仍可能匹配失败
-   - `_lookup_source_path()` 失败时，`load_midi()` 回退为按原始文件加载
+1. **BPM Scaling 效果待验证**: Session 4 用户反馈改 BPM 后音符时长不变
+2. **保存后 BPM 待验证**: 保存的 MIDI 是否按新 BPM 播放
+3. **Path Handling (P2 - Low Risk)**: 版本索引依赖 `midi-change/index.json`
 
 ## Pending Tasks
-1. (DONE) 20260103-midi-editor-pipeline - MIDI 编辑管线 Phase 1+1.5+2+优化
+1. **用户测试**: 验证严格模式 + 自动暂停 + 倒计时 + KeyListWidget 功能
+2. **Commit**: Session 6-7 变更已就绪，待用户确认后提交
+3. Phase 3-4: 高级编辑 + 超音域处理预览（如需继续）
 
 ## Recent Completions
-- Input Diagnostics 窗口 + 修复审计 (追加到 20260102-2138)
-  - ui/diagnostics_window.py (新增 ~240 行)
-  - 支持按键记录、过滤、来源标注
-  - 17 个新 i18n 翻译键
-  - **2026-01-03 修复**: 线程安全 signal、语言同步、防御性 KeySource、_sync_diagnostics_state() 统一方法
+- KeyListWidget + Main GUI Cleanup (Session 7, 2026-01-04)
+- Unified Playback Engine Phase 1-7 (Session 6, 2026-01-04)
+- Timeline Sync Fix (Session 5, 2026-01-04)
+- BPM Scaling 代码实现 (Session 4, 2026-01-04)
+- Phase 1-3 Implementation (Session 1-3, 2026-01-03/04)
 
 ## Evidence
-- Regression: LyreAutoPlayer/.claude/state/regression/mixin_refactor_20260102.json (14/14)
-- Handoff: ops/ai/tasks/20260102-2142-unify-config-schema-and-persistence/handoff.md
+- Handoff: ops/ai/tasks/20260103-midi-editor-pipeline/handoff.md
+- Context Pack: ops/ai/tasks/20260103-midi-editor-pipeline/evidence/context_pack.md
+- Execute Log: ops/ai/tasks/20260103-midi-editor-pipeline/evidence/execute.md
 
 ## How to Resume in a New Session
 1. Read `ops/ai/state/STATE.md`
@@ -75,13 +82,10 @@
 ---
 
 ## Next Actions
-1. **[BLOCKER]** 排查 BPM 缩放不生效问题:
-   - 添加 debug print 到 `_on_bpm_changed()` 和 `_apply_global_bpm()`
-   - 验证信号连接是否正确触发
-   - 检查 `_base_bpm` 初始值
-2. 验证音频预览功能 (用户手动测试)
-3. Phase 4: 超音域处理预览
-4. 考虑 Git LFS 或外部下载方案管理 FluidR3_GM.sf2
+1. **用户测试**: 验证严格模式 + 自动暂停 + 倒计时 + KeyListWidget 功能
+2. **Commit**: 待用户确认后提交 Session 6-7 变更
+3. Phase 3-4: 高级编辑 + 超音域处理预览（如需继续）
+4. 验证 BPM Scaling 效果 (Session 4 反馈)
 
 ---
-*Last Updated: 2026-01-04 (Session 4 - BPM Scaling 未生效，待排查)*
+*Last Updated: 2026-01-04 (Session 7 - KeyListWidget & Cleanup, DONE)*

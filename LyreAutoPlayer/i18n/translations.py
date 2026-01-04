@@ -198,4 +198,41 @@ TRANSLATIONS = {
     "original_file": {LANG_EN: "Original (原始文件)", LANG_ZH: "原始文件"},
     "select_version": {LANG_EN: "Select Version", LANG_ZH: "选择版本"},
     "select_version_prompt": {LANG_EN: "Select version to open:", LANG_ZH: "选择要打开的版本:"},
+    # Strict Mode / Auto-Pause
+    "strict_mode_group": {LANG_EN: "Strict Mode / Auto-Pause", LANG_ZH: "严格跟谱 / 自动暂停"},
+    "strict_mode": {LANG_EN: "Strict Mode", LANG_ZH: "严格跟谱"},
+    "strict_mode_hint": {
+        LANG_EN: "Forces mechanical input, speed=1.0, MIDI duration, disables errors/8-bar",
+        LANG_ZH: "强制机械输入、速度=1.0、使用MIDI时值，禁用失误/8小节风格",
+    },
+    "pause_every_bars": {LANG_EN: "Auto Pause", LANG_ZH: "自动暂停"},
+    "auto_resume_countdown": {LANG_EN: "Resume Countdown", LANG_ZH: "恢复倒计时"},
+    "press_f5_continue": {LANG_EN: "Press F5 to continue", LANG_ZH: "按 F5 继续"},
+    # Editor Key List Widget
+    "key_sequence": {LANG_EN: "Key Sequence", LANG_ZH: "按键序列"},
+    "show_key_list": {LANG_EN: "Key List", LANG_ZH: "按键列表"},
+    # Editor controls
+    "editor_octave_shift": {LANG_EN: "Octave", LANG_ZH: "八度"},
+    "editor_input_style": {LANG_EN: "Style", LANG_ZH: "风格"},
+    "editor_pause_bars": {LANG_EN: "Pause Bars", LANG_ZH: "暂停间隔"},
+    "editor_auto_resume": {LANG_EN: "Auto Resume", LANG_ZH: "自动恢复"},
+    # Editor humanization / input style jitter
+    "apply_jitter": {LANG_EN: "Apply Input Style Jitter (Humanize)", LANG_ZH: "应用输入风格抖动 (人性化)"},
+    "apply_jitter_tooltip": {
+        LANG_EN: "Apply timing jitter from selected input style to notes",
+        LANG_ZH: "将所选输入风格的时序抖动应用到音符",
+    },
+    "style_not_found": {LANG_EN: "Style not found", LANG_ZH: "风格未找到"},
+    "style_not_found_msg": {LANG_EN: "Style '{name}' not found in registry.", LANG_ZH: "风格 '{name}' 未在注册表中找到。"},
+    "style_no_variation": {
+        LANG_EN: "Style '{name}' has no timing variation (mechanical).\nChoose a different style for humanization.",
+        LANG_ZH: "风格 '{name}' 没有时序变化（机械）。\n请选择其他风格进行人性化处理。",
+    },
+    "no_notes_to_jitter": {LANG_EN: "No notes to apply jitter to.", LANG_ZH: "没有可应用抖动的音符。"},
+    "jitter_applied": {
+        LANG_EN: "Applied '{style}' jitter to {count} {scope} notes (timing: {min_offset}~{max_offset}ms, duration: ±{duration_pct:.0f}%)",
+        LANG_ZH: "已将 '{style}' 抖动应用到 {count} 个{scope}音符 (时序: {min_offset}~{max_offset}ms, 时值: ±{duration_pct:.0f}%)",
+    },
+    "scope_selected": {LANG_EN: "selected", LANG_ZH: "选中的"},
+    "scope_all": {LANG_EN: "all", LANG_ZH: "全部"},
 }

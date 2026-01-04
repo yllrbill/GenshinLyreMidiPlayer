@@ -1,1021 +1,2167 @@
+diff --git a/LyreAutoPlayer/i18n/translations.py b/LyreAutoPlayer/i18n/translations.py
+index f450db6..b3467d6 100644
+--- a/LyreAutoPlayer/i18n/translations.py
++++ b/LyreAutoPlayer/i18n/translations.py
+@@ -198,4 +198,41 @@ TRANSLATIONS = {
+     "original_file": {LANG_EN: "Original (原始文件)", LANG_ZH: "原始文件"},
+     "select_version": {LANG_EN: "Select Version", LANG_ZH: "选择版本"},
+     "select_version_prompt": {LANG_EN: "Select version to open:", LANG_ZH: "选择要打开的版本:"},
++    # Strict Mode / Auto-Pause
++    "strict_mode_group": {LANG_EN: "Strict Mode / Auto-Pause", LANG_ZH: "严格跟谱 / 自动暂停"},
++    "strict_mode": {LANG_EN: "Strict Mode", LANG_ZH: "严格跟谱"},
++    "strict_mode_hint": {
++        LANG_EN: "Forces mechanical input, speed=1.0, MIDI duration, disables errors/8-bar",
++        LANG_ZH: "强制机械输入、速度=1.0、使用MIDI时值，禁用失误/8小节风格",
++    },
++    "pause_every_bars": {LANG_EN: "Auto Pause", LANG_ZH: "自动暂停"},
++    "auto_resume_countdown": {LANG_EN: "Resume Countdown", LANG_ZH: "恢复倒计时"},
++    "press_f5_continue": {LANG_EN: "Press F5 to continue", LANG_ZH: "按 F5 继续"},
++    # Editor Key List Widget
++    "key_sequence": {LANG_EN: "Key Sequence", LANG_ZH: "按键序列"},
++    "show_key_list": {LANG_EN: "Key List", LANG_ZH: "按键列表"},
++    # Editor controls
++    "editor_octave_shift": {LANG_EN: "Octave", LANG_ZH: "八度"},
++    "editor_input_style": {LANG_EN: "Style", LANG_ZH: "风格"},
++    "editor_pause_bars": {LANG_EN: "Pause Bars", LANG_ZH: "暂停间隔"},
++    "editor_auto_resume": {LANG_EN: "Auto Resume", LANG_ZH: "自动恢复"},
++    # Editor humanization / input style jitter
++    "apply_jitter": {LANG_EN: "Apply Input Style Jitter (Humanize)", LANG_ZH: "应用输入风格抖动 (人性化)"},
++    "apply_jitter_tooltip": {
++        LANG_EN: "Apply timing jitter from selected input style to notes",
++        LANG_ZH: "将所选输入风格的时序抖动应用到音符",
++    },
++    "style_not_found": {LANG_EN: "Style not found", LANG_ZH: "风格未找到"},
++    "style_not_found_msg": {LANG_EN: "Style '{name}' not found in registry.", LANG_ZH: "风格 '{name}' 未在注册表中找到。"},
++    "style_no_variation": {
++        LANG_EN: "Style '{name}' has no timing variation (mechanical).\nChoose a different style for humanization.",
++        LANG_ZH: "风格 '{name}' 没有时序变化（机械）。\n请选择其他风格进行人性化处理。",
++    },
++    "no_notes_to_jitter": {LANG_EN: "No notes to apply jitter to.", LANG_ZH: "没有可应用抖动的音符。"},
++    "jitter_applied": {
++        LANG_EN: "Applied '{style}' jitter to {count} {scope} notes (timing: {min_offset}~{max_offset}ms, duration: ±{duration_pct:.0f}%)",
++        LANG_ZH: "已将 '{style}' 抖动应用到 {count} 个{scope}音符 (时序: {min_offset}~{max_offset}ms, 时值: ±{duration_pct:.0f}%)",
++    },
++    "scope_selected": {LANG_EN: "selected", LANG_ZH: "选中的"},
++    "scope_all": {LANG_EN: "all", LANG_ZH: "全部"},
+ }
 diff --git a/LyreAutoPlayer/main.py b/LyreAutoPlayer/main.py
-index b0269bf..2650f5d 100644
+index 2650f5d..5d84bb5 100644
 --- a/LyreAutoPlayer/main.py
 +++ b/LyreAutoPlayer/main.py
-@@ -184,6 +184,11 @@ class MainWindow(
+@@ -146,8 +146,7 @@ from ui.mixins import (
+ 
+ # Import Tab Builders for UI construction
+ from ui.tab_builders import (
+-    build_main_tab, build_keyboard_tab, build_shortcuts_tab,
+-    build_style_tab, build_errors_tab
++    build_main_tab, build_keyboard_tab, build_shortcuts_tab
+ )
+ 
+ 
+@@ -183,6 +182,7 @@ class MainWindow(
+         self.diagnostics_window: Optional[DiagnosticsWindow] = None
          self.editor_window: Optional[EditorWindow] = None
          self._current_input_style = "mechanical"
++        self._strict_mode = True  # Strict mode default ON
  
-+        # Playback progress tracking (for floating controller)
-+        self.current_time: float = 0.0
-+        self.total_duration: float = 0.0
-+        self.current_bpm: int = 120  # BPM for floating controller sync
-+
+         # Playback progress tracking (for floating controller)
+         self.current_time: float = 0.0
+@@ -192,9 +192,12 @@ class MainWindow(
          self.init_ui()
          self.apply_language()
          self.refresh_windows()
-@@ -864,12 +869,42 @@ class MainWindow(
-         # Create or reuse editor window
-         if self.editor_window is None:
-             self.editor_window = EditorWindow(parent=None)
-+            # Connect signals to sync data back to main window
-+            self.editor_window.midi_loaded.connect(self._on_editor_midi_loaded)
-+            self.editor_window.bpm_changed.connect(self._on_editor_bpm_changed)
+-        self._update_style_params_display(self._current_input_style)  # Initialize style tab params
+         self.show_init_messages()
+ 
++        # Apply initial strict mode state (disables controls when ON)
++        if self._strict_mode and hasattr(self, 'chk_strict_mode'):
++            self._on_strict_mode_changed(Qt.CheckState.Checked.value)
++
+     def init_ui(self):
+         self.resize(950, 680)
+         layout = QVBoxLayout(self)
+@@ -225,15 +228,10 @@ class MainWindow(
+         layout.addWidget(self.tabs)
+ 
+         # Build tabs using tab_builders (Phase 2 modularization)
++        # Note: Input Style and Error tabs removed - settings moved to Editor
+         self.tabs.addTab(build_main_tab(self), "Main")
+         self.tabs.addTab(build_keyboard_tab(self), "Keyboard")
+         self.tabs.addTab(build_shortcuts_tab(self), "Shortcuts")
+-        self.tabs.addTab(build_style_tab(self), "Input Style")
+-        self.tabs.addTab(build_errors_tab(self), tr("tab_errors", self.lang))
+-
+-        # --- REMOVED: Tab construction code moved to ui/tab_builders.py ---
+-        # See: build_main_tab, build_keyboard_tab, build_shortcuts_tab,
+-        #      build_style_tab, build_errors_tab
+ 
+         # Connect signals to slots (for thread-safe global hotkey handling)
+         self.sig_start.connect(self.on_start)
+@@ -249,6 +247,10 @@ class MainWindow(
+         self.chk_octave_range_auto.stateChanged.connect(self._on_octave_range_mode_changed)
+         self.sp_octave_min.valueChanged.connect(self._on_octave_range_changed)
+         self.sp_octave_max.valueChanged.connect(self._on_octave_range_changed)
++        # Sync editor keyboard config when root/octave/preset changes
++        self.cmb_root.currentIndexChanged.connect(self._sync_editor_keyboard_config)
++        self.cmb_octave.currentIndexChanged.connect(self._sync_editor_keyboard_config)
++        self.cmb_preset.currentIndexChanged.connect(self._sync_editor_keyboard_config)
+ 
+         # buttons
+         btns = QHBoxLayout()
+@@ -344,68 +346,7 @@ class MainWindow(
+         self.btn_floating.setText(tr("show_floating", self.lang))
+         # Diagnostics button
+         self.btn_diagnostics.setText(tr("show_diagnostics", self.lang))
+-        # Main settings input style
+-        self.lbl_input_style.setText(tr("input_style", self.lang))
+-        # Input style tab
+-        self.tabs.setTabText(3, tr("tab_input_style", self.lang))
+-        self.lbl_current_style.setText(tr("current_style", self.lang) + ":")
+-        self.grp_style_params.setTitle(tr("style_params", self.lang))
+-        self.lbl_timing_offset.setText(tr("timing_offset", self.lang))
+-        self.lbl_timing_min.setText(tr("timing_offset_min", self.lang) + ":")
+-        self.lbl_timing_max.setText(tr("timing_offset_max", self.lang) + ":")
+-        self.lbl_stagger.setText(tr("chord_stagger", self.lang))
+-        self.lbl_duration_var.setText(tr("duration_variation", self.lang))
+-        self.grp_custom_style.setTitle(tr("style_custom", self.lang))
+-        self.lbl_style_name.setText(tr("style_name", self.lang))
+-        self.lbl_style_desc.setText(tr("style_description", self.lang))
+-        self.btn_add_style.setText(tr("add_style", self.lang))
+-        self.btn_delete_style.setText(tr("delete_style", self.lang))
+-        self.btn_apply_style.setText(tr("apply_style", self.lang))
+-        # Eight-Bar Style translations
+-        self.grp_eight_bar.setTitle(tr("eight_bar_style", self.lang))
+-        self.lbl_eight_bar_enabled.setText(tr("eight_bar_enabled", self.lang))
+-        self.lbl_eight_bar_mode.setText(tr("eight_bar_mode", self.lang))
+-        # Update mode combo translations
+-        self.cmb_eight_bar_mode.setItemText(0, tr("mode_warp", self.lang))
+-        self.cmb_eight_bar_mode.setItemText(1, tr("mode_beat_lock", self.lang))
+-        self.lbl_eight_bar_pattern.setText(tr("eight_bar_pattern", self.lang))
+-        self.lbl_eight_bar_clamp.setText(tr("eight_bar_clamp", self.lang))
+-        self.lbl_eight_bar_clamp_min.setText(tr("range_min", self.lang))
+-        self.lbl_eight_bar_clamp_max.setText(tr("range_max", self.lang))
+-        self.lbl_speed_var.setText(tr("speed_variation", self.lang))
+-        self.lbl_timing_var.setText(tr("timing_variation", self.lang))
+-        self.lbl_dur_var_8bar.setText(tr("duration_variation_8bar", self.lang))
+-        self.lbl_eight_bar_preset.setText(tr("eight_bar_preset", self.lang))
+-        self.btn_preset_subtle.setText(tr("preset_subtle", self.lang))
+-        self.btn_preset_moderate.setText(tr("preset_moderate", self.lang))
+-        self.btn_preset_dramatic.setText(tr("preset_dramatic", self.lang))
+-        self.lbl_show_indicator.setText(tr("show_indicator", self.lang))
+-        # Update pattern combo translations
+-        self.cmb_eight_bar_pattern.setItemText(0, tr("pattern_skip3", self.lang))
+-        self.cmb_eight_bar_pattern.setItemText(1, tr("pattern_skip2", self.lang))
+-        self.cmb_eight_bar_pattern.setItemText(2, tr("pattern_skip1", self.lang))
+-        self.cmb_eight_bar_pattern.setItemText(3, tr("pattern_continuous", self.lang))
+-        # Rebuild style combos with new language
+-        self._rebuild_all_style_combos()
+-        # Error Settings tab (Tab 5)
+-        self.tabs.setTabText(4, tr("tab_errors", self.lang))
+-        self.grp_error_types.setTitle(tr("error_types", self.lang))
+-        self.lbl_error_enabled.setText(tr("enable_errors", self.lang))
+-        self.lbl_error_freq.setText(tr("errors_per_8bars", self.lang))
+-        self.chk_wrong_note.setText(tr("error_wrong_note", self.lang))
+-        self.chk_miss_note.setText(tr("error_miss_note", self.lang))
+-        self.chk_extra_note.setText(tr("error_extra_note", self.lang))
+-        self.chk_pause_error.setText(tr("error_pause", self.lang))
+-        self.lbl_pause_range.setText(tr("pause_duration", self.lang))
+-        # Quick Error Select in Tab 1
+-        self.grp_quick_error.setTitle(tr("quick_error_select", self.lang))
+-        self.chk_quick_error_enable.setText(tr("errors", self.lang))
+-        self.chk_quick_wrong.setText(tr("error_wrong_note", self.lang))
+-        self.chk_quick_miss.setText(tr("error_miss_note", self.lang))
+-        self.chk_quick_extra.setText(tr("error_extra_note", self.lang))
+-        self.chk_quick_pause.setText(tr("error_pause", self.lang))
+-        # Quick 8-Bar toggle in Tab 1
+-        self.lbl_quick_eight_bar.setText(tr("eight_bar_enabled", self.lang))
++        # Main settings input style (removed - now in editor)
+         # Settings Presets group
+         self.grp_presets.setTitle(tr("settings_presets", self.lang))
+         self.lbl_preset_select.setText(tr("preset_select", self.lang))
+@@ -415,17 +356,12 @@ class MainWindow(
+         self.btn_reset_defaults.setText(tr("reset_defaults", self.lang))
+         # Rebuild preset combo for language change
+         self._rebuild_settings_preset_combo()
+-        # Range labels (Phase 2 i18n fix)
+-        self.lbl_speed_min.setText(tr("range_min", self.lang))
+-        self.lbl_speed_max.setText(tr("range_max", self.lang))
+-        self.lbl_timing_min.setText(tr("range_min", self.lang))
+-        self.lbl_timing_max.setText(tr("range_max", self.lang))
+-        self.lbl_dur_min.setText(tr("range_min", self.lang))
+-        self.lbl_dur_max.setText(tr("range_max", self.lang))
+-        self.lbl_pause_to.setText(tr("range_to", self.lang))
+-        # Placeholder texts
+-        self.txt_style_name.setPlaceholderText(tr("placeholder_style_name", self.lang))
+-        self.txt_style_desc.setPlaceholderText(tr("placeholder_style_desc", self.lang))
++        # Strict Mode / Auto-Pause group
++        self.grp_strict_mode.setTitle(tr("strict_mode_group", self.lang))
++        self.lbl_strict_mode.setText(tr("strict_mode", self.lang))
++        self.chk_strict_mode.setToolTip(tr("strict_mode_hint", self.lang))
++        self.lbl_pause_bars.setText(tr("pause_every_bars", self.lang))
++        self.lbl_auto_resume_countdown.setText(tr("auto_resume_countdown", self.lang))
+         # Sync diagnostics window language if open
+         if self.diagnostics_window:
+             self.diagnostics_window.apply_language(self.lang)
+@@ -453,14 +389,6 @@ class MainWindow(
+         """Rebuild all style combo boxes (after language change or style add/delete)."""
+         current_style = getattr(self, '_current_input_style', 'mechanical')
+ 
+-        # Rebuild main settings combo
+-        self._rebuild_style_combo(self.cmb_input_style)
+-        self._select_style_in_combo(self.cmb_input_style, current_style)
+-
+-        # Rebuild style tab combo
+-        self._rebuild_style_combo(self.cmb_style_tab)
+-        self._select_style_in_combo(self.cmb_style_tab, current_style)
+-
+         # Rebuild floating controller combo if exists
+         if self.floating_controller:
+             self.floating_controller.rebuild_style_combo(current_style)
+@@ -474,184 +402,6 @@ class MainWindow(
+                 break
+         combo.blockSignals(False)
+ 
+-    def _update_style_params_display(self, style_name: str):
+-        """Update the style parameters spinboxes to show the selected style."""
+-        style = INPUT_STYLES.get(style_name)
+-        if not style:
+-            return
+-        self.sp_timing_min.blockSignals(True)
+-        self.sp_timing_max.blockSignals(True)
+-        self.sp_stagger.blockSignals(True)
+-        self.sp_duration_var.blockSignals(True)
+-
+-        self.sp_timing_min.setValue(style.timing_offset_ms[0])
+-        self.sp_timing_max.setValue(style.timing_offset_ms[1])
+-        self.sp_stagger.setValue(style.stagger_ms)
+-        self.sp_duration_var.setValue(int(style.duration_variation * 100))
+-
+-        self.sp_timing_min.blockSignals(False)
+-        self.sp_timing_max.blockSignals(False)
+-        self.sp_stagger.blockSignals(False)
+-        self.sp_duration_var.blockSignals(False)
+-
+-    def on_input_style_changed(self, index: int):
+-        """Called when main settings input style combo changes."""
+-        style_name = self.cmb_input_style.itemData(index)
+-        if not style_name:
+-            return
+-        self._current_input_style = style_name
+-
+-        # Sync style tab combo
+-        self._select_style_in_combo(self.cmb_style_tab, style_name)
+-        self._update_style_params_display(style_name)
+-
+-        # Sync floating controller
+-        if self.floating_controller:
+-            self.floating_controller.sync_style(style_name)
+-
+-        # Log
+-        style = INPUT_STYLES.get(style_name)
+-        if style:
+-            desc = style.description_zh if self.lang == LANG_ZH else style.description_en
+-            self.append_log(f"Input style: {style_name} ({desc})")
+-
+-        # Auto-save settings
+-        self.save_settings()
+-
+-    def on_style_tab_changed(self, index: int):
+-        """Called when style tab combo changes."""
+-        style_name = self.cmb_style_tab.itemData(index)
+-        if not style_name:
+-            return
+-        self._current_input_style = style_name
+-
+-        # Sync main settings combo
+-        self._select_style_in_combo(self.cmb_input_style, style_name)
+-        self._update_style_params_display(style_name)
+-
+-        # Sync floating controller
+-        if self.floating_controller:
+-            self.floating_controller.sync_style(style_name)
+-
+-        # Log
+-        style = INPUT_STYLES.get(style_name)
+-        if style:
+-            desc = style.description_zh if self.lang == LANG_ZH else style.description_en
+-            self.append_log(f"Input style: {style_name} ({desc})")
+-
+-        # Auto-save settings
+-        self.save_settings()
+-
+-    def on_add_custom_style(self):
+-        """Add a new custom style with current parameter values."""
+-        name = self.txt_style_name.text().strip()
+-        if not name:
+-            QMessageBox.warning(self, "Error", "Please enter a style name." if self.lang == LANG_EN else "请输入风格名称。")
+-            return
+-        if name in INPUT_STYLES:
+-            QMessageBox.warning(self, "Error", f"Style '{name}' already exists." if self.lang == LANG_EN else f"风格 '{name}' 已存在。")
+-            return
+-
+-        desc = self.txt_style_desc.text().strip() or name
+-        timing_min = self.sp_timing_min.value()
+-        timing_max = self.sp_timing_max.value()
+-        stagger = self.sp_stagger.value()
+-        duration_var = self.sp_duration_var.value() / 100.0
+-
+-        # Add translation for the new style
+-        TRANSLATIONS[f"style_{name}"] = {LANG_EN: name.capitalize(), LANG_ZH: desc}
+-
+-        # Create and register the new style
+-        new_style = InputStyle(
+-            name=name,
+-            timing_offset_ms=(timing_min, timing_max),
+-            stagger_ms=stagger,
+-            duration_variation=duration_var,
+-            description_en=desc,
+-            description_zh=desc,
+-            builtin=False,  # User-created styles are not builtin
+-        )
+-        register_style(new_style)
+-
+-        # Rebuild all combos and select the new style
+-        self._current_input_style = name
+-        self._rebuild_all_style_combos()
+-        self._select_style_in_combo(self.cmb_input_style, name)
+-        self._select_style_in_combo(self.cmb_style_tab, name)
+-
+-        self.append_log(f"Added custom style: {name}")
+-        self.txt_style_name.clear()
+-        self.txt_style_desc.clear()
+-        self.save_settings()  # Auto-save custom styles
+-
+-    def on_delete_custom_style(self):
+-        """Delete the currently selected custom style (cannot delete built-in styles)."""
+-        style_name = self.cmb_style_tab.currentData()
+-        if not style_name:
+-            return
+-
+-        # Check if style is built-in (via registry)
+-        style = get_style(style_name)
+-        if style and getattr(style, 'builtin', False):
+-            QMessageBox.warning(self, "Error",
+-                "Cannot delete built-in styles." if self.lang == LANG_EN else "无法删除内置风格。")
+-            return
+-
+-        # Confirm deletion
+-        result = QMessageBox.question(self, "Confirm",
+-            f"Delete style '{style_name}'?" if self.lang == LANG_EN else f"删除风格 '{style_name}'?",
+-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+-        if result != QMessageBox.StandardButton.Yes:
+-            return
+-
+-        # Delete the style using registry
+-        unregister_style(style_name)
+-        if f"style_{style_name}" in TRANSLATIONS:
+-            del TRANSLATIONS[f"style_{style_name}"]
+-
+-        # Reset to mechanical and rebuild
+-        self._current_input_style = "mechanical"
+-        self._rebuild_all_style_combos()
+-        self._update_style_params_display("mechanical")
+-
+-        self.append_log(f"Deleted custom style: {style_name}")
+-        self.save_settings()  # Auto-save custom styles
+-
+-    def on_apply_style_params(self):
+-        """Apply the current parameter values to the selected style."""
+-        style_name = self.cmb_style_tab.currentData()
+-        if not style_name:
+-            return
+-
+-        # Check if style is built-in (via registry)
+-        style = get_style(style_name)
+-        if style and getattr(style, 'builtin', False):
+-            QMessageBox.information(self, "Info",
+-                "Cannot modify built-in styles. Use 'Add Style' to create a custom copy." if self.lang == LANG_EN
+-                else "无法修改内置风格。请使用'添加风格'创建自定义副本。")
+-            return
+-
+-        # Update the custom style
+-        if style:
+-            timing_min = self.sp_timing_min.value()
+-            timing_max = self.sp_timing_max.value()
+-            stagger = self.sp_stagger.value()
+-            duration_var = self.sp_duration_var.value() / 100.0
+-
+-            # Create a new style with updated values (dataclass is immutable by default)
+-            updated_style = InputStyle(
+-                name=style_name,
+-                timing_offset_ms=(timing_min, timing_max),
+-                stagger_ms=stagger,
+-                duration_variation=duration_var,
+-                description_en=style.description_en,
+-                description_zh=style.description_zh,
+-                builtin=False,  # Modified styles are not builtin
+-            )
+-            INPUT_STYLES[style_name] = updated_style
+-            self.append_log(f"Updated style: {style_name} (offset={timing_min}~{timing_max}ms, stagger={stagger}ms, var={duration_var*100:.0f}%)")
+-            self.save_settings()  # Auto-save custom styles
+-
+     # ---- Settings Preset Methods ----
+ 
+     def on_import_settings(self):
+@@ -874,6 +624,12 @@ class MainWindow(
+             self.editor_window.bpm_changed.connect(self._on_editor_bpm_changed)
  
          self.editor_window.load_midi(path)
++        # Sync keyboard config (effective root = root + octave_shift * 12)
++        root_note = self.cmb_root.currentData() or 60  # Default C4
++        octave_shift = self.cmb_octave.currentData() or 0
++        effective_root = root_note + (octave_shift * 12)
++        preset = self.cmb_preset.currentData() or "21-key"
++        self.editor_window.set_keyboard_config(effective_root, preset)
          self.editor_window.show()
          self.editor_window.raise_()
          self.editor_window.activateWindow()
+@@ -905,6 +661,16 @@ class MainWindow(
+         if self.floating_controller and self.floating_controller.isVisible():
+             self.floating_controller._sync_from_main()
  
-+    def _on_editor_midi_loaded(self, path: str, events_list: list):
-+        """Called when editor loads a MIDI file - sync to main window."""
-+        self.mid_path = path
-+        # Convert dict list to NoteEvent list and sort by time
-+        self.events = sorted(
-+            [NoteEvent(time=ev["time"], note=ev["note"], duration=ev["duration"])
-+             for ev in events_list],
-+            key=lambda e: e.time
-+        )
-+        # Sync BPM from editor if available
-+        if self.editor_window and hasattr(self.editor_window, 'sp_bpm'):
-+            self.current_bpm = self.editor_window.sp_bpm.value()
-+        # Update UI
-+        filename = os.path.basename(path)
-+        self.lbl_file.setText(filename)
-+        self.append_log(f"[Editor] Synced MIDI: {filename} ({len(self.events)} notes)")
-+        # Sync floating controller if visible
-+        if self.floating_controller and self.floating_controller.isVisible():
-+            self.floating_controller._sync_from_main()
-+
-+    def _on_editor_bpm_changed(self, bpm: int):
-+        """Called when editor BPM changes - sync to main window and floating controller."""
-+        self.current_bpm = bpm
-+        # Sync floating controller if visible
-+        if self.floating_controller and self.floating_controller.isVisible():
-+            self.floating_controller._sync_from_main()
++    def _sync_editor_keyboard_config(self):
++        """Sync keyboard config to editor when root/octave/preset changes in main window."""
++        if self.editor_window is None or not self.editor_window.isVisible():
++            return
++        root_note = self.cmb_root.currentData() or 60
++        octave_shift = self.cmb_octave.currentData() or 0
++        effective_root = root_note + (octave_shift * 12)
++        preset = self.cmb_preset.currentData() or "21-key"
++        self.editor_window.set_keyboard_config(effective_root, preset)
 +
      def on_browse_sf(self):
          settings = QSettings("LyreAutoPlayer", "LyreAutoPlayer")
          last_dir = settings.value(SETTINGS_SF_DIR, "")
-diff --git a/LyreAutoPlayer/midi-change/index.json b/LyreAutoPlayer/midi-change/index.json
-index 0a58dfa..937e8d9 100644
---- a/LyreAutoPlayer/midi-change/index.json
-+++ b/LyreAutoPlayer/midi-change/index.json
-@@ -17,6 +17,24 @@
-       "last_modified": "2026-01-04T04:36:49.977714",
-       "source_file_size": 7348,
-       "source_note_count": 916
-+    },
-+    {
-+      "source_path": "d:\\dw11\\piano\\lyreautoplayer\\midi\\megalovania-undertale-ost.mid",
-+      "saved_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\megalovania-undertale-ost_custom.mid",
-+      "display_name": "Megalovania-Undertale-OST_custom",
-+      "edit_style": "custom",
-+      "last_modified": "2026-01-04T06:06:46.615497",
-+      "source_file_size": 14888,
-+      "source_note_count": 1755
-+    },
-+    {
-+      "source_path": "d:\\dw11\\piano\\lyreautoplayer\\midi\\《凡人修仙传》op-不凡.mid",
-+      "saved_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\《凡人修仙传》op-不凡_custom_custom.mid",
-+      "display_name": "《凡人修仙传》op-不凡_custom_custom",
-+      "edit_style": "custom",
-+      "last_modified": "2026-01-04T06:26:55.490565",
-+      "source_file_size": 7348,
-+      "source_note_count": 916
-     }
-   ]
- }
-\ No newline at end of file
-diff --git a/LyreAutoPlayer/player/midi_parser.py b/LyreAutoPlayer/player/midi_parser.py
-index 59a0f7d..d49f459 100644
---- a/LyreAutoPlayer/player/midi_parser.py
-+++ b/LyreAutoPlayer/player/midi_parser.py
-@@ -21,6 +21,7 @@ def midi_to_events_with_duration(mid_path: str) -> List[NoteEvent]:
-     """
-     Parse MIDI into NoteEvent with duration.
-     Tracks note_on/note_off pairs to calculate duration.
-+    Supports CC64 sustain pedal (延音踏板).
+@@ -926,112 +692,21 @@ class MainWindow(
+             self.floating_controller.sync_error_settings(self._error_enabled, self._error_freq)
+         self.append_log(f"Error simulation: {'ON' if self._error_enabled else 'OFF'}")
  
-     Args:
-         mid_path: Path to MIDI file
-@@ -32,30 +33,77 @@ def midi_to_events_with_duration(mid_path: str) -> List[NoteEvent]:
-     tempo = 500000  # default 120 BPM
-     t = 0.0
+-    def _on_error_freq_changed(self, value: int):
+-        """Change error frequency (per 8 bars)."""
+-        self._error_freq = value
+-        if self.floating_controller:
+-            self.floating_controller.sync_error_settings(self._error_enabled, self._error_freq)
++    # ---- Strict Mode Methods ----
  
--    # Track active notes: {note: start_time}
--    active_notes: Dict[int, float] = {}
-+    # Track active notes: {(note, channel): [(start_time, velocity), ...]}
-+    active_notes: Dict[tuple, list] = {}
-+    # Sustained notes (held by pedal): {(note, channel): [(start_time, velocity), ...]}
-+    sustained_notes: Dict[tuple, list] = {}
-+    # Sustain pedal state per channel
-+    sustain_on: Dict[int, bool] = {}
-     events: List[NoteEvent] = []
+-    def _on_quick_error_enable_changed(self, state: int):
+-        """Sync quick error enable checkbox from Tab 1 to Tab 5."""
+-        enabled = state == Qt.CheckState.Checked.value
+-        self._error_enabled = enabled
+-        # Sync to Tab 5
+-        self.chk_error_enabled.setChecked(enabled)
+-        # Sync to FloatingController
+-        if self.floating_controller:
+-            self.floating_controller.sync_error_settings(self._error_enabled, self._error_freq)
+-        self.append_log(f"Error simulation: {'ON' if enabled else 'OFF'}")
+-
+-    def _sync_quick_errors_to_tab5(self, state: int = None):
+-        """Sync error type checkboxes from Tab 1 to Tab 5 (with signal blocking)."""
+-        # Block Tab 5 signals to prevent infinite recursion
+-        self.chk_wrong_note.blockSignals(True)
+-        self.chk_miss_note.blockSignals(True)
+-        self.chk_extra_note.blockSignals(True)
+-        self.chk_pause_error.blockSignals(True)
+-
+-        self.chk_wrong_note.setChecked(self.chk_quick_wrong.isChecked())
+-        self.chk_miss_note.setChecked(self.chk_quick_miss.isChecked())
+-        self.chk_extra_note.setChecked(self.chk_quick_extra.isChecked())
+-        self.chk_pause_error.setChecked(self.chk_quick_pause.isChecked())
+-
+-        self.chk_wrong_note.blockSignals(False)
+-        self.chk_miss_note.blockSignals(False)
+-        self.chk_extra_note.blockSignals(False)
+-        self.chk_pause_error.blockSignals(False)
+-
+-    def _sync_tab5_errors_to_quick(self):
+-        """Sync error settings from Tab 5 to Tab 1 quick checkboxes."""
+-        self.chk_quick_error_enable.setChecked(self.chk_error_enabled.isChecked())
+-        self.chk_quick_wrong.setChecked(self.chk_wrong_note.isChecked())
+-        self.chk_quick_miss.setChecked(self.chk_miss_note.isChecked())
+-        self.chk_quick_extra.setChecked(self.chk_extra_note.isChecked())
+-        self.chk_quick_pause.setChecked(self.chk_pause_error.isChecked())
+-
+-    def _sync_tab5_to_quick_errors(self, state: int = None):
+-        """Sync from Tab 5 to Tab 1 (with signal blocking to prevent recursion)."""
+-        # Block Tab 1 signals to prevent infinite recursion
+-        self.chk_quick_wrong.blockSignals(True)
+-        self.chk_quick_miss.blockSignals(True)
+-        self.chk_quick_extra.blockSignals(True)
+-        self.chk_quick_pause.blockSignals(True)
+-
+-        self.chk_quick_wrong.setChecked(self.chk_wrong_note.isChecked())
+-        self.chk_quick_miss.setChecked(self.chk_miss_note.isChecked())
+-        self.chk_quick_extra.setChecked(self.chk_extra_note.isChecked())
+-        self.chk_quick_pause.setChecked(self.chk_pause_error.isChecked())
+-
+-        self.chk_quick_wrong.blockSignals(False)
+-        self.chk_quick_miss.blockSignals(False)
+-        self.chk_quick_extra.blockSignals(False)
+-        self.chk_quick_pause.blockSignals(False)
+-
+-    # ---- Eight-Bar Style Methods ----
+-
+-    def _on_eight_bar_enabled_changed(self, state: int):
+-        """Toggle eight-bar style variation on/off."""
++    def _on_strict_mode_changed(self, state: int):
++        """Toggle strict mode on/off. When ON, disables various playback variation controls."""
+         enabled = state == Qt.CheckState.Checked.value
+-        self.append_log(f"8-Bar variation: {'ON' if enabled else 'OFF'}")
+-        # Sync to quick checkbox in Tab 1
+-        self.chk_quick_eight_bar.blockSignals(True)
+-        self.chk_quick_eight_bar.setChecked(enabled)
+-        self.chk_quick_eight_bar.blockSignals(False)
+-        # Sync to floating controller if exists
+-        if self.floating_controller:
+-            self.floating_controller.sync_eight_bar_enabled(enabled)
++        self._strict_mode = enabled
  
-+    def append_note(note: int, start_time: float, end_time: float):
-+        """Add a note event with duration."""
-+        duration = max(0, end_time - start_time)
-+        events.append(NoteEvent(time=start_time, note=note, duration=duration))
-+
-     merged = mido.merge_tracks(mid.tracks)
-     for msg in merged:
-         t += mido.tick2second(msg.time, mid.ticks_per_beat, tempo)
-+
-         if msg.type == "set_tempo":
-             tempo = msg.tempo
--        elif msg.type == "note_on" and getattr(msg, "velocity", 0) > 0:
-+            continue
-+
-+        # Handle sustain pedal (CC64)
-+        if msg.type == "control_change" and msg.control == 64:
-+            channel = getattr(msg, 'channel', 0)
-+            is_on = msg.value >= 64
-+            prev_on = sustain_on.get(channel, False)
-+            sustain_on[channel] = is_on
-+
-+            # Pedal released: end all sustained notes
-+            if prev_on and not is_on:
-+                for key in list(sustained_notes.keys()):
-+                    if key[1] != channel:
-+                        continue
-+                    for start_time, _ in sustained_notes[key]:
-+                        append_note(key[0], start_time, t)
-+                    del sustained_notes[key]
-+            continue
-+
-+        if not hasattr(msg, 'note'):
-+            continue
-+
-+        channel = getattr(msg, 'channel', 0)
-+        key = (msg.note, channel)
-+
-+        if msg.type == "note_on" and getattr(msg, "velocity", 0) > 0:
-             # Note on
--            active_notes[msg.note] = t
--            events.append(NoteEvent(time=t, note=msg.note, duration=0))
-+            if key not in active_notes:
-+                active_notes[key] = []
-+            active_notes[key].append((t, msg.velocity))
-+
-         elif msg.type == "note_off" or (msg.type == "note_on" and getattr(msg, "velocity", 0) == 0):
-             # Note off
--            note = msg.note
--            if note in active_notes:
--                start_time = active_notes.pop(note)
--                duration = t - start_time
--                # Find the event and update duration
--                for ev in reversed(events):
--                    if ev.note == note and ev.time == start_time:
--                        ev.duration = duration
--                        break
-+            if key in active_notes and active_notes[key]:
-+                start_time, velocity = active_notes[key].pop(0)  # FIFO
-+                if sustain_on.get(channel, False):
-+                    # Pedal is down: delay note end
-+                    sustained_notes.setdefault(key, []).append((start_time, velocity))
-+                else:
-+                    # Normal note end
-+                    append_note(msg.note, start_time, t)
-+
-+    # Handle remaining active notes (no note_off received)
-+    for key, items in active_notes.items():
-+        for start_time, _ in items:
-+            # Use a small duration for notes without note_off
-+            append_note(key[0], start_time, t + 0.1)
-+
-+    # Handle remaining sustained notes (pedal never released)
-+    for key, items in sustained_notes.items():
-+        for start_time, _ in items:
-+            append_note(key[0], start_time, t + 0.1)
+-    def _apply_eight_bar_preset(self, preset_name: str):
+-        """Apply a predefined eight-bar style preset."""
+-        if preset_name not in EIGHT_BAR_PRESETS:
+-            return
+-        preset = EIGHT_BAR_PRESETS[preset_name]
++        # Disable controls that strict mode overrides (only remaining widgets)
++        self.sp_speed.setEnabled(not enabled)
++        self.chk_midi_duration.setEnabled(not enabled)
  
-     events.sort(key=lambda x: x.time)
-     return events
+-        # Apply values to UI
+-        self.sp_speed_min.setValue(int(preset.speed_mult_min * 100))
+-        self.sp_speed_max.setValue(int(preset.speed_mult_max * 100))
+-        self.sp_timing_var_min.setValue(int(preset.timing_mult_min * 100))
+-        self.sp_timing_var_max.setValue(int(preset.timing_mult_max * 100))
+-        self.sp_dur_var_min.setValue(int(preset.duration_mult_min * 100))
+-        self.sp_dur_var_max.setValue(int(preset.duration_mult_max * 100))
+-
+-        self.append_log(f"8-Bar preset applied: {preset_name}")
+-
+-    def _on_quick_eight_bar_changed(self, state: int):
+-        """Sync quick 8-bar toggle from Tab 1 to Tab 4 (Input Style)."""
+-        enabled = state == Qt.CheckState.Checked.value
+-        # Sync to Tab 4 checkbox (block signals to prevent recursion)
+-        self.chk_eight_bar_enabled.blockSignals(True)
+-        self.chk_eight_bar_enabled.setChecked(enabled)
+-        self.chk_eight_bar_enabled.blockSignals(False)
+-        # Trigger the main handler
+-        self._on_eight_bar_enabled_changed(state)
+-
+-    def _sync_eight_bar_to_quick(self):
+-        """Sync 8-bar enabled state from Tab 4 to Tab 1 quick checkbox."""
+-        self.chk_quick_eight_bar.blockSignals(True)
+-        self.chk_quick_eight_bar.setChecked(self.chk_eight_bar_enabled.isChecked())
+-        self.chk_quick_eight_bar.blockSignals(False)
++        # Log state change
++        self.append_log(f"Strict mode: {'ON' if enabled else 'OFF'}")
++        if enabled:
++            self.append_log("  → Speed=1.0, Duration=ON")
+ 
+     def closeEvent(self, event):
+         """Cleanup global hotkeys on window close."""
+diff --git a/LyreAutoPlayer/player/config.py b/LyreAutoPlayer/player/config.py
+index 36517e4..094f00f 100644
+--- a/LyreAutoPlayer/player/config.py
++++ b/LyreAutoPlayer/player/config.py
+@@ -45,3 +45,10 @@ class PlayerConfig:
+ 
+     # Diagnostics (for debugging input issues)
+     enable_diagnostics: bool = False
++
++    # Unified playback engine (统一播放引擎)
++    strict_mode: bool = True              # 严格跟谱模式 (默认开启)
++    pause_every_bars: int = 0             # 自动暂停间隔 (0=禁用, 1/2/4/8)
++    auto_resume_countdown: int = 3        # 倒计时秒数
++    bar_duration_override: float = 0.0    # 覆盖小节时长 (秒), 0=自动计算
++    editor_bpm: int = 0                   # 编辑器 BPM, 0=使用 MIDI 原始值
 diff --git a/LyreAutoPlayer/player/thread.py b/LyreAutoPlayer/player/thread.py
-index ad0e886..36a7606 100644
+index 36a7606..3f74523 100644
 --- a/LyreAutoPlayer/player/thread.py
 +++ b/LyreAutoPlayer/player/thread.py
-@@ -78,12 +78,12 @@ class PlayerThread(QThread):
-     Signals:
-         log(str): Emitted for log messages
-         finished(): Emitted when playback completes
--        progress(int, int): Emitted with (current_event, total_events)
-+        progress(float, float): Emitted with (current_time, total_duration)
-         paused(): Emitted when playback is paused
-     """
-     log = pyqtSignal(str)
+@@ -85,6 +85,9 @@ class PlayerThread(QThread):
      finished = pyqtSignal()
--    progress = pyqtSignal(int, int)  # (current_event, total_events)
-+    progress = pyqtSignal(float, float)  # (current_time, total_duration)
+     progress = pyqtSignal(float, float)  # (current_time, total_duration)
      paused = pyqtSignal()  # Emitted when actually paused (for UI update)
++    resumed = pyqtSignal()  # Emitted when playback resumes (for UI update)
++    countdown_tick = pyqtSignal(int)  # remaining seconds (0=countdown finished)
++    auto_pause_at_bar = pyqtSignal(int)  # bar_index where auto-paused
  
      def __init__(self, events: List[NoteEvent], cfg: PlayerConfig):
-@@ -97,6 +97,8 @@ class PlayerThread(QThread):
-         self._total_pause_time = 0.0
-         self._bar_duration = 2.0  # Default bar duration (120BPM 4/4)
-         self._current_bar = -1  # Current bar index
-+        self._total_duration = 0.0  # Total playback duration (for progress)
-+        self._last_progress_emit = 0.0  # Last time progress was emitted
+         super().__init__()
+@@ -155,11 +158,13 @@ class PlayerThread(QThread):
+             # Cancel pending pause
+             self._pause_pending = False
+             self.log.emit("Pause cancelled")
++            self.resumed.emit()  # Notify UI
+         elif self._paused:
+             pause_duration = time.perf_counter() - self._pause_start
+             self._total_pause_time += pause_duration
+             self._paused = False
+             self.log.emit(f"Resumed (paused {pause_duration:.1f}s)")
++            self.resumed.emit()  # Notify UI
  
-         # Initialize InputManager v2 for reliable key handling in DirectX games
-         self._input_manager = create_input_manager(
-@@ -242,6 +244,12 @@ class PlayerThread(QThread):
-         n_events = len(event_queue)
-         self.log.emit(f"Playing {notes_scheduled} notes ({n_events} events)... (speed x{self.cfg.speed}, midi_dur={self.cfg.use_midi_duration})")
+     def is_paused(self) -> bool:
+         return self._paused
+@@ -223,11 +228,14 @@ class PlayerThread(QThread):
+             self.log.emit(f"Countdown: {self.cfg.countdown_sec}s (switch to game now)")
+             for i in range(self.cfg.countdown_sec, 0, -1):
+                 if self._stop:
++                    self.countdown_tick.emit(0)  # Clear countdown UI
+                     self.log.emit("Stopped during countdown.")
+                     self.finished.emit()
+                     return
++                self.countdown_tick.emit(i)  # Notify UI of countdown
+                 self.log.emit(f"  ...{i}")
+                 time.sleep(1)
++            self.countdown_tick.emit(0)  # Countdown finished
  
-+        # Calculate total duration for progress tracking
-+        if event_queue:
-+            self._total_duration = max(ev.time for ev in event_queue)
-+        else:
-+            self._total_duration = 0.0
+         # Disable IME for target window
+         ime_disabled_hwnd = None
+@@ -382,6 +390,11 @@ class PlayerThread(QThread):
+             except Exception:
+                 pass
+ 
++        # Override bar duration from editor BPM (Pitfall #2: must be before event queue build)
++        if self.cfg.bar_duration_override > 0:
++            self._bar_duration = self.cfg.bar_duration_override
++            self.log.emit(f"Using editor bar duration: {self._bar_duration:.3f}s")
 +
-         if notes_dropped > 0:
-             self.log.emit(f"Dropped {notes_dropped} out-of-range notes")
+         # 8-bar style setup
+         eight_bar = self.cfg.eight_bar_style
+         eight_bar_segments, segment_duration, beat_duration, warp_start = self._setup_eight_bar(eight_bar, speed)
+@@ -790,6 +803,10 @@ class PlayerThread(QThread):
+                     break
+                 time.sleep(min(dt, 0.02))
+                 now = time.perf_counter() - start - self._total_pause_time
++                # Emit progress at ~10Hz for smooth playhead updates
++                if now - self._last_progress_emit >= 0.1:
++                    self.progress.emit(now, self._total_duration)
++                    self._last_progress_emit = now
+                 dt = target_time - now
  
-@@ -770,6 +778,12 @@ class PlayerThread(QThread):
+             if self._paused:
+@@ -811,13 +828,40 @@ class PlayerThread(QThread):
+                 processed_bar = next_event.bar_index
  
-             # Wait until event time
-             now = time.perf_counter() - start - self._total_pause_time
+                 if next_event.event_type == "pause_marker":
+-                    if self._pause_pending:
++                    # Check if auto-pause should trigger at this bar
++                    should_auto_pause = (
++                        self.cfg.pause_every_bars > 0 and
++                        next_event.bar_index > 0 and
++                        next_event.bar_index % self.cfg.pause_every_bars == 0
++                    )
 +
-+            # Emit progress (throttled to ~10 times/sec)
-+            if now - self._last_progress_emit >= 0.1:
-+                self.progress.emit(now, self._total_duration)
-+                self._last_progress_emit = now
++                    if self._pause_pending or should_auto_pause:
+                         self.log.emit(
+-                            f"[Pause] pending at bar {next_event.bar_index} (t={next_event.time:.3f}s)"
++                            f"[Pause] {'auto-' if should_auto_pause else 'pending '}at bar {next_event.bar_index} (t={next_event.time:.3f}s)"
+                         )
+-                        self._do_pause()
+                         self._release_all_pressed(pressed_keys, fs, chan)
++                        self._do_pause()
++                        self.auto_pause_at_bar.emit(next_event.bar_index)
+                         paused_now = True
 +
-             dt = target_time - now
-             while dt > 0 and not self._stop:
-                 if self._paused:
++                        if should_auto_pause:
++                            # Auto-pause countdown (倒计时结束自动继续，F5可提前跳过)
++                            countdown_interrupted = False
++                            for remaining in range(self.cfg.auto_resume_countdown, 0, -1):
++                                if self._stop:
++                                    break
++                                if not self._paused:  # User pressed F5 to skip
++                                    self.countdown_tick.emit(0)  # Clear countdown UI
++                                    countdown_interrupted = True
++                                    break
++                                self.countdown_tick.emit(remaining)
++                                time.sleep(1.0)
++
++                            # Auto-resume after countdown (if still paused and not interrupted)
++                            if self._paused and not self._stop and not countdown_interrupted:
++                                self.countdown_tick.emit(0)
++                                self.resume()  # 自动继续
++
+                         break
+                     continue
+ 
 diff --git a/LyreAutoPlayer/settings.json b/LyreAutoPlayer/settings.json
-index 9bec5de..ecbcc9d 100644
+index 0855327..47e3aa5 100644
 --- a/LyreAutoPlayer/settings.json
 +++ b/LyreAutoPlayer/settings.json
-@@ -14,12 +14,12 @@
-   "countdown_sec": 2,
-   "keyboard_preset": "36-key",
-   "use_midi_duration": true,
--  "play_sound": false,
-+  "play_sound": true,
-   "velocity": 90,
--  "input_style": "natural",
-+  "input_style": "mechanical",
+@@ -19,32 +19,37 @@
+   "input_style": "mechanical",
    "enable_diagnostics": false,
    "soundfont_path": "C:\\soundfonts\\FluidR3_GM.sf2",
--  "last_midi_path": "D:/dw11/piano/LyreAutoPlayer/midi/Sis puella magica!.mid",
-+  "last_midi_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\《凡人修仙传》op-不凡_custom.mid",
+-  "last_midi_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\level!_custom.mid",
++  "last_midi_path": "D:/dw11/piano/LyreAutoPlayer/midi/Canon-In-C-卡农-原神风物之诗琴谱-原琴谱.mid",
    "input_manager": {},
    "error_config": {
      "enabled": false,
+     "errors_per_8bars": 1,
+-    "wrong_note": true,
+-    "miss_note": true,
+-    "extra_note": true,
+-    "pause_error": true,
+-    "pause_min_ms": 200,
++    "wrong_note": false,
++    "miss_note": false,
++    "extra_note": false,
++    "pause_error": false,
++    "pause_min_ms": 100,
+     "pause_max_ms": 500
+   },
+   "eight_bar_config": {
+     "enabled": false,
+-    "mode": "beat_lock",
+-    "pattern": "continuous",
+-    "speed_min": 85,
+-    "speed_max": 103,
+-    "timing_min": 85,
+-    "timing_max": 103,
+-    "duration_min": 85,
+-    "duration_max": 103,
+-    "clamp_enabled": true,
++    "mode": "warp",
++    "pattern": "skip2_pick1",
++    "speed_min": 95,
++    "speed_max": 105,
++    "timing_min": 95,
++    "timing_max": 105,
++    "duration_min": 95,
++    "duration_max": 105,
++    "clamp_enabled": false,
+     "clamp_min": 85,
+     "clamp_max": 115,
+-    "show_indicator": true
++    "show_indicator": false
++  },
++  "strict_mode_config": {
++    "enabled": true,
++    "pause_every_bars": 0,
++    "auto_resume_countdown": 3
+   },
+   "custom_styles": [
+     {
+diff --git a/LyreAutoPlayer/ui/editor/__init__.py b/LyreAutoPlayer/ui/editor/__init__.py
+index 123a6c6..2a8a04e 100644
+--- a/LyreAutoPlayer/ui/editor/__init__.py
++++ b/LyreAutoPlayer/ui/editor/__init__.py
+@@ -6,6 +6,8 @@ from .piano_roll import PianoRollWidget
+ from .note_item import NoteItem
+ from .timeline import TimelineWidget
+ from .keyboard import KeyboardWidget
++from .countdown_overlay import CountdownOverlay
++from .key_list_widget import KeyListWidget
+ 
+ __all__ = [
+     "EditorWindow",
+@@ -13,4 +15,6 @@ __all__ = [
+     "NoteItem",
+     "TimelineWidget",
+     "KeyboardWidget",
++    "CountdownOverlay",
++    "KeyListWidget",
+ ]
 diff --git a/LyreAutoPlayer/ui/editor/editor_window.py b/LyreAutoPlayer/ui/editor/editor_window.py
-index dcac2b1..f7a727a 100644
+index 3f6030b..396f71a 100644
 --- a/LyreAutoPlayer/ui/editor/editor_window.py
 +++ b/LyreAutoPlayer/ui/editor/editor_window.py
-@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
-     QSplitter, QScrollBar, QComboBox, QSpinBox, QCheckBox
- )
- from PyQt6.QtGui import QAction, QIcon, QShortcut, QKeySequence
--from PyQt6.QtCore import Qt, QTimer
-+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
- import mido
+@@ -9,6 +9,7 @@ Features:
+ import os
+ import sys
+ import json
++import random
+ from pathlib import Path
+ from typing import Optional, Dict
+ from datetime import datetime
+@@ -32,7 +33,11 @@ except ImportError:
+ from .piano_roll import PianoRollWidget
+ from .timeline import TimelineWidget
+ from .keyboard import KeyboardWidget
++from .countdown_overlay import CountdownOverlay
++from .key_list_widget import KeyListWidget
++from .undo_commands import ApplyJitterCommand
+ from i18n import tr, LANG_ZH
++from style_manager import get_style_names, INPUT_STYLES
  
- # FluidSynth (optional)
-@@ -38,6 +38,13 @@ from i18n import tr, LANG_ZH
+ 
  class EditorWindow(QMainWindow):
-     """MIDI 编辑器主窗口"""
+@@ -69,6 +74,14 @@ class EditorWindow(QMainWindow):
+         self._chan = 0   # MIDI channel
+         self._active_notes: Dict[int, int] = {}  # 音符 -> 发声计数
  
-+    # Signal: emitted when MIDI is loaded (path, events_list)
-+    # events_list is a list of dicts: [{"time": float, "note": int, "duration": float}, ...]
-+    midi_loaded = pyqtSignal(str, list)
++        # Unified playback: follow mode state
++        self._follow_mode = False  # Following PlayerThread (not local timer)
++        self._main_window = None   # Reference to main window
++        self._audio_was_enabled = True  # Remember audio state before follow mode
 +
-+    # Signal: emitted when BPM changes (for main window sync)
-+    bpm_changed = pyqtSignal(int)
++        # Octave shift: track previous value for delta calculation
++        self._prev_octave_shift = 0
 +
-     # 编辑风格选项
-     EDIT_STYLES = ["custom", "simplified", "transposed", "extended", "practice"]
+         self._setup_ui()
+         self._setup_toolbar()
+         self._setup_menus()
+@@ -105,17 +118,38 @@ class EditorWindow(QMainWindow):
  
-@@ -53,6 +60,7 @@ class EditorWindow(QMainWindow):
-         self.midi_file: Optional[mido.MidiFile] = None
-         self.is_playing = False
-         self.playback_time = 0.0
-+        self._base_bpm = 120  # Base BPM for preview speed scaling
-         self.edit_style = "custom"  # 编辑风格标签
+         main_layout.addLayout(timeline_row)
  
-         # FluidSynth 相关
-@@ -186,17 +194,17 @@ class EditorWindow(QMainWindow):
+-        # 键盘 + 卷帘
+-        content_row = QHBoxLayout()
+-        content_row.setSpacing(0)
++        # 纵向 Splitter: 上=键盘+卷帘，下=按键进度窗
++        self.main_splitter = QSplitter(Qt.Orientation.Vertical)
++        self.main_splitter.setStyleSheet("QSplitter::handle { background-color: #444; height: 4px; }")
++
++        # 上部: 键盘 + 卷帘
++        top_widget = QWidget()
++        top_layout = QHBoxLayout(top_widget)
++        top_layout.setContentsMargins(0, 0, 0, 0)
++        top_layout.setSpacing(0)
+ 
+         self.keyboard = KeyboardWidget()
+-        content_row.addWidget(self.keyboard)
++        top_layout.addWidget(self.keyboard)
+ 
+         self.piano_roll = PianoRollWidget()
+-        content_row.addWidget(self.piano_roll)
++        top_layout.addWidget(self.piano_roll)
++
++        self.main_splitter.addWidget(top_widget)
++
++        # 下部: 按键进度窗
++        self.key_list = KeyListWidget()
++        self.main_splitter.addWidget(self.key_list)
+ 
+-        main_layout.addLayout(content_row)
++        # 设置 splitter 比例 (默认按键进度窗隐藏)
++        self.main_splitter.setSizes([500, 0])
++        self.main_splitter.setCollapsible(0, False)  # 上部不可折叠
++        self.main_splitter.setCollapsible(1, True)   # 下部可折叠
++
++        main_layout.addWidget(self.main_splitter)
++
++        # Countdown overlay (displayed during auto-pause countdown)
++        self._countdown_overlay = CountdownOverlay(self.piano_roll)
++        self._countdown_overlay.setGeometry(self.piano_roll.rect())
+ 
+         # 播放计时器
+         self.playback_timer = QTimer()
+@@ -210,6 +244,52 @@ class EditorWindow(QMainWindow):
  
          toolbar.addSeparator()
  
--        # BPM 控制 (仅影响网格显示和导出，不影响播放速度)
-+        # BPM 控制 (影响网格显示、导出与预览速度)
-         toolbar.addWidget(QLabel(" BPM: "))
-         self.sp_bpm = QSpinBox()
-         self.sp_bpm.setRange(20, 300)
-         self.sp_bpm.setValue(120)  # 默认 120 BPM
--        self.sp_bpm.setFixedWidth(60)
-+        self.sp_bpm.setFixedWidth(80)
-         self.sp_bpm.setToolTip(
--            "Grid/Export BPM\n"
-+            "Global BPM (Tempo)\n"
-+            "• Scales all note times when changed\n"
-             "• Affects timeline grid display\n"
--            "• Affects exported MIDI tempo\n"
--            "• Does NOT affect playback speed"
-+            "• Affects exported MIDI tempo"
++        # Auto-pause interval (每 N 小节暂停)
++        toolbar.addWidget(QLabel(" Pause: "))
++        self.cmb_pause_bars = QComboBox()
++        self.cmb_pause_bars.addItem("Off", 0)
++        self.cmb_pause_bars.addItem("1 bar", 1)
++        self.cmb_pause_bars.addItem("2 bars", 2)
++        self.cmb_pause_bars.addItem("4 bars", 4)
++        self.cmb_pause_bars.addItem("8 bars", 8)
++        self.cmb_pause_bars.setCurrentIndex(0)
++        self.cmb_pause_bars.setFixedWidth(70)
++        self.cmb_pause_bars.setToolTip("Auto-pause every N bars for practice")
++        toolbar.addWidget(self.cmb_pause_bars)
++
++        # Auto-resume countdown
++        toolbar.addWidget(QLabel(" Resume: "))
++        self.sp_auto_resume = QSpinBox()
++        self.sp_auto_resume.setRange(1, 10)
++        self.sp_auto_resume.setValue(3)
++        self.sp_auto_resume.setSuffix("s")
++        self.sp_auto_resume.setFixedWidth(50)
++        self.sp_auto_resume.setToolTip("Countdown seconds before auto-resume")
++        toolbar.addWidget(self.sp_auto_resume)
++
++        toolbar.addSeparator()
++
++        # Overall octave shift (-2 to +2)
++        toolbar.addWidget(QLabel(" Octave: "))
++        self.sp_octave_shift = QSpinBox()
++        self.sp_octave_shift.setRange(-2, 2)
++        self.sp_octave_shift.setValue(0)
++        self.sp_octave_shift.setFixedWidth(50)
++        self.sp_octave_shift.setToolTip("Transpose all notes by octaves (±12 semitones)")
++        toolbar.addWidget(self.sp_octave_shift)
++
++        toolbar.addSeparator()
++
++        # Input style for playback (输入风格)
++        toolbar.addWidget(QLabel(" Input: "))
++        self.cmb_input_style = QComboBox()
++        self._populate_input_styles()
++        self.cmb_input_style.setFixedWidth(100)
++        self.cmb_input_style.setToolTip("Input style affects timing variations during playback")
++        toolbar.addWidget(self.cmb_input_style)
++
++        toolbar.addSeparator()
++
+         # 编辑风格选择
+         toolbar.addWidget(QLabel(" Style: "))
+         self.cmb_edit_style = QComboBox()
+@@ -218,6 +298,14 @@ class EditorWindow(QMainWindow):
+         self.cmb_edit_style.setFixedWidth(100)
+         toolbar.addWidget(self.cmb_edit_style)
+ 
++        toolbar.addSeparator()
++
++        # 按键列表开关
++        self.chk_key_list = QCheckBox("Key List")
++        self.chk_key_list.setToolTip("Show/hide the key sequence list")
++        self.chk_key_list.setChecked(False)
++        toolbar.addWidget(self.chk_key_list)
++
+     def _setup_menus(self):
+         """设置菜单栏"""
+         menubar = self.menuBar()
+@@ -238,6 +326,14 @@ class EditorWindow(QMainWindow):
+ 
+         edit_menu.addSeparator()
+ 
++        # Apply input style (humanization)
++        act_apply_style = edit_menu.addAction(tr("apply_jitter"))
++        act_apply_style.setShortcut("H")
++        act_apply_style.setToolTip(tr("apply_jitter_tooltip"))
++        act_apply_style.triggered.connect(self._apply_input_style_jitter)
++
++        edit_menu.addSeparator()
++
+         # 帮助提示
+         act_create_hint = edit_menu.addAction("Note Creation: Alt+Click/Drag")
+         act_create_hint.setEnabled(False)  # 仅作为提示，不可点击
+@@ -347,6 +443,7 @@ class EditorWindow(QMainWindow):
+         self.cmb_quantize.currentTextChanged.connect(self._on_quantize_changed)
+         self.sp_bpm.valueChanged.connect(self._on_bpm_changed)
+         self.timeline.sig_bpm_changed.connect(self._on_timeline_bpm_changed)
++        self.sp_octave_shift.valueChanged.connect(self._on_octave_shift_changed)
+ 
+         # 同步滚动
+         self.piano_roll.horizontalScrollBar().valueChanged.connect(
+@@ -355,8 +452,16 @@ class EditorWindow(QMainWindow):
+         self.piano_roll.verticalScrollBar().valueChanged.connect(
+             lambda v: self.keyboard.set_scroll_offset(v)
          )
-         toolbar.addWidget(self.sp_bpm)
++        # 按键进度窗水平滚动同步
++        self.piano_roll.horizontalScrollBar().valueChanged.connect(
++            lambda v: self.key_list.set_scroll_offset(v)
++        )
++        # 双向同步：按键进度窗滚动也同步到 PianoRoll
++        self.key_list.sig_scroll_changed.connect(
++            lambda v: self._sync_scroll_from_key_list(v)
++        )
  
-@@ -401,12 +409,14 @@ class EditorWindow(QMainWindow):
+-        # 同步缩放 (Ctrl+滚轮 → 时间轴 + 滑条)
++        # 同步缩放 (Ctrl+滚轮 → 时间轴 + 滑条 + 按键进度窗)
+         self.piano_roll.sig_zoom_changed.connect(self._on_piano_roll_zoom)
  
-             # 更新 BPM spinbox（从 MIDI 文件读取）
-             midi_bpm = int(self._get_current_bpm())
-+            self._base_bpm = max(1, midi_bpm)
-             self.sp_bpm.blockSignals(True)
+         # 同步行高变化 (Ctrl+Up/Down / [ ] → 键盘)
+@@ -365,6 +470,39 @@ class EditorWindow(QMainWindow):
+         # 键盘拖拽选择音域 → 钢琴卷帘批量选择
+         self.keyboard.sig_range_selected.connect(self.piano_roll.select_by_pitch_range)
+ 
++        # 按键列表开关
++        self.chk_key_list.toggled.connect(self._on_key_list_toggled)
++
++    def _on_key_list_toggled(self, checked: bool):
++        """切换按键进度窗显示"""
++        if checked:
++            # 显示按键进度窗 (设置合适的高度)
++            sizes = self.main_splitter.sizes()
++            total = sum(sizes)
++            # 底部按键窗占 30% 高度
++            key_list_height = min(200, total // 3)
++            self.main_splitter.setSizes([total - key_list_height, key_list_height])
++            # 更新按键列表内容
++            events = self.export_events()
++            self.key_list.set_events(events)
++            # 同步缩放
++            self.key_list.set_scale(self.piano_roll.pixels_per_second)
++        else:
++            # 隐藏按键进度窗
++            sizes = self.main_splitter.sizes()
++            total = sum(sizes)
++            self.main_splitter.setSizes([total, 0])
++
++    def set_keyboard_config(self, root_note: int, layout_name: str):
++        """设置键盘配置 (同步到 KeyListWidget)
++
++        Args:
++            root_note: 根音 MIDI 编号 (如 60 = C4)
++            layout_name: 布局名称 (如 "21-key" 或 "36-key")
++        """
++        self.key_list.set_root_note(root_note)
++        self.key_list.set_layout(layout_name)
++
+     def load_midi(self, path: str, source_path: Optional[str] = None):
+         """加载 MIDI 文件
+ 
+@@ -418,6 +556,12 @@ class EditorWindow(QMainWindow):
              self.sp_bpm.setValue(midi_bpm)
              self.sp_bpm.blockSignals(False)
  
-             # 更新量化网格（使用新 MIDI 的 BPM）
-             self._on_quantize_changed(self.cmb_quantize.currentText())
-+            self._update_bar_lines()
++            # 重置八度平移
++            self._prev_octave_shift = 0
++            self.sp_octave_shift.blockSignals(True)
++            self.sp_octave_shift.setValue(0)
++            self.sp_octave_shift.blockSignals(False)
++
+             # 同步时间轴为单一 BPM，确保与钢琴卷帘小节线对齐
+             self._sync_timeline_tempo(midi_bpm)
  
-             # 重置播放
-             self.playback_time = 0.0
-@@ -415,6 +425,17 @@ class EditorWindow(QMainWindow):
-             # 设置焦点到钢琴卷帘，确保快捷键立即生效
-             self.piano_roll.setFocus()
+@@ -443,6 +587,9 @@ class EditorWindow(QMainWindow):
+                 })
+             self.midi_loaded.emit(path, events_list)
  
-+            # Emit signal for main window sync
-+            # Convert NoteItem list to event list format expected by PlayerThread
-+            events_list = []
-+            for item in self.piano_roll.notes:
-+                events_list.append({
-+                    "time": item.start_time,
-+                    "note": item.note,
-+                    "duration": item.duration
-+                })
-+            self.midi_loaded.emit(path, events_list)
++            # 更新按键列表
++            self.key_list.set_events(events_list)
 +
          except Exception as e:
              QMessageBox.critical(self, "Error", f"Failed to load MIDI:\n{e}")
  
-@@ -583,19 +604,29 @@ class EditorWindow(QMainWindow):
-     def _on_bpm_changed(self, value: int):
-         """BPM 变化 (来自 spinbox)
+@@ -644,6 +791,125 @@ class EditorWindow(QMainWindow):
+         # Notify main window of BPM change
+         self.bpm_changed.emit(bpm)
  
--        更新时间轴显示和量化网格大小
-+        Performs true BPM scaling: scales all note times and updates display.
-         """
-+        # Apply global BPM scaling (scales note times)
-+        self._apply_global_bpm(value)
++    def _on_octave_shift_changed(self, value: int):
++        """八度平移变化 - 实际修改音符数据
 +
-         # 更新时间轴 BPM
-         self.timeline.set_bpm(value)
- 
-         # 重新计算量化网格（使用新 BPM）
-         self._on_quantize_changed(self.cmb_quantize.currentText())
-+        self._update_bar_lines()
-+
-+        # Notify main window of BPM change
-+        self.bpm_changed.emit(value)
- 
-     def _on_timeline_bpm_changed(self, bpm: int):
-         """BPM 变化 (来自时间轴右键菜单)
- 
--        同步 spinbox 值和量化网格
-+        Performs true BPM scaling and syncs spinbox value.
-         """
-+        # Apply global BPM scaling (scales note times)
-+        self._apply_global_bpm(bpm)
-+
-         # 更新 spinbox (阻止循环信号)
-         self.sp_bpm.blockSignals(True)
-         self.sp_bpm.setValue(bpm)
-@@ -603,6 +634,81 @@ class EditorWindow(QMainWindow):
- 
-         # 重新计算量化网格（使用新 BPM）
-         self._on_quantize_changed(self.cmb_quantize.currentText())
-+        self._update_bar_lines()
-+
-+        # Notify main window of BPM change
-+        self.bpm_changed.emit(bpm)
-+
-+    def _update_bar_lines(self):
-+        """更新钢琴卷帘的小节分隔线"""
-+        bpm = max(1, int(self.sp_bpm.value()))
-+        beats_per_bar = getattr(self.timeline, "time_sig_numerator", 4)
-+        beat_unit = getattr(self.timeline, "time_sig_denominator", 4)
-+        if beat_unit <= 0:
-+            self.piano_roll.set_bar_duration(0.0)
++        When octave shift changes, actually transpose all notes by the delta.
++        This modifies the underlying MIDI data, not just playback mapping.
++        """
++        delta = value - self._prev_octave_shift
++        if delta == 0:
 +            return
-+        seconds_per_beat = (60.0 / bpm) * (4.0 / beat_unit)
-+        seconds_per_bar = seconds_per_beat * beats_per_bar
-+        self.piano_roll.set_bar_duration(seconds_per_bar)
 +
-+    def _apply_global_bpm(self, new_bpm: int):
-+        """Apply global BPM change by scaling all note times.
++        # Calculate semitone shift (octave = 12 semitones)
++        semitone_shift = delta * 12
 +
-+        This method performs true BPM scaling:
-+        - Scales all note start_time and duration by old_bpm / new_bpm
-+        - Updates playback_time accordingly
-+        - Updates total_duration
-+        - Triggers piano roll redraw
++        # Transpose all notes
++        for note_item in self.piano_roll.notes:
++            note_item.note = max(0, min(127, note_item.note + semitone_shift))
++
++        # Update previous value
++        self._prev_octave_shift = value
++
++        # Refresh display
++        self.piano_roll._refresh_notes()
++
++        # Update key list if visible
++        if self.chk_key_list.isChecked():
++            events = self.export_events()
++            self.key_list.set_events(events)
++
++        # Log the change
++        self.statusBar().showMessage(
++            f"Transposed all notes by {delta:+d} octave(s) ({semitone_shift:+d} semitones)", 3000
++        )
++
++    def _apply_input_style_jitter(self):
++        """Apply input style timing jitter to notes (humanization).
++
++        Gets the selected input style and applies random timing offset
++        to selected notes (or all notes if none selected).
++        Also applies duration variation based on the style.
++        Uses QUndoCommand for proper undo/redo support.
++        """
++        # Get selected input style
++        style_name = self.cmb_input_style.currentText()
++        style = INPUT_STYLES.get(style_name)
++
++        if style is None:
++            QMessageBox.warning(
++                self, tr("input_style"),
++                tr("style_not_found_msg").format(name=style_name)
++            )
++            return
++
++        # Check if style has any variation
++        min_offset, max_offset = style.timing_offset_ms
++        duration_var = style.duration_variation
++
++        if min_offset == 0 and max_offset == 0 and duration_var == 0.0:
++            QMessageBox.information(
++                self, tr("input_style"),
++                tr("style_no_variation").format(name=style_name)
++            )
++            return
++
++        # Get target notes (selected or all)
++        selected = [item for item in self.piano_roll.notes if item.isSelected()]
++        if selected:
++            target_notes = selected
++        else:
++            target_notes = list(self.piano_roll.notes)
++
++        if not target_notes:
++            QMessageBox.information(
++                self, tr("input_style"),
++                tr("no_notes_to_jitter")
++            )
++            return
++
++        # Prepare note data for undo command
++        notes_data = []
++        for item in target_notes:
++            notes_data.append({
++                "note": item.note,
++                "start": item.start_time,
++                "duration": item.duration,
++                "velocity": item.velocity
++            })
++
++        # Create and execute undo command
++        cmd = ApplyJitterCommand(
++            self.piano_roll,
++            notes_data,
++            timing_offset_ms=style.timing_offset_ms,
++            duration_variation=duration_var,
++            style_name=style_name
++        )
++        self.piano_roll.undo_stack.push(cmd)
++
++        # Update key list if visible
++        if self.chk_key_list.isChecked():
++            events = self.export_events()
++            self.key_list.set_events(events)
++
++        # Emit notes changed for tracking
++        self.piano_roll.sig_notes_changed.emit()
++
++        # Log the change
++        scope = tr("scope_selected") if selected else tr("scope_all")
++        self.statusBar().showMessage(
++            tr("jitter_applied").format(
++                style=style_name,
++                count=len(target_notes),
++                scope=scope,
++                min_offset=min_offset,
++                max_offset=max_offset,
++                duration_pct=abs(duration_var) * 100
++            ),
++            5000
++        )
++
+     def _update_bar_lines(self):
+         """更新钢琴卷帘的小节分隔线"""
+         bpm = max(1, int(self.sp_bpm.value()))
+@@ -1088,6 +1354,12 @@ class EditorWindow(QMainWindow):
+         如果 Audio checkbox 被勾选，会尝试初始化音频引擎并播放声音。
+         如果未勾选或音频初始化失败，仍然可以进行视觉预览（播放头移动）。
+         """
++        # In follow mode, delegate to main window (F5 toggle)
++        if self._follow_mode:
++            if self._main_window:
++                self._main_window.on_toggle_play_pause()
++            return
++
+         if self.is_playing:
+             self.is_playing = False
+             self.playback_timer.stop()
+@@ -1135,6 +1407,8 @@ class EditorWindow(QMainWindow):
+         self.timeline.set_playhead(0.0)
+         self.act_play.setText("Play")
+         self._update_time_label()
++        # 重置按键列表
++        self.key_list.reset()
+ 
+     def on_seek(self, time_sec: float):
+         """跳转到指定时间"""
+@@ -1142,6 +1416,9 @@ class EditorWindow(QMainWindow):
+         self.piano_roll.set_playhead_position(time_sec)
+         self.timeline.set_playhead(time_sec)
+         self._update_time_label()
++        # 更新按键列表进度
++        if self.chk_key_list.isChecked():
++            self.key_list.update_playback_time(time_sec)
+         # 同步音符发声状态
+         if self.is_playing:
+             self._sync_notes_at_time(time_sec)
+@@ -1199,6 +1476,17 @@ class EditorWindow(QMainWindow):
+         self.piano_roll.pixels_per_second = float(value)
+         self.piano_roll._refresh_notes()
+         self.timeline.set_scale(float(value))
++        # 同步按键进度窗
++        if self.chk_key_list.isChecked():
++            self.key_list.set_scale(float(value))
++
++    def _sync_scroll_from_key_list(self, value: int):
++        """从按键进度窗同步水平滚动到 PianoRollWidget"""
++        self.piano_roll.horizontalScrollBar().blockSignals(True)
++        self.piano_roll.horizontalScrollBar().setValue(value)
++        self.piano_roll.horizontalScrollBar().blockSignals(False)
++        # 同步时间轴
++        self.timeline.set_scroll_offset(value)
+ 
+     def _on_piano_roll_zoom(self, pixels_per_second: float):
+         """缩放变化 (来自 Ctrl+滚轮)"""
+@@ -1208,6 +1496,9 @@ class EditorWindow(QMainWindow):
+         self.zoom_slider.blockSignals(True)
+         self.zoom_slider.setValue(int(pixels_per_second))
+         self.zoom_slider.blockSignals(False)
++        # 同步按键进度窗
++        if self.chk_key_list.isChecked():
++            self.key_list.set_scale(pixels_per_second)
+ 
+     def _on_row_height_changed(self, pixels_per_note: float):
+         """行高变化 (来自 Ctrl+Up/Down 或 [ ])"""
+@@ -1265,6 +1556,10 @@ class EditorWindow(QMainWindow):
+         self.timeline.set_playhead(self.playback_time)
+         self._update_time_label()
+ 
++        # 更新按键列表进度
++        if self.chk_key_list.isChecked():
++            self.key_list.update_playback_time(self.playback_time)
++
+     def _update_time_label(self):
+         """更新时间显示"""
+         current = self.playback_time
+@@ -1598,3 +1893,164 @@ class EditorWindow(QMainWindow):
+             "Index Maintenance",
+             "\n".join(lines)
+         )
++
++    # ─────────────────────────────────────────────────────────────────────────
++    # Unified Playback: Follow Mode Methods
++    # ─────────────────────────────────────────────────────────────────────────
++
++    def set_follow_mode(self, follow: bool):
++        """Switch to follow mode (disable local playback + audio).
++
++        In follow mode, the editor follows PlayerThread signals instead of
++        using its internal QTimer-based playback.
++        """
++        self._follow_mode = follow
++        if follow:
++            # Stop local playback timer
++            self.playback_timer.stop()
++            self._release_all_notes()  # Stop FluidSynth
++
++            # Save original audio state before disabling (Pitfall #5)
++            self._audio_was_enabled = self.chk_enable_audio.isChecked()
++
++            # Force disable audio checkbox (禁止双重发声)
++            self.chk_enable_audio.setChecked(False)
++            self.chk_enable_audio.setEnabled(False)
++
++            self.is_playing = True  # Visual state
++            self.act_play.setText("Pause")
++        else:
++            # Restore audio checkbox to original state (Pitfall #5)
++            self.chk_enable_audio.setEnabled(True)
++            if hasattr(self, '_audio_was_enabled'):
++                self.chk_enable_audio.setChecked(self._audio_was_enabled)
++
++            self.is_playing = False
++            self.act_play.setText("Play")
++
++    def export_events(self) -> list:
++        """Export current piano_roll notes as event list for PlayerThread.
++
++        Returns:
++            List of note event dicts sorted by time.
++        """
++        # Sync drag offsets to notes data (Pitfall #1)
++        self.piano_roll._sync_notes_from_graphics()
++
++        events = []
++        for note_item in self.piano_roll.notes:
++            events.append({
++                "time": note_item.start_time,
++                "note": note_item.note,
++                "duration": note_item.duration,
++                "velocity": getattr(note_item, 'velocity', 80),
++                "channel": getattr(note_item, 'channel', 0),
++            })
++        return sorted(events, key=lambda e: e["time"])
++
++    def get_bar_duration(self) -> float:
++        """Calculate bar duration from current editor BPM.
++
++        Returns:
++            Bar duration in seconds (assumes 4/4 time signature).
++        """
++        bpm = self.sp_bpm.value() if hasattr(self, 'sp_bpm') else 120
++        beats_per_bar = 4  # Default 4/4
++        return 60.0 / bpm * beats_per_bar
++
++    def get_pause_bars(self) -> int:
++        """Get auto-pause interval (bars).
++
++        Returns:
++            Number of bars between auto-pauses (0 = disabled).
++        """
++        return self.cmb_pause_bars.currentData() if hasattr(self, 'cmb_pause_bars') else 0
++
++    def get_auto_resume_countdown(self) -> int:
++        """Get auto-resume countdown seconds.
++
++        Returns:
++            Countdown seconds before auto-resume.
++        """
++        return self.sp_auto_resume.value() if hasattr(self, 'sp_auto_resume') else 3
++
++    def get_octave_shift(self) -> int:
++        """Get overall octave shift.
++
++        Returns:
++            Octave shift (-2 to +2).
++        """
++        return self.sp_octave_shift.value() if hasattr(self, 'sp_octave_shift') else 0
++
++    def get_input_style(self) -> str:
++        """Get selected input style for playback.
++
++        Returns:
++            Input style name (e.g., 'mechanical', 'gentle').
++        """
++        if hasattr(self, 'cmb_input_style'):
++            return self.cmb_input_style.currentText()
++        return "mechanical"
++
++    def _populate_input_styles(self):
++        """Populate input style combo box from registry."""
++        self.cmb_input_style.clear()
++        styles = get_style_names()
++        self.cmb_input_style.addItems(styles)
++        # Default to 'mechanical' if available
++        if "mechanical" in styles:
++            self.cmb_input_style.setCurrentText("mechanical")
++
++    def on_external_progress(self, current_time: float, total_duration: float):
++        """Called by PlayerThread.progress signal.
++
++        Updates playhead position in the editor without playing audio.
++        """
++        if not self._follow_mode:
++            return
++
++        self.playback_time = current_time
++        self.piano_roll.set_playhead_position(current_time)
++        self.timeline.set_playhead(current_time)
++        self._update_time_label()
++        # 更新按键列表进度
++        if self.chk_key_list.isChecked():
++            self.key_list.update_playback_time(current_time)
++        # NO FluidSynth audio in follow mode (已禁用)
++
++    def on_external_paused(self):
++        """Called when PlayerThread pauses."""
++        if self._follow_mode:
++            self.act_play.setText("Play")
++
++    def on_external_resumed(self):
++        """Called when PlayerThread resumes (after pause or auto-pause countdown)."""
++        if self._follow_mode:
++            self.act_play.setText("Pause")
++            # Clear countdown overlay when resumed
++            self._countdown_overlay.hide_countdown()
++
++    def on_external_stopped(self):
++        """Called when PlayerThread finishes."""
++        self.set_follow_mode(False)
++        self.on_stop()
++
++    def update_countdown(self, remaining: int):
++        """Called by PlayerThread.countdown_tick signal.
 +
 +        Args:
-+            new_bpm: The new BPM value
++            remaining: Seconds remaining (0 = countdown finished)
 +        """
-+        old_bpm = self._base_bpm
-+        if old_bpm <= 0 or new_bpm <= 0:
-+            return
-+
-+        # Skip if BPM hasn't actually changed
-+        if old_bpm == new_bpm:
-+            return
-+
-+        # Calculate scale factor: old_bpm / new_bpm
-+        # Higher BPM = shorter times, lower BPM = longer times
-+        scale = float(old_bpm) / float(new_bpm)
-+
-+        # Scale playback time
-+        self.playback_time *= scale
-+
-+        # Scale all notes in piano roll
-+        for note_item in self.piano_roll.notes:
-+            note_item.start_time *= scale
-+            note_item.duration *= scale
-+
-+        # Update total duration
-+        if self.piano_roll.notes:
-+            self.piano_roll.total_duration = max(
-+                n.start_time + n.duration for n in self.piano_roll.notes
-+            )
++        if remaining > 0:
++            # Update hint text with i18n (get lang from parent/main window)
++            lang = getattr(self.parent(), "lang", LANG_ZH)
++            self._countdown_overlay.update_hint_text(tr("press_f5_continue", lang))
++            self._countdown_overlay.show_countdown(remaining)
 +        else:
-+            self.piano_roll.total_duration *= scale
++            self._countdown_overlay.hide_countdown()
 +
-+        # Update base BPM to new value
-+        self._base_bpm = new_bpm
-+
-+        # Trigger piano roll redraw
-+        self.piano_roll._redraw_all()
-+
-+        # Update timeline duration
-+        self.timeline.set_duration(self.piano_roll.total_duration)
-+
-+        # Update playhead position
-+        self.piano_roll.set_playhead_position(self.playback_time)
-+        self.timeline.set_playhead(self.playback_time)
-+
-+        # Update time label
-+        self._update_time_label()
-+
-+        # Emit notes changed signal for undo tracking
-+        self.piano_roll.sig_notes_changed.emit()
- 
-     def _get_current_bpm(self) -> float:
-         """获取当前 BPM (从 MIDI 文件或默认 120)"""
-@@ -1096,7 +1202,7 @@ class EditorWindow(QMainWindow):
-             return
- 
-         prev_time = self.playback_time
--        self.playback_time += 0.016  # ~16ms
-+        self.playback_time += 0.016  # ~16ms per tick (BPM scaling is applied to note times)
- 
-         # 检查是否结束
-         if self.playback_time >= self.piano_roll.total_duration:
++    def resizeEvent(self, event):
++        """Handle resize to keep countdown overlay sized correctly."""
++        super().resizeEvent(event)
++        # Update overlay geometry to match piano_roll
++        self._countdown_overlay.setGeometry(self.piano_roll.rect())
 diff --git a/LyreAutoPlayer/ui/editor/piano_roll.py b/LyreAutoPlayer/ui/editor/piano_roll.py
-index 8b40200..6387d37 100644
+index 6387d37..d31f62e 100644
 --- a/LyreAutoPlayer/ui/editor/piano_roll.py
 +++ b/LyreAutoPlayer/ui/editor/piano_roll.py
-@@ -37,6 +37,7 @@ class PianoRollWidget(QGraphicsView):
-     GRID_LINE_EF = QColor(220, 120, 120)       # E-F 边界分隔线 - 鲜亮红加粗
-     GRID_LINE_C_SECONDARY = QColor(90, 150, 90)    # C 音双线副线
-     GRID_LINE_EF_SECONDARY = QColor(150, 80, 80)   # E-F 双线副线
-+    GRID_BAR_LINE = QColor(255, 255, 255, 120)     # 小节竖线（半透明白）
-     PLAYHEAD_COLOR = QColor(255, 0, 0)
-     BG_COLOR = QColor(30, 30, 30)
+@@ -13,7 +13,7 @@ from .note_item import NoteItem
+ from .undo_commands import (
+     AddNoteCommand, DeleteNotesCommand, MoveNotesCommand,
+     TransposeCommand, QuantizeCommand, AutoTransposeCommand,
+-    HumanizeCommand
++    HumanizeCommand, ApplyJitterCommand
+ )
  
-@@ -65,6 +66,7 @@ class PianoRollWidget(QGraphicsView):
-         # MIDI 数据
-         self.midi_file: Optional[mido.MidiFile] = None
-         self.total_duration = 0.0
-+        self._bar_duration_sec = 0.0
  
-         # 剪贴板 (复制粘贴用)
-         self._clipboard: List[dict] = []
-@@ -370,6 +372,15 @@ class PianoRollWidget(QGraphicsView):
-         if self.notes or self.total_duration > 0:
-             self._redraw_all()
+diff --git a/LyreAutoPlayer/ui/editor/undo_commands.py b/LyreAutoPlayer/ui/editor/undo_commands.py
+index c00a016..08cf4cc 100644
+--- a/LyreAutoPlayer/ui/editor/undo_commands.py
++++ b/LyreAutoPlayer/ui/editor/undo_commands.py
+@@ -385,6 +385,98 @@ class HumanizeCommand(QUndoCommand):
  
-+    def set_bar_duration(self, seconds_per_bar: float):
-+        """设置每小节时长（用于绘制竖线）"""
-+        seconds_per_bar = max(0.0, float(seconds_per_bar))
-+        if abs(self._bar_duration_sec - seconds_per_bar) < 1e-6:
-+            return
-+        self._bar_duration_sec = seconds_per_bar
-+        if self.notes or self.total_duration > 0:
-+            self._redraw_all()
+         pr._refresh_notes()
+ 
++        # 更新总时长
++        if pr.notes:
++            pr.total_duration = max(n.start_time + n.duration for n in pr.notes)
 +
-     def _draw_grid(self):
-         """绘制网格背景 - 增强对比度版
- 
-@@ -444,6 +455,20 @@ class PianoRollWidget(QGraphicsView):
-                 line.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
-                 self._grid_items.append(line)
- 
-+        # 3. 绘制小节竖线
-+        if self._bar_duration_sec > 1e-6:
-+            scene_height = (note_max - note_min + 1) * self.pixels_per_note
-+            pen = QPen(self.GRID_BAR_LINE, 1.0)
-+            t = 0.0
-+            max_t = self.total_duration + self._bar_duration_sec
-+            while t <= max_t:
-+                x = t * self.pixels_per_second
-+                line = self.scene.addLine(x, 0, x, scene_height, pen)
-+                line.setZValue(-9)
-+                line.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
-+                self._grid_items.append(line)
-+                t += self._bar_duration_sec
 +
-     def _create_playhead(self):
-         """创建播放头"""
-         scene_height = (self.NOTE_RANGE[1] - self.NOTE_RANGE[0] + 1) * self.pixels_per_note
-diff --git a/LyreAutoPlayer/ui/editor/timeline.py b/LyreAutoPlayer/ui/editor/timeline.py
-index 47527f6..6e2f61e 100644
---- a/LyreAutoPlayer/ui/editor/timeline.py
-+++ b/LyreAutoPlayer/ui/editor/timeline.py
-@@ -511,7 +511,7 @@ class TimelineWidget(QWidget):
-             bar_num = bn
- 
-         # 创建菜单项
--        # 注意: BPM 影响网格显示和导出，不影响实时播放速度
-+        # 注意: BPM 影响网格显示、导出与预览播放速度
-         # 真正的 tempo map 编辑（按小节变速）暂未实现
-         act_set_bpm = menu.addAction(f"Set BPM (Grid/Export) at Bar {bar_num}...")
-         act_set_global_bpm = menu.addAction("Set Global BPM (Grid/Export)...")
-@@ -531,7 +531,7 @@ class TimelineWidget(QWidget):
-     def _prompt_set_bpm_at_bar(self, bar_num: int, time_sec: float):
-         """弹出对话框设置全局 BPM (应用到整个曲目)
- 
--        注意：BPM 影响网格显示、量化和导出，不影响实时播放速度。
-+        注意：BPM 影响网格显示、量化、导出与预览播放速度。
-         真正的按小节 tempo map 编辑暂未实现。
-         """
-         bpm, ok = QInputDialog.getInt(
-@@ -539,11 +539,11 @@ class TimelineWidget(QWidget):
-             f"Set BPM (Grid/Export)",
-             f"Set BPM for grid display and export:\n"
-             f"(Clicked at bar {bar_num})\n\n"
--            f"Note: Does not change playback speed.",
-+            f"Note: Affects preview playback speed.",
-             int(self.bpm), 20, 300
-         )
-         if ok:
--            # 修改全局 BPM (影响网格和导出，不影响播放速度)
-+            # 修改全局 BPM (影响网格、导出与预览速度)
-             self.set_bpm(bpm)
-             self.sig_bpm_changed.emit(bpm)
- 
++class ApplyJitterCommand(QUndoCommand):
++    """应用输入风格抖动命令
++
++    根据 InputStyle 参数对音符应用随机抖动：
++    - timing_offset_ms: (min, max) 时间偏移范围 (毫秒, 均匀分布)
++    - duration_variation: 时值变化比例 (负值=缩短)
++    """
++
++    def __init__(self, piano_roll: "PianoRollWidget",
++                 notes_data: List[dict],
++                 timing_offset_ms: tuple = (0, 0),
++                 duration_variation: float = 0.0,
++                 style_name: str = ""):
++        super().__init__(f"Apply '{style_name}' jitter to {len(notes_data)} Note(s)")
++        self._piano_roll = piano_roll
++        self._notes_data = [d.copy() for d in notes_data]
++        self._timing_offset_ms = timing_offset_ms
++        self._duration_variation = duration_variation
++
++        # 预生成随机偏移值 (确保 redo 一致性)
++        min_offset, max_offset = timing_offset_ms
++        self._offsets: List[dict] = []
++        for _ in notes_data:
++            # 时间偏移: 均匀分布
++            if min_offset != 0 or max_offset != 0:
++                timing_ms = random.uniform(min_offset, max_offset)
++            else:
++                timing_ms = 0.0
++
++            # 时值变化: 均匀分布
++            if duration_variation != 0.0:
++                if duration_variation < 0:
++                    # 负值 = 只缩短 (staccato)
++                    dur_var = random.uniform(duration_variation, 0)
++                else:
++                    dur_var = random.uniform(-duration_variation, duration_variation)
++            else:
++                dur_var = 0.0
++
++            self._offsets.append({
++                "timing_sec": timing_ms / 1000.0,
++                "duration_var": dur_var
++            })
++
++    def redo(self):
++        """执行/重做: 应用抖动偏移"""
++        pr = self._piano_roll
++
++        for idx, data in enumerate(self._notes_data):
++            for item in pr.notes:
++                if (item.note == data["note"] and
++                    abs(item.start_time - data["start"]) < 0.001 and
++                    abs(item.duration - data["duration"]) < 0.001):
++                    # 应用偏移
++                    offset = self._offsets[idx]
++                    item.start_time = max(0, data["start"] + offset["timing_sec"])
++                    new_dur = data["duration"] * (1 + offset["duration_var"])
++                    item.duration = max(0.01, new_dur)  # 最小 10ms
++                    break
++
++        pr._refresh_notes()
++
++        # 更新总时长
++        if pr.notes:
++            pr.total_duration = max(n.start_time + n.duration for n in pr.notes)
++
++    def undo(self):
++        """撤销: 恢复原始值"""
++        pr = self._piano_roll
++
++        for idx, data in enumerate(self._notes_data):
++            offset = self._offsets[idx]
++            # 查找偏移后的音符
++            target_start = max(0, data["start"] + offset["timing_sec"])
++            target_dur = max(0.01, data["duration"] * (1 + offset["duration_var"]))
++
++            for item in pr.notes:
++                if (item.note == data["note"] and
++                    abs(item.start_time - target_start) < 0.01 and
++                    abs(item.duration - target_dur) < 0.01):
++                    # 恢复原始值
++                    item.start_time = data["start"]
++                    item.duration = data["duration"]
++                    break
++
++        pr._refresh_notes()
++
+         # 更新总时长
+         if pr.notes:
+             pr.total_duration = max(n.start_time + n.duration for n in pr.notes)
+\ No newline at end of file
 diff --git a/LyreAutoPlayer/ui/floating.py b/LyreAutoPlayer/ui/floating.py
-index 0942c32..c343dff 100644
+index c343dff..710d7a8 100644
 --- a/LyreAutoPlayer/ui/floating.py
 +++ b/LyreAutoPlayer/ui/floating.py
-@@ -229,6 +229,38 @@ class FloatingController(QWidget):
-         self.btn_stop.setToolTip(tr("stop", lang))
-         self.btn_open.setToolTip(tr("load_midi", lang))
+@@ -124,6 +124,16 @@ class FloatingController(QWidget):
+         info_row.addWidget(self.lbl_bpm)
+         layout.addLayout(info_row)
  
-+    def _sync_from_main(self):
-+        """Sync state from main window (called when showing floating controller)."""
-+        try:
-+            # Sync file name
-+            mid_path = getattr(self.main, 'mid_path', None)
-+            if mid_path:
-+                import os
-+                self.set_file_name(os.path.basename(mid_path))
-+            else:
-+                self.set_file_name(None)
++        # Countdown label (hidden by default)
++        self.lbl_countdown = QLabel("")
++        self.lbl_countdown.setStyleSheet(
++            "font-size: 28px; font-weight: bold; color: #ffcc00; "
++            "background: transparent;"
++        )
++        self.lbl_countdown.setAlignment(Qt.AlignmentFlag.AlignCenter)
++        self.lbl_countdown.hide()
++        layout.addWidget(self.lbl_countdown)
 +
-+            # Sync BPM from main window (with fallback)
-+            bpm = getattr(self.main, 'current_bpm', 120)
-+            self.set_bpm(bpm)
+         layout.addStretch()
+ 
+     def _update_progress(self):
+@@ -142,6 +152,20 @@ class FloatingController(QWidget):
+         except Exception:
+             pass  # Ignore errors during update
+ 
++    def show_countdown(self, remaining: int):
++        """Show countdown overlay for auto-pause/resume.
 +
-+            # Sync playback state
-+            is_playing = False
-+            is_paused = False
-+            is_pending = False
-+            thread = getattr(self.main, 'thread', None)
-+            if thread and thread.isRunning():
-+                is_playing = True
-+                if hasattr(thread, 'is_paused') and thread.is_paused():
-+                    is_paused = True
-+                elif hasattr(thread, 'is_pause_pending') and thread.is_pause_pending():
-+                    is_pending = True
-+            self.update_playback_state(is_playing, is_paused, is_pending)
++        Args:
++            remaining: Seconds remaining (0 = countdown finished, hide)
++        """
++        if remaining > 0:
++            self.lbl_countdown.setText(str(remaining))
++            self.lbl_countdown.show()
++            self.lbl_progress.hide()
++        else:
++            self.lbl_countdown.hide()
++            self.lbl_progress.show()
 +
-+        except Exception as e:
-+            # Fail silently - floating controller should not crash main app
-+            print(f"[FloatingController] _sync_from_main error: {e}")
+     def set_file_name(self, name: str):
+         """Set the displayed file name."""
+         if name:
+diff --git a/LyreAutoPlayer/ui/mixins/config_mixin.py b/LyreAutoPlayer/ui/mixins/config_mixin.py
+index ca1d587..1b26d39 100644
+--- a/LyreAutoPlayer/ui/mixins/config_mixin.py
++++ b/LyreAutoPlayer/ui/mixins/config_mixin.py
+@@ -30,16 +30,21 @@ class ConfigMixin:
+ 
+     def collect_cfg(self: "MainWindow") -> PlayerConfig:
+         """Collect current UI values into PlayerConfig."""
+-        # Build error config from UI
++        # Check if strict mode is enabled
++        strict_mode = getattr(self, '_strict_mode', False)
++        if hasattr(self, 'chk_strict_mode'):
++            strict_mode = self.chk_strict_mode.isChecked()
 +
-     # Compatibility stubs for methods that may be called by main window
-     def sync_speed(self, value: float):
-         """Compatibility stub - speed control removed."""
++        # Build error config (feature removed from main GUI - always disabled)
+         error_cfg = ErrorConfig(
+-            enabled=self._error_enabled,
+-            errors_per_8bars=self._error_freq,
+-            wrong_note=self.chk_wrong_note.isChecked(),
+-            miss_note=self.chk_miss_note.isChecked(),
+-            extra_note=self.chk_extra_note.isChecked(),
+-            pause_error=self.chk_pause_error.isChecked(),
+-            pause_min_ms=self.sp_pause_min.value(),
+-            pause_max_ms=self.sp_pause_max.value(),
++            enabled=False,
++            errors_per_8bars=0,
++            wrong_note=False,
++            miss_note=False,
++            extra_note=False,
++            pause_error=False,
++            pause_min_ms=100,
++            pause_max_ms=500,
+         )
+ 
+         octave_min = int(self.sp_octave_min.value())
+@@ -47,17 +52,32 @@ class ConfigMixin:
+         if octave_min > octave_max:
+             octave_min, octave_max = octave_max, octave_min
+ 
++        # Build eight-bar style (disabled in strict mode)
++        eight_bar = self._collect_eight_bar_style()
++        if strict_mode:
++            eight_bar.enabled = False
++
++        # Get pause_every_bars from UI if available
++        pause_every_bars = 0
++        if hasattr(self, 'cmb_pause_bars'):
++            pause_every_bars = self.cmb_pause_bars.currentData() or 0
++
++        # Get auto_resume_countdown from UI if available
++        auto_resume_countdown = 3
++        if hasattr(self, 'sp_auto_resume_countdown'):
++            auto_resume_countdown = self.sp_auto_resume_countdown.value()
++
+         return PlayerConfig(
+             root_mid_do=int(self.cmb_root.currentData()),
+             octave_shift=int(self.cmb_octave.currentData()),
+             transpose=int(self.sp_transpose.value()),
+-            speed=float(self.sp_speed.value()),
++            speed=1.0 if strict_mode else float(self.sp_speed.value()),
+             accidental_policy=str(self.cmb_policy.currentText()),
+             octave_min_note=octave_min,
+             octave_max_note=octave_max,
+             octave_range_auto=self.chk_octave_range_auto.isChecked(),
+             press_ms=int(self.sp_press.value()),
+-            use_midi_duration=self.chk_midi_duration.isChecked(),
++            use_midi_duration=True if strict_mode else self.chk_midi_duration.isChecked(),
+             keyboard_preset=str(self.cmb_preset.currentData()),
+             countdown_sec=int(self.sp_countdown.value()),
+             target_hwnd=self.cmb_window.currentData(),
+@@ -66,34 +86,31 @@ class ConfigMixin:
+             soundfont_path=self.soundfont_path,
+             instrument=str(self.cmb_instrument.currentText()),
+             velocity=int(self.sp_velocity.value()),
+-            input_style=self._current_input_style,
++            input_style="mechanical" if strict_mode else self._current_input_style,
+             error_config=error_cfg,
+             enable_diagnostics=self._enable_diagnostics,
+-            eight_bar_style=self._collect_eight_bar_style(),
++            eight_bar_style=eight_bar,
++            strict_mode=strict_mode,
++            pause_every_bars=pause_every_bars,
++            auto_resume_countdown=auto_resume_countdown,
+         )
+ 
+     def _collect_eight_bar_style(self: "MainWindow") -> EightBarStyle:
+-        """Collect eight-bar style settings from UI."""
+-        pattern_data = self.cmb_eight_bar_pattern.currentData()
+-        mode_data = self.cmb_eight_bar_mode.currentData()
+-        clamp_min = self.sp_eight_bar_clamp_min.value()
+-        clamp_max = self.sp_eight_bar_clamp_max.value()
+-        if clamp_min > clamp_max:
+-            clamp_min, clamp_max = clamp_max, clamp_min
++        """Return default disabled eight-bar style (feature removed from main GUI)."""
+         return EightBarStyle(
+-            enabled=self.chk_eight_bar_enabled.isChecked(),
+-            mode=mode_data if mode_data else "warp",
+-            selection_pattern=pattern_data if pattern_data else "skip2_pick1",
+-            speed_mult_min=self.sp_speed_min.value() / 100.0,
+-            speed_mult_max=self.sp_speed_max.value() / 100.0,
+-            timing_mult_min=self.sp_timing_var_min.value() / 100.0,
+-            timing_mult_max=self.sp_timing_var_max.value() / 100.0,
+-            duration_mult_min=self.sp_dur_var_min.value() / 100.0,
+-            duration_mult_max=self.sp_dur_var_max.value() / 100.0,
+-            clamp_enabled=self.chk_eight_bar_clamp.isChecked(),
+-            clamp_min=clamp_min / 100.0,
+-            clamp_max=clamp_max / 100.0,
+-            show_indicator=self.chk_show_indicator.isChecked(),
++            enabled=False,
++            mode="warp",
++            selection_pattern="skip2_pick1",
++            speed_mult_min=0.95,
++            speed_mult_max=1.05,
++            timing_mult_min=0.95,
++            timing_mult_max=1.05,
++            duration_mult_min=0.95,
++            duration_mult_max=1.05,
++            clamp_enabled=False,
++            clamp_min=0.85,
++            clamp_max=1.15,
++            show_indicator=False,
+         )
+ 
+     def save_settings(self: "MainWindow"):
+@@ -217,13 +234,10 @@ class ConfigMixin:
+             if "play_sound" in settings:
+                 self.chk_sound.setChecked(settings["play_sound"])
+ 
+-            # Apply input style
++            # Apply input style (only store the value - UI controls removed from main GUI)
+             if "input_style" in settings:
+                 style_name = settings["input_style"]
+                 self._current_input_style = style_name
+-                self._select_style_in_combo(self.cmb_input_style, style_name)
+-                self._select_style_in_combo(self.cmb_style_tab, style_name)
+-                self._update_style_params_display(style_name)
+ 
+             # Apply soundfont path
+             if "soundfont_path" in settings and settings["soundfont_path"]:
+@@ -253,71 +267,30 @@ class ConfigMixin:
+             if "input_manager" in settings:
+                 self._input_manager_params = settings["input_manager"]
+ 
+-            # Apply error_config (nested structure)
++            # Apply error_config (feature removed from main GUI - just store internal state)
+             if "error_config" in settings:
+                 ec = settings["error_config"]
+                 if "enabled" in ec:
+                     self._error_enabled = ec["enabled"]
+-                    self.chk_error_enabled.setChecked(ec["enabled"])
+-                    self.chk_quick_error_enable.setChecked(ec["enabled"])
+                 if "errors_per_8bars" in ec:
+                     self._error_freq = ec["errors_per_8bars"]
+-                    self.sp_error_freq.setValue(ec["errors_per_8bars"])
+-                if "wrong_note" in ec:
+-                    self.chk_wrong_note.setChecked(ec["wrong_note"])
+-                    self.chk_quick_wrong.setChecked(ec["wrong_note"])
+-                if "miss_note" in ec:
+-                    self.chk_miss_note.setChecked(ec["miss_note"])
+-                    self.chk_quick_miss.setChecked(ec["miss_note"])
+-                if "extra_note" in ec:
+-                    self.chk_extra_note.setChecked(ec["extra_note"])
+-                    self.chk_quick_extra.setChecked(ec["extra_note"])
+-                if "pause_error" in ec:
+-                    self.chk_pause_error.setChecked(ec["pause_error"])
+-                    self.chk_quick_pause.setChecked(ec["pause_error"])
+-                if "pause_min_ms" in ec:
+-                    self.sp_pause_min.setValue(ec["pause_min_ms"])
+-                if "pause_max_ms" in ec:
+-                    self.sp_pause_max.setValue(ec["pause_max_ms"])
+-
+-            # Apply eight_bar_config (nested structure)
+-            if "eight_bar_config" in settings:
+-                ebc = settings["eight_bar_config"]
+-                if "enabled" in ebc:
+-                    self.chk_eight_bar_enabled.setChecked(ebc["enabled"])
+-                    self.chk_quick_eight_bar.setChecked(ebc["enabled"])
+-                if "mode" in ebc:
+-                    mode = ebc["mode"]
+-                    for i in range(self.cmb_eight_bar_mode.count()):
+-                        if self.cmb_eight_bar_mode.itemData(i) == mode:
+-                            self.cmb_eight_bar_mode.setCurrentIndex(i)
+-                            break
+-                if "pattern" in ebc:
+-                    pattern = ebc["pattern"]
+-                    for i in range(self.cmb_eight_bar_pattern.count()):
+-                        if self.cmb_eight_bar_pattern.itemData(i) == pattern:
+-                            self.cmb_eight_bar_pattern.setCurrentIndex(i)
++
++            # Apply eight_bar_config (feature removed from main GUI - skip widget updates)
++
++            # Apply strict_mode_config (nested structure)
++            if "strict_mode_config" in settings:
++                smc = settings["strict_mode_config"]
++                if "enabled" in smc and hasattr(self, 'chk_strict_mode'):
++                    self.chk_strict_mode.setChecked(smc["enabled"])
++                    self._strict_mode = smc["enabled"]
++                if "pause_every_bars" in smc and hasattr(self, 'cmb_pause_bars'):
++                    pause_bars = smc["pause_every_bars"]
++                    for i in range(self.cmb_pause_bars.count()):
++                        if self.cmb_pause_bars.itemData(i) == pause_bars:
++                            self.cmb_pause_bars.setCurrentIndex(i)
+                             break
+-                if "speed_min" in ebc:
+-                    self.sp_speed_min.setValue(ebc["speed_min"])
+-                if "speed_max" in ebc:
+-                    self.sp_speed_max.setValue(ebc["speed_max"])
+-                if "timing_min" in ebc:
+-                    self.sp_timing_var_min.setValue(ebc["timing_min"])
+-                if "timing_max" in ebc:
+-                    self.sp_timing_var_max.setValue(ebc["timing_max"])
+-                if "duration_min" in ebc:
+-                    self.sp_dur_var_min.setValue(ebc["duration_min"])
+-                if "duration_max" in ebc:
+-                    self.sp_dur_var_max.setValue(ebc["duration_max"])
+-                if "clamp_enabled" in ebc:
+-                    self.chk_eight_bar_clamp.setChecked(ebc["clamp_enabled"])
+-                if "clamp_min" in ebc:
+-                    self.sp_eight_bar_clamp_min.setValue(ebc["clamp_min"])
+-                if "clamp_max" in ebc:
+-                    self.sp_eight_bar_clamp_max.setValue(ebc["clamp_max"])
+-                if "show_indicator" in ebc:
+-                    self.chk_show_indicator.setChecked(ebc["show_indicator"])
++                if "auto_resume_countdown" in smc and hasattr(self, 'sp_auto_resume_countdown'):
++                    self.sp_auto_resume_countdown.setValue(smc["auto_resume_countdown"])
+ 
+             # Unconditionally sync diagnostics state after loading
+             self._sync_diagnostics_state()
 diff --git a/LyreAutoPlayer/ui/mixins/playback_mixin.py b/LyreAutoPlayer/ui/mixins/playback_mixin.py
-index 247a506..122b667 100644
+index 122b667..03925bd 100644
 --- a/LyreAutoPlayer/ui/mixins/playback_mixin.py
 +++ b/LyreAutoPlayer/ui/mixins/playback_mixin.py
-@@ -28,6 +28,7 @@ class PlaybackMixin:
+@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
+ from PyQt6.QtWidgets import QMessageBox
+ 
+ from player import PlayerThread
++from player.midi_parser import NoteEvent
+ from i18n import tr
+ 
+ if TYPE_CHECKING:
+@@ -24,12 +25,52 @@ class PlaybackMixin:
+             return
+ 
+         cfg = self.collect_cfg()
+-        self.thread = PlayerThread(self.events, cfg)
++
++        # Unified Playback: Get events from editor if available
++        events_to_use = self.events
++        editor = getattr(self, 'editor_window', None)
++        if editor is not None and editor.isVisible():
++            # Export events from editor (syncs drag offsets)
++            editor_events = editor.export_events()
++            if editor_events:
++                # Convert dict to NoteEvent objects
++                events_to_use = [
++                    NoteEvent(time=ev["time"], note=ev["note"], duration=ev["duration"])
++                    for ev in editor_events
++                ]
++                self.append_log(f"Using {len(events_to_use)} events from editor")
++
++            # Use editor BPM for bar duration calculation
++            cfg.bar_duration_override = editor.get_bar_duration()
++            cfg.editor_bpm = editor.sp_bpm.value() if hasattr(editor, 'sp_bpm') else 0
++
++            # Use editor's pause, octave, and input style settings
++            cfg.pause_every_bars = editor.get_pause_bars()
++            cfg.auto_resume_countdown = editor.get_auto_resume_countdown()
++            cfg.octave_shift = editor.get_octave_shift()
++            cfg.input_style = editor.get_input_style()
++
++        self.thread = PlayerThread(events_to_use, cfg)
          self.thread.log.connect(self.append_log)
          self.thread.finished.connect(self.on_finished)
          self.thread.paused.connect(self._on_thread_paused)
-+        self.thread.progress.connect(self._on_progress_update)
++        self.thread.resumed.connect(self._on_thread_resumed)
+         self.thread.progress.connect(self._on_progress_update)
  
++        # Connect countdown signals
++        self.thread.countdown_tick.connect(self._on_countdown_tick)
++        self.thread.auto_pause_at_bar.connect(self._on_auto_pause_at_bar)
++
++        # Connect to EditorWindow if open
++        if editor is not None and editor.isVisible():
++            self.thread.progress.connect(editor.on_external_progress)
++            self.thread.paused.connect(editor.on_external_paused)
++            self.thread.resumed.connect(editor.on_external_resumed)
++            self.thread.finished.connect(editor.on_external_stopped)
++            self.thread.countdown_tick.connect(editor.update_countdown)
++            editor.set_follow_mode(True)
++            editor._main_window = self
++
          self.btn_start.setEnabled(False)
          self.btn_stop.setEnabled(True)
-@@ -72,9 +73,14 @@ class PlaybackMixin:
-         if self.thread and self.thread.isRunning():
-             self.thread.stop()
-             self.append_log(tr("stopping", self.lang))
-+            # Reset progress tracking
-+            self.current_time = 0.0
-+            self.total_duration = 0.0
-             # Reset playback state in floating controller
-             if self.floating_controller:
-                 self.floating_controller.update_playback_state(False)
-+                if self.floating_controller.isVisible():
-+                    self.floating_controller._update_progress()
-             # Notify diagnostics window of playback stop
-             if self.diagnostics_window:
-                 self.diagnostics_window.on_playback_stopped()
-@@ -95,15 +101,28 @@ class PlaybackMixin:
-         """Called when playback finishes."""
-         self.btn_start.setEnabled(True)
-         self.btn_stop.setEnabled(False)
-+        # Reset progress tracking
-+        self.current_time = 0.0
-+        self.total_duration = 0.0
-         # Reset playback state in floating controller
-         if self.floating_controller:
-             self.floating_controller.update_playback_state(False)
-+            if self.floating_controller.isVisible():
-+                self.floating_controller._update_progress()
- 
-     def _on_thread_paused(self: "MainWindow"):
-         """Called when playback thread actually pauses (at bar end)."""
+         # Update floating controller playback state
+@@ -115,6 +156,11 @@ class PlaybackMixin:
          if self.floating_controller:
              self.floating_controller.update_playback_state(True, is_paused=True)
  
-+    def _on_progress_update(self: "MainWindow", current_time: float, total_duration: float):
-+        """Called when playback progress updates."""
-+        self.current_time = current_time
-+        self.total_duration = total_duration
-+        # Update floating controller progress if visible
++    def _on_thread_resumed(self: "MainWindow"):
++        """Called when playback thread resumes (after pause or auto-pause countdown)."""
++        if self.floating_controller:
++            self.floating_controller.update_playback_state(True, is_paused=False, is_pending=False)
++
+     def _on_progress_update(self: "MainWindow", current_time: float, total_duration: float):
+         """Called when playback progress updates."""
+         self.current_time = current_time
+@@ -123,6 +169,16 @@ class PlaybackMixin:
+         if self.floating_controller and self.floating_controller.isVisible():
+             self.floating_controller._update_progress()
+ 
++    def _on_countdown_tick(self: "MainWindow", remaining: int):
++        """Called when countdown tick updates (for auto-pause/resume)."""
++        # Forward countdown to floating controller
 +        if self.floating_controller and self.floating_controller.isVisible():
-+            self.floating_controller._update_progress()
++            self.floating_controller.show_countdown(remaining)
++
++    def _on_auto_pause_at_bar(self: "MainWindow", bar_index: int):
++        """Called when auto-pause triggers at a bar boundary."""
++        self.append_log(f"Auto-paused at bar {bar_index}")
 +
      def on_octave_up(self: "MainWindow"):
          """Shortcut handler: increase octave shift."""
          idx = self.cmb_octave.currentIndex()
-diff --git a/ops/ai/state/STATE.md b/ops/ai/state/STATE.md
-index 4c10519..0142b6a 100644
---- a/ops/ai/state/STATE.md
-+++ b/ops/ai/state/STATE.md
-@@ -2,7 +2,7 @@
+diff --git a/LyreAutoPlayer/ui/mixins/settings_preset_mixin.py b/LyreAutoPlayer/ui/mixins/settings_preset_mixin.py
+index 8cb6837..38b20e1 100644
+--- a/LyreAutoPlayer/ui/mixins/settings_preset_mixin.py
++++ b/LyreAutoPlayer/ui/mixins/settings_preset_mixin.py
+@@ -39,9 +39,6 @@ class SettingsPresetMixin:
+         if 'input_style' in preset_settings:
+             style_name = preset_settings['input_style']
+             self._current_input_style = style_name
+-            self._select_style_in_combo(self.cmb_input_style, style_name)
+-            self._select_style_in_combo(self.cmb_style_tab, style_name)
+-            self._update_style_params_display(style_name)
  
- ## Latest Task
- - TASK_ID: 20260103-midi-editor-pipeline
--- Status: DONE (Phase 1-3 + Git cleanup + SoundFont config)
-+- Status: BLOCKED (BPM Scaling 未生效)
- - Pointer: ops/ai/tasks/20260103-midi-editor-pipeline
+         if 'press_ms' in preset_settings:
+             self.sp_press.setValue(preset_settings['press_ms'])
+@@ -63,21 +60,13 @@ class SettingsPresetMixin:
+                 self._input_manager_params = {}
+             self._input_manager_params.update(im)
  
- ## Previous Task
-@@ -11,10 +11,10 @@
- - Pointer: ops/ai/tasks/20260102-2138-main-mixin-refactor
++        # Error config - feature removed from main GUI, just store internal state
+         if 'error_config' in preset_settings:
+             ec = preset_settings['error_config']
+             if 'enabled' in ec:
+                 self._error_enabled = ec['enabled']
+-                self.chk_error_enabled.setChecked(ec['enabled'])
+-                self.chk_quick_error_enable.setChecked(ec['enabled'])
+             if 'errors_per_8bars' in ec:
+                 self._error_freq = ec['errors_per_8bars']
+-                self.sp_error_freq.setValue(ec['errors_per_8bars'])
+-            if 'wrong_note' in ec:
+-                self.chk_wrong_note.setChecked(ec['wrong_note'])
+-                self.chk_quick_wrong.setChecked(ec['wrong_note'])
+-            if 'miss_note' in ec:
+-                self.chk_miss_note.setChecked(ec['miss_note'])
+-                self.chk_quick_miss.setChecked(ec['miss_note'])
  
- ## Current Focus
--- MIDI 编辑器 Phase 1-3 完成 + Git 清理 + SoundFont 配置
--- Session 3: 141MB sf2 从历史移除, WSL autocrlf 修复, soundfont_path 更新
--- Phase 3 已实现: 双击创建/移调/量化/撤销重做 (undo_commands.py)
--- 待验证: 音频预览功能 (LyreAutoPlayer GUI 已启动)
-+- MIDI 编辑器 Phase 1-3 完成，**BPM 缩放未生效**
-+- Session 4: BPM 缩放代码存在，但用户测试显示不起作用
-+- **阻塞点**: 调 BPM 后秒数/音符长度不变，保存后仍原速
-+- 待排查: 信号连接、`_base_bpm` 初始值、方法调用链
+         name = preset['name_zh'] if self.lang == LANG_ZH else preset['name_en']
+         self.append_log(f"[OK] {tr('preset_applied', self.lang)}: {name}")
+@@ -109,19 +98,12 @@ class SettingsPresetMixin:
+         self.chk_sound.setChecked(False)
+         self.sp_velocity.setValue(90)
  
- ## Completed Summary (MIDI Editor Phase 1)
- - **Phase 1 钢琴卷帘骨架完成**: 6 个新文件 (~745 行)
-@@ -75,10 +75,13 @@
- ---
++        # Input style - just store internal state (UI controls removed from main GUI)
+         self._current_input_style = 'mechanical'
+-        self._select_style_in_combo(self.cmb_input_style, 'mechanical')
+-        self._select_style_in_combo(self.cmb_style_tab, 'mechanical')
+-        self._update_style_params_display('mechanical')
  
- ## Next Actions
--1. 验证音频预览功能 (用户手动测试)
--2. Phase 4: 超音域处理预览
--3. 考虑 Git LFS 或外部下载方案管理 FluidR3_GM.sf2
--4. 清理 analyzetools/eop/ 多版本脚本 (可选)
-+1. **[BLOCKER]** 排查 BPM 缩放不生效问题:
-+   - 添加 debug print 到 `_on_bpm_changed()` 和 `_apply_global_bpm()`
-+   - 验证信号连接是否正确触发
-+   - 检查 `_base_bpm` 初始值
-+2. 验证音频预览功能 (用户手动测试)
-+3. Phase 4: 超音域处理预览
-+4. 考虑 Git LFS 或外部下载方案管理 FluidR3_GM.sf2
++        # Error config - feature removed from main GUI
+         self._error_enabled = False
+         self._error_freq = 1
+-        self.chk_error_enabled.setChecked(False)
+-        self.chk_quick_error_enable.setChecked(False)
+-        self.sp_error_freq.setValue(1)
+-        self.chk_eight_bar_clamp.setChecked(False)
+-        self.sp_eight_bar_clamp_min.setValue(85)
+-        self.sp_eight_bar_clamp_max.setValue(115)
  
- ---
--*Last Updated: 2026-01-04 (Session 3 - Git cleanup + WSL fix + SoundFont config)*
-+*Last Updated: 2026-01-04 (Session 4 - BPM Scaling 未生效，待排查)*
-diff --git a/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/context_pack.md b/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/context_pack.md
-index 3f0ffca..ec92fa2 100644
---- a/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/context_pack.md
-+++ b/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/context_pack.md
-@@ -4,7 +4,10 @@
- 20260103-midi-editor-pipeline
+         self.append_log(f"[OK] {tr('reset_defaults', self.lang)}")
  
- ## Status
--DONE - Phase 1 + 1.5 + 2 + Optimization Fixes + Session 2 (2026-01-04)
-+**BLOCKED** - BPM Scaling 存在问题 (Session 4, 2026-01-04)
-+
-+### 用户反馈
-+> 调 BPM 后秒数/音符长度不变，保存后仍原速
+@@ -166,30 +148,37 @@ class SettingsPresetMixin:
+             "soundfont_path": getattr(self, 'soundfont_path', '') or '',
+             "last_midi_path": getattr(self, 'mid_path', '') or '',
+             "input_manager": getattr(self, '_input_manager_params', {}),
++            # Error config - feature removed from main GUI, use stored state
+             "error_config": {
+-                "enabled": self._error_enabled,
+-                "errors_per_8bars": self._error_freq,
+-                "wrong_note": self.chk_wrong_note.isChecked(),
+-                "miss_note": self.chk_miss_note.isChecked(),
+-                "extra_note": self.chk_extra_note.isChecked(),
+-                "pause_error": self.chk_pause_error.isChecked(),
+-                "pause_min_ms": self.sp_pause_min.value(),
+-                "pause_max_ms": self.sp_pause_max.value(),
++                "enabled": getattr(self, '_error_enabled', False),
++                "errors_per_8bars": getattr(self, '_error_freq', 0),
++                "wrong_note": False,
++                "miss_note": False,
++                "extra_note": False,
++                "pause_error": False,
++                "pause_min_ms": 100,
++                "pause_max_ms": 500,
+             },
++            # Eight-bar config - feature removed from main GUI
+             "eight_bar_config": {
+-                "enabled": self.chk_eight_bar_enabled.isChecked(),
+-                "mode": self.cmb_eight_bar_mode.currentData() or "warp",
+-                "pattern": self.cmb_eight_bar_pattern.currentData() or "skip2_pick1",
+-                "speed_min": self.sp_speed_min.value(),
+-                "speed_max": self.sp_speed_max.value(),
+-                "timing_min": self.sp_timing_var_min.value(),
+-                "timing_max": self.sp_timing_var_max.value(),
+-                "duration_min": self.sp_dur_var_min.value(),
+-                "duration_max": self.sp_dur_var_max.value(),
+-                "clamp_enabled": self.chk_eight_bar_clamp.isChecked(),
+-                "clamp_min": self.sp_eight_bar_clamp_min.value(),
+-                "clamp_max": self.sp_eight_bar_clamp_max.value(),
+-                "show_indicator": self.chk_show_indicator.isChecked(),
++                "enabled": False,
++                "mode": "warp",
++                "pattern": "skip2_pick1",
++                "speed_min": 95,
++                "speed_max": 105,
++                "timing_min": 95,
++                "timing_max": 105,
++                "duration_min": 95,
++                "duration_max": 105,
++                "clamp_enabled": False,
++                "clamp_min": 85,
++                "clamp_max": 115,
++                "show_indicator": False,
++            },
++            "strict_mode_config": {
++                "enabled": hasattr(self, 'chk_strict_mode') and self.chk_strict_mode.isChecked(),
++                "pause_every_bars": self.cmb_pause_bars.currentData() if hasattr(self, 'cmb_pause_bars') else 0,
++                "auto_resume_countdown": self.sp_auto_resume_countdown.value() if hasattr(self, 'sp_auto_resume_countdown') else 3,
+             },
+         }
  
- ## Goal
- 实现钢琴卷帘编辑器基础编辑功能 + 时间轴BPM/小节显示
-@@ -87,3 +90,37 @@ e41d2d6 feat(editor): complete MIDI editor Phase 1-3 implementation
- - mido (MIDI解析)
- - PyQt6 (GUI)
- - fluidsynth (音频预览, 需 C:\soundfonts\FluidR3_GM.sf2)
-+
-+## Session 4 Changes (2026-01-04 - BPM Scaling) - **未验证**
-+
-+| Category | Status | Notes |
-+|----------|--------|-------|
-+| BPM Scaling | ❌ 未生效 | `_apply_global_bpm()` 方法存在，但用户测试显示不起作用 |
-+| Signal Flow | ⚠️ 代码审查 | 信号连接代码存在，未实际验证触发 |
-+| Save Path | ⚠️ 代码审查 | `_rebuild_midi_from_notes()` 代码存在，保存后仍原速 |
-+| Code Status | ✅ 实际运行 | 无 debug print (grep exit 1); 语法检查通过 (py_compile exit 0) |
-+
-+### 已知问题
-+1. **BPM 调整不生效**: 改变 BPM spinbox 后，音符时长/位置不变
-+2. **保存后原速**: 保存的 MIDI 文件仍按原始速度播放
-+
-+### BPM Scaling Formula
-+```python
-+scale = old_bpm / new_bpm
-+note_item.start_time *= scale
-+note_item.duration *= scale
-+playback_time *= scale
-+```
-+
-+### Key Method (editor_window.py:648-711)
-+```python
-+def _apply_global_bpm(self, new_bpm: int):
-+    # Scale all note times when BPM changes
-+    # Updates: notes, playback_time, total_duration, timeline
-+```
-+
-+### Diff Stats (当前未提交变更 2026-01-04)
-+```
-+14 files changed, 1283 insertions(+), 78 deletions(-)
-+```
-+> 注: 包含 Session 1-4 所有未提交变更 + ops/ai 文档更新
-diff --git a/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/diff.patch b/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/diff.patch
-index e7e3c93..3c91112 100644
---- a/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/diff.patch
-+++ b/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/diff.patch
-@@ -1,51 +0,0 @@
--diff --git a/.gitignore b/.gitignore
--index cee3cad..8191698 100644
----- a/.gitignore
--+++ b/.gitignore
--@@ -373,4 +373,7 @@ private/tasks/*
-- 
-- # Claude Code runtime state
-- .claude/state/
---.claude/private/LyreAutoPlayer/FluidR3_GM.sf2
--+.claude/private/
--+
--+# Large binary files (use Git LFS or download separately)
--+LyreAutoPlayer/FluidR3_GM.sf2
--diff --git a/LyreAutoPlayer/midi-change/index.json b/LyreAutoPlayer/midi-change/index.json
--index 6caef19..0a58dfa 100644
----- a/LyreAutoPlayer/midi-change/index.json
--+++ b/LyreAutoPlayer/midi-change/index.json
--@@ -8,6 +8,15 @@
--       "last_modified": "2026-01-03T22:41:48.578857",
--       "source_file_size": 5682,
--       "source_note_count": 626
--+    },
--+    {
--+      "source_path": "d:\\dw11\\piano\\lyreautoplayer\\midi\\《凡人修仙传》op-不凡.mid",
--+      "saved_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\《凡人修仙传》op-不凡_custom.mid",
--+      "display_name": "《凡人修仙传》OP-不凡_custom",
--+      "edit_style": "custom",
--+      "last_modified": "2026-01-04T04:36:49.977714",
--+      "source_file_size": 7348,
--+      "source_note_count": 916
--     }
--   ]
-- }
--\ No newline at end of file
--diff --git "a/LyreAutoPlayer/midi-change/\343\200\212\345\207\241\344\272\272\344\277\256\344\273\231\344\274\240\343\200\213OP-\344\270\215\345\207\241_custom.mid" "b/LyreAutoPlayer/midi-change/\343\200\212\345\207\241\344\272\272\344\277\256\344\273\231\344\274\240\343\200\213OP-\344\270\215\345\207\241_custom.mid"
--new file mode 100644
--index 0000000..5321b65
--Binary files /dev/null and "b/LyreAutoPlayer/midi-change/\343\200\212\345\207\241\344\272\272\344\277\256\344\273\231\344\274\240\343\200\213OP-\344\270\215\345\207\241_custom.mid" differ
--diff --git a/LyreAutoPlayer/settings.json b/LyreAutoPlayer/settings.json
--index 9554d67..9bec5de 100644
----- a/LyreAutoPlayer/settings.json
--+++ b/LyreAutoPlayer/settings.json
--@@ -18,7 +18,7 @@
--   "velocity": 90,
--   "input_style": "natural",
--   "enable_diagnostics": false,
---  "soundfont_path": "D:\\dw11\\piano\\LyreAutoPlayer\\FluidR3_GM.sf2",
--+  "soundfont_path": "C:\\soundfonts\\FluidR3_GM.sf2",
--   "last_midi_path": "D:/dw11/piano/LyreAutoPlayer/midi/Sis puella magica!.mid",
--   "input_manager": {},
--   "error_config": {
-diff --git a/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/execute.md b/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/execute.md
-index 57e337d..5ac398c 100644
---- a/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/execute.md
-+++ b/ops/ai/tasks/20260103-midi-editor-pipeline/evidence/execute.md
-@@ -1,50 +1,84 @@
--# Execute Log - Session 2026-01-04
-+# Execute Log - Session 4 (BPM Scaling) - **未生效**
+@@ -245,38 +234,17 @@ class SettingsPresetMixin:
+         if "play_sound" in settings:
+             self.chk_sound.setChecked(settings["play_sound"])
  
--## Git Status (Final)
-+## Date: 2026-01-04
-+
-+## 用户反馈 (实际测试结果)
-+> 调 BPM 后秒数/音符长度不变，保存后仍原速
-+
-+**结论**: BPM 缩放功能代码存在，但实际运行时不生效。
-+
-+## Git Status (Updated)
- ```
- $ git status --short
--(clean - all committed)
-+M LyreAutoPlayer/main.py
-+ M LyreAutoPlayer/midi-change/index.json
-+ M LyreAutoPlayer/player/midi_parser.py
-+ M LyreAutoPlayer/player/thread.py
-+ M LyreAutoPlayer/settings.json
-+ M LyreAutoPlayer/ui/editor/editor_window.py
-+ M LyreAutoPlayer/ui/editor/piano_roll.py
-+ M LyreAutoPlayer/ui/editor/timeline.py
-+ M LyreAutoPlayer/ui/floating.py
-+ M LyreAutoPlayer/ui/mixins/playback_mixin.py
-+ M ops/ai/state/STATE.md
-+ M ops/ai/tasks/20260103-midi-editor-pipeline/evidence/context_pack.md
-+ M ops/ai/tasks/20260103-midi-editor-pipeline/evidence/diff.patch
-+ M ops/ai/tasks/20260103-midi-editor-pipeline/handoff.md
-+?? LyreAutoPlayer/midi-change/Megalovania-Undertale-OST_custom.mid
-+?? LyreAutoPlayer/midi-change/《凡人修仙传》op-不凡_custom_custom.mid
-+```
++        # Input style - just store internal state (UI controls removed from main GUI)
+         if "input_style" in settings:
+-            style_name = settings["input_style"]
+-            self._current_input_style = style_name
+-            self._select_style_in_combo(self.cmb_input_style, style_name)
+-            self._select_style_in_combo(self.cmb_style_tab, style_name)
+-            self._update_style_params_display(style_name)
++            self._current_input_style = settings["input_style"]
  
--$ git log --oneline -5
-+## Recent Commits
-+```
-+$ git log -3 --oneline
-+b7e218e docs: update task evidence and state for Session 3
- 80f31e1 chore: update midi index and add new midi file
- bc83ada chore: update soundfont path
--9ece6c7 fix: correct .gitignore rules for private dir and sf2 file
--e41d2d6 feat(editor): complete MIDI editor Phase 1-3 implementation
--0743cef chore: add .aiexclude to minimize AI context noise
- ```
++        # Error config - feature removed from main GUI, just store internal state
+         if "error_config" in settings:
+             ec = settings["error_config"]
+             if "enabled" in ec:
+                 self._error_enabled = ec["enabled"]
+-                self.chk_error_enabled.setChecked(ec["enabled"])
+-                self.chk_quick_error_enable.setChecked(ec["enabled"])
+             if "errors_per_8bars" in ec:
+                 self._error_freq = ec["errors_per_8bars"]
+-                self.sp_error_freq.setValue(ec["errors_per_8bars"])
+-            if "wrong_note" in ec:
+-                self.chk_wrong_note.setChecked(ec["wrong_note"])
+-                self.chk_quick_wrong.setChecked(ec["wrong_note"])
+-            if "miss_note" in ec:
+-                self.chk_miss_note.setChecked(ec["miss_note"])
+-                self.chk_quick_miss.setChecked(ec["miss_note"])
+-            if "extra_note" in ec:
+-                self.chk_extra_note.setChecked(ec["extra_note"])
+-                self.chk_quick_extra.setChecked(ec["extra_note"])
+-            if "pause_error" in ec:
+-                self.chk_pause_error.setChecked(ec["pause_error"])
+-                self.chk_quick_pause.setChecked(ec["pause_error"])
+-            if "pause_min_ms" in ec:
+-                self.sp_pause_min.setValue(ec["pause_min_ms"])
+-            if "pause_max_ms" in ec:
+-                self.sp_pause_max.setValue(ec["pause_max_ms"])
  
--## Key Operations Performed
-+## Key Changes (Session 4)
+         if "input_manager" in settings:
+             self._input_manager_params = settings["input_manager"]
+@@ -286,41 +254,4 @@ class SettingsPresetMixin:
+         # Unconditionally sync diagnostics state after preset apply
+         self._sync_diagnostics_state()
  
--### 1. Git Filter-Branch (Large File Removal)
--```
--$ git filter-branch --force --index-filter "git rm --cached LyreAutoPlayer/FluidR3_GM.sf2" -- origin/main..HEAD
--影响: 从 3 个未推送 commit 中移除 141MB sf2 文件
--```
-+### BPM Scaling Implementation
-+- **File**: `LyreAutoPlayer/ui/editor/editor_window.py`
-+- **Method**: `_apply_global_bpm(new_bpm: int)`
-+- **Formula**: `scale = old_bpm / new_bpm`
-+- **Affected fields**:
-+  - `note_item.start_time *= scale`
-+  - `note_item.duration *= scale`
-+  - `playback_time *= scale`
-+  - `total_duration` recalculated
+-        # Apply eight_bar_config (nested structure)
+-        if "eight_bar_config" in settings:
+-            ebc = settings["eight_bar_config"]
+-            if "enabled" in ebc:
+-                self.chk_eight_bar_enabled.setChecked(ebc["enabled"])
+-                self.chk_quick_eight_bar.setChecked(ebc["enabled"])
+-            if "mode" in ebc:
+-                mode = ebc["mode"]
+-                for i in range(self.cmb_eight_bar_mode.count()):
+-                    if self.cmb_eight_bar_mode.itemData(i) == mode:
+-                        self.cmb_eight_bar_mode.setCurrentIndex(i)
+-                        break
+-            if "pattern" in ebc:
+-                pattern = ebc["pattern"]
+-                for i in range(self.cmb_eight_bar_pattern.count()):
+-                    if self.cmb_eight_bar_pattern.itemData(i) == pattern:
+-                        self.cmb_eight_bar_pattern.setCurrentIndex(i)
+-                        break
+-            if "speed_min" in ebc:
+-                self.sp_speed_min.setValue(ebc["speed_min"])
+-            if "speed_max" in ebc:
+-                self.sp_speed_max.setValue(ebc["speed_max"])
+-            if "timing_min" in ebc:
+-                self.sp_timing_var_min.setValue(ebc["timing_min"])
+-            if "timing_max" in ebc:
+-                self.sp_timing_var_max.setValue(ebc["timing_max"])
+-            if "duration_min" in ebc:
+-                self.sp_dur_var_min.setValue(ebc["duration_min"])
+-            if "duration_max" in ebc:
+-                self.sp_dur_var_max.setValue(ebc["duration_max"])
+-            if "clamp_enabled" in ebc:
+-                self.chk_eight_bar_clamp.setChecked(ebc["clamp_enabled"])
+-            if "clamp_min" in ebc:
+-                self.sp_eight_bar_clamp_min.setValue(ebc["clamp_min"])
+-            if "clamp_max" in ebc:
+-                self.sp_eight_bar_clamp_max.setValue(ebc["clamp_max"])
+-            if "show_indicator" in ebc:
+-                self.chk_show_indicator.setChecked(ebc["show_indicator"])
++        # Eight-bar config - feature removed from main GUI, skip widget updates
+diff --git a/LyreAutoPlayer/ui/tab_builders.py b/LyreAutoPlayer/ui/tab_builders.py
+index 960a54a..1ec1197 100644
+--- a/LyreAutoPlayer/ui/tab_builders.py
++++ b/LyreAutoPlayer/ui/tab_builders.py
+@@ -109,13 +109,6 @@ def build_main_tab(window: "MainWindow") -> QWidget:
+     window.lbl_preset = QLabel()
+     form.addRow(window.lbl_preset, window.cmb_preset)
  
--### 2. WSL Line Ending Fix
--```
--Before: wsl git status | wc -l = 284
--After:  wsl git status | wc -l = 2
--根因: core.autocrlf 配置不一致 (Windows=true, WSL=unset)
--修复: git config core.autocrlf true && git checkout -- .
--```
-+### Signal Flow (代码审查验证，未实际运行验证)
-+1. `sp_bpm.valueChanged` → `_on_bpm_changed()` → `_apply_global_bpm()` - 代码存在
-+2. `timeline.sig_bpm_changed` → `_on_timeline_bpm_changed()` → `_apply_global_bpm()` - 代码存在
- 
--### 3. .gitignore Correction (9ece6c7)
--```
--恢复: .claude/private/
--新增: LyreAutoPlayer/FluidR3_GM.sf2
--```
-+### Save Path (代码审查验证，未实际运行验证)
-+- `_rebuild_midi_from_notes()` 代码中使用 `note_item.start_time` 和 `note_item.duration`
-+- **用户反馈: 保存后仍原速，缩放未生效**
-+
-+### BPM Scaling Logic Verification (Code Review)
-+> 注: 以下为代码审查验证，非实际运行测试脚本
- 
--### 4. SoundFont Path Update (bc83ada)
-+**验证公式**:
-+- 120 → 60 BPM: `scale = 120/60 = 2.0` → 时间 ×2
-+- 120 → 240 BPM: `scale = 120/240 = 0.5` → 时间 ×0.5
-+
-+**代码路径确认** (editor_window.py:654-711):
-+1. `_apply_global_bpm()` 计算 `scale = old_bpm / new_bpm`
-+2. 遍历 `piano_roll.notes` 缩放 `start_time` 和 `duration`
-+3. 调用 `_redraw_all()` 更新几何
-+4. `_rebuild_midi_from_notes()` 直接使用缩放后的值保存
-+
-+## Syntax Check (实际运行 2026-01-04)
- ```
--settings.json:21 -> C:\soundfonts\FluidR3_GM.sf2
-+$ cd d:/dw11/piano/LyreAutoPlayer && python -m py_compile ui/editor/editor_window.py 2>&1; echo "Exit code: $?"
-+Exit code: 0
- ```
-+> py_compile 成功时无输出，仅返回 exit code 0
- 
--### 5. Cleanup
-+## Debug Print Check (实际运行 2026-01-04)
- ```
--删除: C:/soundfonts/fluid-soundfont.zip (131MB)
-+$ grep -n "\[BPM\]" d:/dw11/piano/LyreAutoPlayer/ui/editor/editor_window.py 2>&1; echo "Exit code: $?"
-+Exit code: 1
- ```
+-    # Input style selector
+-    window.cmb_input_style = QComboBox()
+-    window._rebuild_style_combo(window.cmb_input_style)
+-    window.cmb_input_style.currentIndexChanged.connect(window.on_input_style_changed)
+-    window.lbl_input_style = QLabel()
+-    form.addRow(window.lbl_input_style, window.cmb_input_style)
 -
--## Audio Verification
--- LyreAutoPlayer GUI 已启动
--- 待用户手动验证音频预览功能
-+> grep 未找到匹配时返回 exit code 1，无输出表示代码中不存在 [BPM] 调试打印
-diff --git a/ops/ai/tasks/20260103-midi-editor-pipeline/handoff.md b/ops/ai/tasks/20260103-midi-editor-pipeline/handoff.md
-index 75069a2..8aba262 100644
---- a/ops/ai/tasks/20260103-midi-editor-pipeline/handoff.md
-+++ b/ops/ai/tasks/20260103-midi-editor-pipeline/handoff.md
-@@ -1,6 +1,6 @@
- # Handoff - 20260103-midi-editor-pipeline
+     # Countdown
+     window.sp_countdown = QSpinBox()
+     window.sp_countdown.setRange(0, 10)
+@@ -169,48 +162,42 @@ def build_main_tab(window: "MainWindow") -> QWidget:
  
--## Status: DONE (Phase 1 + 1.5 + 2 + Timeline优化)
-+## Status: BLOCKED (BPM Scaling 未生效)
+     layout.addWidget(window.grp_sound)
  
- ## Summary
- MIDI 编辑管线任务。Phase 1 + Phase 1.5 + Phase 2 已完成。
-@@ -447,13 +447,53 @@ bc83ada chore: update soundfont path
- e41d2d6 feat(editor): complete MIDI editor Phase 1-3 implementation
- ```
+-    # --- Quick Error Select Group ---
+-    window.grp_quick_error = QGroupBox()
+-    quick_err_layout = QHBoxLayout(window.grp_quick_error)
+-
+-    window.chk_quick_error_enable = QCheckBox()
+-    window.chk_quick_error_enable.setChecked(False)
+-    window.chk_quick_error_enable.stateChanged.connect(window._on_quick_error_enable_changed)
+-    quick_err_layout.addWidget(window.chk_quick_error_enable)
+-
+-    window.chk_quick_wrong = QCheckBox()
+-    window.chk_quick_wrong.setChecked(True)
+-    window.chk_quick_wrong.stateChanged.connect(window._sync_quick_errors_to_tab5)
+-    quick_err_layout.addWidget(window.chk_quick_wrong)
+-
+-    window.chk_quick_miss = QCheckBox()
+-    window.chk_quick_miss.setChecked(True)
+-    window.chk_quick_miss.stateChanged.connect(window._sync_quick_errors_to_tab5)
+-    quick_err_layout.addWidget(window.chk_quick_miss)
+-
+-    window.chk_quick_extra = QCheckBox()
+-    window.chk_quick_extra.setChecked(True)
+-    window.chk_quick_extra.stateChanged.connect(window._sync_quick_errors_to_tab5)
+-    quick_err_layout.addWidget(window.chk_quick_extra)
+-
+-    window.chk_quick_pause = QCheckBox()
+-    window.chk_quick_pause.setChecked(True)
+-    window.chk_quick_pause.stateChanged.connect(window._sync_quick_errors_to_tab5)
+-    quick_err_layout.addWidget(window.chk_quick_pause)
+-
+-    quick_err_layout.addStretch()
+-    layout.addWidget(window.grp_quick_error)
+-
+-    # --- Quick 8-Bar Style Toggle ---
+-    eight_bar_quick_row = QHBoxLayout()
+-    window.chk_quick_eight_bar = QCheckBox()
+-    window.chk_quick_eight_bar.setChecked(False)
+-    window.chk_quick_eight_bar.stateChanged.connect(window._on_quick_eight_bar_changed)
+-    window.lbl_quick_eight_bar = QLabel()
+-    eight_bar_quick_row.addWidget(window.chk_quick_eight_bar)
+-    eight_bar_quick_row.addWidget(window.lbl_quick_eight_bar)
+-    eight_bar_quick_row.addStretch()
+-    layout.addLayout(eight_bar_quick_row)
++    # --- Strict Mode / Auto-Pause Group ---
++    window.grp_strict_mode = QGroupBox()
++    strict_form = QFormLayout(window.grp_strict_mode)
++
++    # Strict mode checkbox (default ON)
++    window.chk_strict_mode = QCheckBox()
++    window.chk_strict_mode.setChecked(True)
++    window.chk_strict_mode.stateChanged.connect(window._on_strict_mode_changed)
++    window.lbl_strict_mode = QLabel()
++    strict_form.addRow(window.lbl_strict_mode, window.chk_strict_mode)
++
++    # Auto-pause interval selector
++    pause_row = QHBoxLayout()
++    window.cmb_pause_bars = QComboBox()
++    window.cmb_pause_bars.addItem("Disabled", 0)
++    window.cmb_pause_bars.addItem("Every bar", 1)
++    window.cmb_pause_bars.addItem("Every 2 bars", 2)
++    window.cmb_pause_bars.addItem("Every 4 bars", 4)
++    window.cmb_pause_bars.addItem("Every 8 bars", 8)
++    window.cmb_pause_bars.setCurrentIndex(0)
++    window.lbl_pause_bars = QLabel()
++    pause_row.addWidget(window.cmb_pause_bars)
++    strict_form.addRow(window.lbl_pause_bars, pause_row)
++
++    # Auto-resume countdown spinner
++    countdown_row = QHBoxLayout()
++    window.sp_auto_resume_countdown = QSpinBox()
++    window.sp_auto_resume_countdown.setRange(1, 10)
++    window.sp_auto_resume_countdown.setValue(3)
++    window.sp_auto_resume_countdown.setSuffix(" sec")
++    window.lbl_auto_resume_countdown = QLabel()
++    countdown_row.addWidget(window.sp_auto_resume_countdown)
++    countdown_row.addStretch()
++    strict_form.addRow(window.lbl_auto_resume_countdown, countdown_row)
++
++    layout.addWidget(window.grp_strict_mode)
  
-+## Session 4 (2026-01-04 - BPM Scaling) - **未生效**
-+
-+### 用户反馈
-+> 调 BPM 后秒数/音符长度不变，保存后仍原速
-+
-+### Implementation (代码审查，未实际验证)
-+| Item | Description | Status |
-+|------|-------------|--------|
-+| Method | `_apply_global_bpm(new_bpm: int)` in editor_window.py:654+ | ⚠️ 代码存在 |
-+| Formula | `scale = old_bpm / new_bpm` | ⚠️ 代码存在 |
-+| Affected | `note_item.start_time`, `note_item.duration`, `playback_time` | ❌ 未生效 |
-+| Updates | `total_duration`, timeline, piano_roll redraw | ❌ 未生效 |
-+
-+### Signal Flow (代码审查验证)
-+```
-+sp_bpm.valueChanged → _on_bpm_changed() → _apply_global_bpm()  # 代码存在，未验证触发
-+timeline.sig_bpm_changed → _on_timeline_bpm_changed() → _apply_global_bpm()  # 代码存在，未验证触发
-+```
-+
-+### Verification
-+- [ ] ❌ BPM change scales note times - **用户反馈: 不生效**
-+- [ ] ❌ `_rebuild_midi_from_notes()` saves scaled times - **用户反馈: 保存后仍原速**
-+- [ ] ⚠️ Timeline and piano_roll update geometry - **未验证**
-+- [x] ✅ 无 [BPM] debug print (grep exit 1, 实际运行 2026-01-04)
-+
-+### 待排查
-+1. `_on_bpm_changed()` 是否被调用？
-+2. `_apply_global_bpm()` 是否被调用？
-+3. 信号连接是否正确？
-+4. `_base_bpm` 初始值是否正确？
-+
- ## Evidence Index
- | File | Path | Summary |
- |------|------|---------|
- | context_pack.md | evidence/ | Planner 最小阅读摘要 |
--| execute.log | evidence/ | 执行日志 (Session 3) |
--| diff.patch | evidence/ | git diff (e41d2d6..HEAD) |
-+| execute.md | evidence/ | 执行日志 (Session 4) |
-+| diff.patch | evidence/ | git diff (current changes) |
-+
-+---
-+
-+## Verification Note
-+
-+**历史语法检查说明**: Session 1-3 的 `[OK] Syntax check passed` 为人工记录格式，非原始命令输出。
-+实际 `py_compile` 成功时无 stdout 输出，仅返回 exit code 0。
-+
-+**Session 4 实际运行记录**: 见 `evidence/execute.md`，包含原始命令和 exit code。
- 
- ---
- *Created: 2026-01-03*
--*Updated: 2026-01-04 (Session 3 - Git cleanup + WSL fix + SoundFont path)*
-+*Updated: 2026-01-04 (Session 4 - BPM Scaling implementation, 证据文档一致性修正)*
+     # --- Settings Presets Group ---
+     window.grp_presets = QGroupBox()

@@ -146,8 +146,7 @@ from ui.mixins import (
 
 # Import Tab Builders for UI construction
 from ui.tab_builders import (
-    build_main_tab, build_keyboard_tab, build_shortcuts_tab,
-    build_style_tab, build_errors_tab
+    build_main_tab, build_keyboard_tab, build_shortcuts_tab
 )
 
 
@@ -183,6 +182,7 @@ class MainWindow(
         self.diagnostics_window: Optional[DiagnosticsWindow] = None
         self.editor_window: Optional[EditorWindow] = None
         self._current_input_style = "mechanical"
+        self._strict_mode = True  # Strict mode default ON
 
         # Playback progress tracking (for floating controller)
         self.current_time: float = 0.0
@@ -192,8 +192,11 @@ class MainWindow(
         self.init_ui()
         self.apply_language()
         self.refresh_windows()
-        self._update_style_params_display(self._current_input_style)  # Initialize style tab params
         self.show_init_messages()
+
+        # Apply initial strict mode state (disables controls when ON)
+        if self._strict_mode and hasattr(self, 'chk_strict_mode'):
+            self._on_strict_mode_changed(Qt.CheckState.Checked.value)
 
     def init_ui(self):
         self.resize(950, 680)
@@ -225,15 +228,10 @@ class MainWindow(
         layout.addWidget(self.tabs)
 
         # Build tabs using tab_builders (Phase 2 modularization)
+        # Note: Input Style and Error tabs removed - settings moved to Editor
         self.tabs.addTab(build_main_tab(self), "Main")
         self.tabs.addTab(build_keyboard_tab(self), "Keyboard")
         self.tabs.addTab(build_shortcuts_tab(self), "Shortcuts")
-        self.tabs.addTab(build_style_tab(self), "Input Style")
-        self.tabs.addTab(build_errors_tab(self), tr("tab_errors", self.lang))
-
-        # --- REMOVED: Tab construction code moved to ui/tab_builders.py ---
-        # See: build_main_tab, build_keyboard_tab, build_shortcuts_tab,
-        #      build_style_tab, build_errors_tab
 
         # Connect signals to slots (for thread-safe global hotkey handling)
         self.sig_start.connect(self.on_start)
@@ -249,6 +247,12 @@ class MainWindow(
         self.chk_octave_range_auto.stateChanged.connect(self._on_octave_range_mode_changed)
         self.sp_octave_min.valueChanged.connect(self._on_octave_range_changed)
         self.sp_octave_max.valueChanged.connect(self._on_octave_range_changed)
+        # Sync editor keyboard config when root/octave/preset changes
+        self.cmb_root.currentIndexChanged.connect(self._sync_editor_keyboard_config)
+        self.cmb_octave.currentIndexChanged.connect(self._sync_editor_keyboard_config)
+        self.cmb_preset.currentIndexChanged.connect(self._sync_editor_keyboard_config)
+        # Sync editor audio checkbox when main sound checkbox changes
+        self.chk_sound.stateChanged.connect(self._sync_editor_audio)
 
         # buttons
         btns = QHBoxLayout()
@@ -344,68 +348,7 @@ class MainWindow(
         self.btn_floating.setText(tr("show_floating", self.lang))
         # Diagnostics button
         self.btn_diagnostics.setText(tr("show_diagnostics", self.lang))
-        # Main settings input style
-        self.lbl_input_style.setText(tr("input_style", self.lang))
-        # Input style tab
-        self.tabs.setTabText(3, tr("tab_input_style", self.lang))
-        self.lbl_current_style.setText(tr("current_style", self.lang) + ":")
-        self.grp_style_params.setTitle(tr("style_params", self.lang))
-        self.lbl_timing_offset.setText(tr("timing_offset", self.lang))
-        self.lbl_timing_min.setText(tr("timing_offset_min", self.lang) + ":")
-        self.lbl_timing_max.setText(tr("timing_offset_max", self.lang) + ":")
-        self.lbl_stagger.setText(tr("chord_stagger", self.lang))
-        self.lbl_duration_var.setText(tr("duration_variation", self.lang))
-        self.grp_custom_style.setTitle(tr("style_custom", self.lang))
-        self.lbl_style_name.setText(tr("style_name", self.lang))
-        self.lbl_style_desc.setText(tr("style_description", self.lang))
-        self.btn_add_style.setText(tr("add_style", self.lang))
-        self.btn_delete_style.setText(tr("delete_style", self.lang))
-        self.btn_apply_style.setText(tr("apply_style", self.lang))
-        # Eight-Bar Style translations
-        self.grp_eight_bar.setTitle(tr("eight_bar_style", self.lang))
-        self.lbl_eight_bar_enabled.setText(tr("eight_bar_enabled", self.lang))
-        self.lbl_eight_bar_mode.setText(tr("eight_bar_mode", self.lang))
-        # Update mode combo translations
-        self.cmb_eight_bar_mode.setItemText(0, tr("mode_warp", self.lang))
-        self.cmb_eight_bar_mode.setItemText(1, tr("mode_beat_lock", self.lang))
-        self.lbl_eight_bar_pattern.setText(tr("eight_bar_pattern", self.lang))
-        self.lbl_eight_bar_clamp.setText(tr("eight_bar_clamp", self.lang))
-        self.lbl_eight_bar_clamp_min.setText(tr("range_min", self.lang))
-        self.lbl_eight_bar_clamp_max.setText(tr("range_max", self.lang))
-        self.lbl_speed_var.setText(tr("speed_variation", self.lang))
-        self.lbl_timing_var.setText(tr("timing_variation", self.lang))
-        self.lbl_dur_var_8bar.setText(tr("duration_variation_8bar", self.lang))
-        self.lbl_eight_bar_preset.setText(tr("eight_bar_preset", self.lang))
-        self.btn_preset_subtle.setText(tr("preset_subtle", self.lang))
-        self.btn_preset_moderate.setText(tr("preset_moderate", self.lang))
-        self.btn_preset_dramatic.setText(tr("preset_dramatic", self.lang))
-        self.lbl_show_indicator.setText(tr("show_indicator", self.lang))
-        # Update pattern combo translations
-        self.cmb_eight_bar_pattern.setItemText(0, tr("pattern_skip3", self.lang))
-        self.cmb_eight_bar_pattern.setItemText(1, tr("pattern_skip2", self.lang))
-        self.cmb_eight_bar_pattern.setItemText(2, tr("pattern_skip1", self.lang))
-        self.cmb_eight_bar_pattern.setItemText(3, tr("pattern_continuous", self.lang))
-        # Rebuild style combos with new language
-        self._rebuild_all_style_combos()
-        # Error Settings tab (Tab 5)
-        self.tabs.setTabText(4, tr("tab_errors", self.lang))
-        self.grp_error_types.setTitle(tr("error_types", self.lang))
-        self.lbl_error_enabled.setText(tr("enable_errors", self.lang))
-        self.lbl_error_freq.setText(tr("errors_per_8bars", self.lang))
-        self.chk_wrong_note.setText(tr("error_wrong_note", self.lang))
-        self.chk_miss_note.setText(tr("error_miss_note", self.lang))
-        self.chk_extra_note.setText(tr("error_extra_note", self.lang))
-        self.chk_pause_error.setText(tr("error_pause", self.lang))
-        self.lbl_pause_range.setText(tr("pause_duration", self.lang))
-        # Quick Error Select in Tab 1
-        self.grp_quick_error.setTitle(tr("quick_error_select", self.lang))
-        self.chk_quick_error_enable.setText(tr("errors", self.lang))
-        self.chk_quick_wrong.setText(tr("error_wrong_note", self.lang))
-        self.chk_quick_miss.setText(tr("error_miss_note", self.lang))
-        self.chk_quick_extra.setText(tr("error_extra_note", self.lang))
-        self.chk_quick_pause.setText(tr("error_pause", self.lang))
-        # Quick 8-Bar toggle in Tab 1
-        self.lbl_quick_eight_bar.setText(tr("eight_bar_enabled", self.lang))
+        # Main settings input style (removed - now in editor)
         # Settings Presets group
         self.grp_presets.setTitle(tr("settings_presets", self.lang))
         self.lbl_preset_select.setText(tr("preset_select", self.lang))
@@ -415,17 +358,12 @@ class MainWindow(
         self.btn_reset_defaults.setText(tr("reset_defaults", self.lang))
         # Rebuild preset combo for language change
         self._rebuild_settings_preset_combo()
-        # Range labels (Phase 2 i18n fix)
-        self.lbl_speed_min.setText(tr("range_min", self.lang))
-        self.lbl_speed_max.setText(tr("range_max", self.lang))
-        self.lbl_timing_min.setText(tr("range_min", self.lang))
-        self.lbl_timing_max.setText(tr("range_max", self.lang))
-        self.lbl_dur_min.setText(tr("range_min", self.lang))
-        self.lbl_dur_max.setText(tr("range_max", self.lang))
-        self.lbl_pause_to.setText(tr("range_to", self.lang))
-        # Placeholder texts
-        self.txt_style_name.setPlaceholderText(tr("placeholder_style_name", self.lang))
-        self.txt_style_desc.setPlaceholderText(tr("placeholder_style_desc", self.lang))
+        # Strict Mode / Auto-Pause group
+        self.grp_strict_mode.setTitle(tr("strict_mode_group", self.lang))
+        self.lbl_strict_mode.setText(tr("strict_mode", self.lang))
+        self.chk_strict_mode.setToolTip(tr("strict_mode_hint", self.lang))
+        self.lbl_pause_bars.setText(tr("pause_every_bars", self.lang))
+        self.lbl_auto_resume_countdown.setText(tr("auto_resume_countdown", self.lang))
         # Sync diagnostics window language if open
         if self.diagnostics_window:
             self.diagnostics_window.apply_language(self.lang)
@@ -453,14 +391,6 @@ class MainWindow(
         """Rebuild all style combo boxes (after language change or style add/delete)."""
         current_style = getattr(self, '_current_input_style', 'mechanical')
 
-        # Rebuild main settings combo
-        self._rebuild_style_combo(self.cmb_input_style)
-        self._select_style_in_combo(self.cmb_input_style, current_style)
-
-        # Rebuild style tab combo
-        self._rebuild_style_combo(self.cmb_style_tab)
-        self._select_style_in_combo(self.cmb_style_tab, current_style)
-
         # Rebuild floating controller combo if exists
         if self.floating_controller:
             self.floating_controller.rebuild_style_combo(current_style)
@@ -473,184 +403,6 @@ class MainWindow(
                 combo.setCurrentIndex(i)
                 break
         combo.blockSignals(False)
-
-    def _update_style_params_display(self, style_name: str):
-        """Update the style parameters spinboxes to show the selected style."""
-        style = INPUT_STYLES.get(style_name)
-        if not style:
-            return
-        self.sp_timing_min.blockSignals(True)
-        self.sp_timing_max.blockSignals(True)
-        self.sp_stagger.blockSignals(True)
-        self.sp_duration_var.blockSignals(True)
-
-        self.sp_timing_min.setValue(style.timing_offset_ms[0])
-        self.sp_timing_max.setValue(style.timing_offset_ms[1])
-        self.sp_stagger.setValue(style.stagger_ms)
-        self.sp_duration_var.setValue(int(style.duration_variation * 100))
-
-        self.sp_timing_min.blockSignals(False)
-        self.sp_timing_max.blockSignals(False)
-        self.sp_stagger.blockSignals(False)
-        self.sp_duration_var.blockSignals(False)
-
-    def on_input_style_changed(self, index: int):
-        """Called when main settings input style combo changes."""
-        style_name = self.cmb_input_style.itemData(index)
-        if not style_name:
-            return
-        self._current_input_style = style_name
-
-        # Sync style tab combo
-        self._select_style_in_combo(self.cmb_style_tab, style_name)
-        self._update_style_params_display(style_name)
-
-        # Sync floating controller
-        if self.floating_controller:
-            self.floating_controller.sync_style(style_name)
-
-        # Log
-        style = INPUT_STYLES.get(style_name)
-        if style:
-            desc = style.description_zh if self.lang == LANG_ZH else style.description_en
-            self.append_log(f"Input style: {style_name} ({desc})")
-
-        # Auto-save settings
-        self.save_settings()
-
-    def on_style_tab_changed(self, index: int):
-        """Called when style tab combo changes."""
-        style_name = self.cmb_style_tab.itemData(index)
-        if not style_name:
-            return
-        self._current_input_style = style_name
-
-        # Sync main settings combo
-        self._select_style_in_combo(self.cmb_input_style, style_name)
-        self._update_style_params_display(style_name)
-
-        # Sync floating controller
-        if self.floating_controller:
-            self.floating_controller.sync_style(style_name)
-
-        # Log
-        style = INPUT_STYLES.get(style_name)
-        if style:
-            desc = style.description_zh if self.lang == LANG_ZH else style.description_en
-            self.append_log(f"Input style: {style_name} ({desc})")
-
-        # Auto-save settings
-        self.save_settings()
-
-    def on_add_custom_style(self):
-        """Add a new custom style with current parameter values."""
-        name = self.txt_style_name.text().strip()
-        if not name:
-            QMessageBox.warning(self, "Error", "Please enter a style name." if self.lang == LANG_EN else "请输入风格名称。")
-            return
-        if name in INPUT_STYLES:
-            QMessageBox.warning(self, "Error", f"Style '{name}' already exists." if self.lang == LANG_EN else f"风格 '{name}' 已存在。")
-            return
-
-        desc = self.txt_style_desc.text().strip() or name
-        timing_min = self.sp_timing_min.value()
-        timing_max = self.sp_timing_max.value()
-        stagger = self.sp_stagger.value()
-        duration_var = self.sp_duration_var.value() / 100.0
-
-        # Add translation for the new style
-        TRANSLATIONS[f"style_{name}"] = {LANG_EN: name.capitalize(), LANG_ZH: desc}
-
-        # Create and register the new style
-        new_style = InputStyle(
-            name=name,
-            timing_offset_ms=(timing_min, timing_max),
-            stagger_ms=stagger,
-            duration_variation=duration_var,
-            description_en=desc,
-            description_zh=desc,
-            builtin=False,  # User-created styles are not builtin
-        )
-        register_style(new_style)
-
-        # Rebuild all combos and select the new style
-        self._current_input_style = name
-        self._rebuild_all_style_combos()
-        self._select_style_in_combo(self.cmb_input_style, name)
-        self._select_style_in_combo(self.cmb_style_tab, name)
-
-        self.append_log(f"Added custom style: {name}")
-        self.txt_style_name.clear()
-        self.txt_style_desc.clear()
-        self.save_settings()  # Auto-save custom styles
-
-    def on_delete_custom_style(self):
-        """Delete the currently selected custom style (cannot delete built-in styles)."""
-        style_name = self.cmb_style_tab.currentData()
-        if not style_name:
-            return
-
-        # Check if style is built-in (via registry)
-        style = get_style(style_name)
-        if style and getattr(style, 'builtin', False):
-            QMessageBox.warning(self, "Error",
-                "Cannot delete built-in styles." if self.lang == LANG_EN else "无法删除内置风格。")
-            return
-
-        # Confirm deletion
-        result = QMessageBox.question(self, "Confirm",
-            f"Delete style '{style_name}'?" if self.lang == LANG_EN else f"删除风格 '{style_name}'?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-        if result != QMessageBox.StandardButton.Yes:
-            return
-
-        # Delete the style using registry
-        unregister_style(style_name)
-        if f"style_{style_name}" in TRANSLATIONS:
-            del TRANSLATIONS[f"style_{style_name}"]
-
-        # Reset to mechanical and rebuild
-        self._current_input_style = "mechanical"
-        self._rebuild_all_style_combos()
-        self._update_style_params_display("mechanical")
-
-        self.append_log(f"Deleted custom style: {style_name}")
-        self.save_settings()  # Auto-save custom styles
-
-    def on_apply_style_params(self):
-        """Apply the current parameter values to the selected style."""
-        style_name = self.cmb_style_tab.currentData()
-        if not style_name:
-            return
-
-        # Check if style is built-in (via registry)
-        style = get_style(style_name)
-        if style and getattr(style, 'builtin', False):
-            QMessageBox.information(self, "Info",
-                "Cannot modify built-in styles. Use 'Add Style' to create a custom copy." if self.lang == LANG_EN
-                else "无法修改内置风格。请使用'添加风格'创建自定义副本。")
-            return
-
-        # Update the custom style
-        if style:
-            timing_min = self.sp_timing_min.value()
-            timing_max = self.sp_timing_max.value()
-            stagger = self.sp_stagger.value()
-            duration_var = self.sp_duration_var.value() / 100.0
-
-            # Create a new style with updated values (dataclass is immutable by default)
-            updated_style = InputStyle(
-                name=style_name,
-                timing_offset_ms=(timing_min, timing_max),
-                stagger_ms=stagger,
-                duration_variation=duration_var,
-                description_en=style.description_en,
-                description_zh=style.description_zh,
-                builtin=False,  # Modified styles are not builtin
-            )
-            INPUT_STYLES[style_name] = updated_style
-            self.append_log(f"Updated style: {style_name} (offset={timing_min}~{timing_max}ms, stagger={stagger}ms, var={duration_var*100:.0f}%)")
-            self.save_settings()  # Auto-save custom styles
 
     # ---- Settings Preset Methods ----
 
@@ -874,6 +626,14 @@ class MainWindow(
             self.editor_window.bpm_changed.connect(self._on_editor_bpm_changed)
 
         self.editor_window.load_midi(path)
+        # Sync keyboard config (effective root = root + octave_shift * 12)
+        root_note = self.cmb_root.currentData() or 60  # Default C4
+        octave_shift = self.cmb_octave.currentData() or 0
+        effective_root = root_note + (octave_shift * 12)
+        preset = self.cmb_preset.currentData() or "21-key"
+        self.editor_window.set_keyboard_config(effective_root, preset)
+        # Sync audio checkbox (main → editor)
+        self._sync_editor_audio()
         self.editor_window.show()
         self.editor_window.raise_()
         self.editor_window.activateWindow()
@@ -905,6 +665,25 @@ class MainWindow(
         if self.floating_controller and self.floating_controller.isVisible():
             self.floating_controller._sync_from_main()
 
+    def _sync_editor_keyboard_config(self):
+        """Sync keyboard config to editor when root/octave/preset changes in main window."""
+        if self.editor_window is None or not self.editor_window.isVisible():
+            return
+        root_note = self.cmb_root.currentData() or 60
+        octave_shift = self.cmb_octave.currentData() or 0
+        effective_root = root_note + (octave_shift * 12)
+        preset = self.cmb_preset.currentData() or "21-key"
+        self.editor_window.set_keyboard_config(effective_root, preset)
+
+    def _sync_editor_audio(self):
+        """Sync audio checkbox to editor (main → editor)."""
+        if self.editor_window is None:
+            return
+        # Sync audio enabled state
+        audio_enabled = self.chk_sound.isChecked()
+        if hasattr(self.editor_window, 'chk_enable_audio'):
+            self.editor_window.chk_enable_audio.setChecked(audio_enabled)
+
     def on_browse_sf(self):
         settings = QSettings("LyreAutoPlayer", "LyreAutoPlayer")
         last_dir = settings.value(SETTINGS_SF_DIR, "")
@@ -926,112 +705,21 @@ class MainWindow(
             self.floating_controller.sync_error_settings(self._error_enabled, self._error_freq)
         self.append_log(f"Error simulation: {'ON' if self._error_enabled else 'OFF'}")
 
-    def _on_error_freq_changed(self, value: int):
-        """Change error frequency (per 8 bars)."""
-        self._error_freq = value
-        if self.floating_controller:
-            self.floating_controller.sync_error_settings(self._error_enabled, self._error_freq)
+    # ---- Strict Mode Methods ----
 
-    def _on_quick_error_enable_changed(self, state: int):
-        """Sync quick error enable checkbox from Tab 1 to Tab 5."""
+    def _on_strict_mode_changed(self, state: int):
+        """Toggle strict mode on/off. When ON, disables various playback variation controls."""
         enabled = state == Qt.CheckState.Checked.value
-        self._error_enabled = enabled
-        # Sync to Tab 5
-        self.chk_error_enabled.setChecked(enabled)
-        # Sync to FloatingController
-        if self.floating_controller:
-            self.floating_controller.sync_error_settings(self._error_enabled, self._error_freq)
-        self.append_log(f"Error simulation: {'ON' if enabled else 'OFF'}")
+        self._strict_mode = enabled
 
-    def _sync_quick_errors_to_tab5(self, state: int = None):
-        """Sync error type checkboxes from Tab 1 to Tab 5 (with signal blocking)."""
-        # Block Tab 5 signals to prevent infinite recursion
-        self.chk_wrong_note.blockSignals(True)
-        self.chk_miss_note.blockSignals(True)
-        self.chk_extra_note.blockSignals(True)
-        self.chk_pause_error.blockSignals(True)
+        # Disable controls that strict mode overrides (only remaining widgets)
+        self.sp_speed.setEnabled(not enabled)
+        self.chk_midi_duration.setEnabled(not enabled)
 
-        self.chk_wrong_note.setChecked(self.chk_quick_wrong.isChecked())
-        self.chk_miss_note.setChecked(self.chk_quick_miss.isChecked())
-        self.chk_extra_note.setChecked(self.chk_quick_extra.isChecked())
-        self.chk_pause_error.setChecked(self.chk_quick_pause.isChecked())
-
-        self.chk_wrong_note.blockSignals(False)
-        self.chk_miss_note.blockSignals(False)
-        self.chk_extra_note.blockSignals(False)
-        self.chk_pause_error.blockSignals(False)
-
-    def _sync_tab5_errors_to_quick(self):
-        """Sync error settings from Tab 5 to Tab 1 quick checkboxes."""
-        self.chk_quick_error_enable.setChecked(self.chk_error_enabled.isChecked())
-        self.chk_quick_wrong.setChecked(self.chk_wrong_note.isChecked())
-        self.chk_quick_miss.setChecked(self.chk_miss_note.isChecked())
-        self.chk_quick_extra.setChecked(self.chk_extra_note.isChecked())
-        self.chk_quick_pause.setChecked(self.chk_pause_error.isChecked())
-
-    def _sync_tab5_to_quick_errors(self, state: int = None):
-        """Sync from Tab 5 to Tab 1 (with signal blocking to prevent recursion)."""
-        # Block Tab 1 signals to prevent infinite recursion
-        self.chk_quick_wrong.blockSignals(True)
-        self.chk_quick_miss.blockSignals(True)
-        self.chk_quick_extra.blockSignals(True)
-        self.chk_quick_pause.blockSignals(True)
-
-        self.chk_quick_wrong.setChecked(self.chk_wrong_note.isChecked())
-        self.chk_quick_miss.setChecked(self.chk_miss_note.isChecked())
-        self.chk_quick_extra.setChecked(self.chk_extra_note.isChecked())
-        self.chk_quick_pause.setChecked(self.chk_pause_error.isChecked())
-
-        self.chk_quick_wrong.blockSignals(False)
-        self.chk_quick_miss.blockSignals(False)
-        self.chk_quick_extra.blockSignals(False)
-        self.chk_quick_pause.blockSignals(False)
-
-    # ---- Eight-Bar Style Methods ----
-
-    def _on_eight_bar_enabled_changed(self, state: int):
-        """Toggle eight-bar style variation on/off."""
-        enabled = state == Qt.CheckState.Checked.value
-        self.append_log(f"8-Bar variation: {'ON' if enabled else 'OFF'}")
-        # Sync to quick checkbox in Tab 1
-        self.chk_quick_eight_bar.blockSignals(True)
-        self.chk_quick_eight_bar.setChecked(enabled)
-        self.chk_quick_eight_bar.blockSignals(False)
-        # Sync to floating controller if exists
-        if self.floating_controller:
-            self.floating_controller.sync_eight_bar_enabled(enabled)
-
-    def _apply_eight_bar_preset(self, preset_name: str):
-        """Apply a predefined eight-bar style preset."""
-        if preset_name not in EIGHT_BAR_PRESETS:
-            return
-        preset = EIGHT_BAR_PRESETS[preset_name]
-
-        # Apply values to UI
-        self.sp_speed_min.setValue(int(preset.speed_mult_min * 100))
-        self.sp_speed_max.setValue(int(preset.speed_mult_max * 100))
-        self.sp_timing_var_min.setValue(int(preset.timing_mult_min * 100))
-        self.sp_timing_var_max.setValue(int(preset.timing_mult_max * 100))
-        self.sp_dur_var_min.setValue(int(preset.duration_mult_min * 100))
-        self.sp_dur_var_max.setValue(int(preset.duration_mult_max * 100))
-
-        self.append_log(f"8-Bar preset applied: {preset_name}")
-
-    def _on_quick_eight_bar_changed(self, state: int):
-        """Sync quick 8-bar toggle from Tab 1 to Tab 4 (Input Style)."""
-        enabled = state == Qt.CheckState.Checked.value
-        # Sync to Tab 4 checkbox (block signals to prevent recursion)
-        self.chk_eight_bar_enabled.blockSignals(True)
-        self.chk_eight_bar_enabled.setChecked(enabled)
-        self.chk_eight_bar_enabled.blockSignals(False)
-        # Trigger the main handler
-        self._on_eight_bar_enabled_changed(state)
-
-    def _sync_eight_bar_to_quick(self):
-        """Sync 8-bar enabled state from Tab 4 to Tab 1 quick checkbox."""
-        self.chk_quick_eight_bar.blockSignals(True)
-        self.chk_quick_eight_bar.setChecked(self.chk_eight_bar_enabled.isChecked())
-        self.chk_quick_eight_bar.blockSignals(False)
+        # Log state change
+        self.append_log(f"Strict mode: {'ON' if enabled else 'OFF'}")
+        if enabled:
+            self.append_log("  → Speed=1.0, Duration=ON")
 
     def closeEvent(self, event):
         """Cleanup global hotkeys on window close."""

@@ -39,9 +39,6 @@ class SettingsPresetMixin:
         if 'input_style' in preset_settings:
             style_name = preset_settings['input_style']
             self._current_input_style = style_name
-            self._select_style_in_combo(self.cmb_input_style, style_name)
-            self._select_style_in_combo(self.cmb_style_tab, style_name)
-            self._update_style_params_display(style_name)
 
         if 'press_ms' in preset_settings:
             self.sp_press.setValue(preset_settings['press_ms'])
@@ -63,21 +60,13 @@ class SettingsPresetMixin:
                 self._input_manager_params = {}
             self._input_manager_params.update(im)
 
+        # Error config - feature removed from main GUI, just store internal state
         if 'error_config' in preset_settings:
             ec = preset_settings['error_config']
             if 'enabled' in ec:
                 self._error_enabled = ec['enabled']
-                self.chk_error_enabled.setChecked(ec['enabled'])
-                self.chk_quick_error_enable.setChecked(ec['enabled'])
             if 'errors_per_8bars' in ec:
                 self._error_freq = ec['errors_per_8bars']
-                self.sp_error_freq.setValue(ec['errors_per_8bars'])
-            if 'wrong_note' in ec:
-                self.chk_wrong_note.setChecked(ec['wrong_note'])
-                self.chk_quick_wrong.setChecked(ec['wrong_note'])
-            if 'miss_note' in ec:
-                self.chk_miss_note.setChecked(ec['miss_note'])
-                self.chk_quick_miss.setChecked(ec['miss_note'])
 
         name = preset['name_zh'] if self.lang == LANG_ZH else preset['name_en']
         self.append_log(f"[OK] {tr('preset_applied', self.lang)}: {name}")
@@ -109,19 +98,12 @@ class SettingsPresetMixin:
         self.chk_sound.setChecked(False)
         self.sp_velocity.setValue(90)
 
+        # Input style - just store internal state (UI controls removed from main GUI)
         self._current_input_style = 'mechanical'
-        self._select_style_in_combo(self.cmb_input_style, 'mechanical')
-        self._select_style_in_combo(self.cmb_style_tab, 'mechanical')
-        self._update_style_params_display('mechanical')
 
+        # Error config - feature removed from main GUI
         self._error_enabled = False
         self._error_freq = 1
-        self.chk_error_enabled.setChecked(False)
-        self.chk_quick_error_enable.setChecked(False)
-        self.sp_error_freq.setValue(1)
-        self.chk_eight_bar_clamp.setChecked(False)
-        self.sp_eight_bar_clamp_min.setValue(85)
-        self.sp_eight_bar_clamp_max.setValue(115)
 
         self.append_log(f"[OK] {tr('reset_defaults', self.lang)}")
 
@@ -166,30 +148,37 @@ class SettingsPresetMixin:
             "soundfont_path": getattr(self, 'soundfont_path', '') or '',
             "last_midi_path": getattr(self, 'mid_path', '') or '',
             "input_manager": getattr(self, '_input_manager_params', {}),
+            # Error config - feature removed from main GUI, use stored state
             "error_config": {
-                "enabled": self._error_enabled,
-                "errors_per_8bars": self._error_freq,
-                "wrong_note": self.chk_wrong_note.isChecked(),
-                "miss_note": self.chk_miss_note.isChecked(),
-                "extra_note": self.chk_extra_note.isChecked(),
-                "pause_error": self.chk_pause_error.isChecked(),
-                "pause_min_ms": self.sp_pause_min.value(),
-                "pause_max_ms": self.sp_pause_max.value(),
+                "enabled": getattr(self, '_error_enabled', False),
+                "errors_per_8bars": getattr(self, '_error_freq', 0),
+                "wrong_note": False,
+                "miss_note": False,
+                "extra_note": False,
+                "pause_error": False,
+                "pause_min_ms": 100,
+                "pause_max_ms": 500,
             },
+            # Eight-bar config - feature removed from main GUI
             "eight_bar_config": {
-                "enabled": self.chk_eight_bar_enabled.isChecked(),
-                "mode": self.cmb_eight_bar_mode.currentData() or "warp",
-                "pattern": self.cmb_eight_bar_pattern.currentData() or "skip2_pick1",
-                "speed_min": self.sp_speed_min.value(),
-                "speed_max": self.sp_speed_max.value(),
-                "timing_min": self.sp_timing_var_min.value(),
-                "timing_max": self.sp_timing_var_max.value(),
-                "duration_min": self.sp_dur_var_min.value(),
-                "duration_max": self.sp_dur_var_max.value(),
-                "clamp_enabled": self.chk_eight_bar_clamp.isChecked(),
-                "clamp_min": self.sp_eight_bar_clamp_min.value(),
-                "clamp_max": self.sp_eight_bar_clamp_max.value(),
-                "show_indicator": self.chk_show_indicator.isChecked(),
+                "enabled": False,
+                "mode": "warp",
+                "pattern": "skip2_pick1",
+                "speed_min": 95,
+                "speed_max": 105,
+                "timing_min": 95,
+                "timing_max": 105,
+                "duration_min": 95,
+                "duration_max": 105,
+                "clamp_enabled": False,
+                "clamp_min": 85,
+                "clamp_max": 115,
+                "show_indicator": False,
+            },
+            "strict_mode_config": {
+                "enabled": hasattr(self, 'chk_strict_mode') and self.chk_strict_mode.isChecked(),
+                "pause_every_bars": self.cmb_pause_bars.currentData() if hasattr(self, 'cmb_pause_bars') else 0,
+                "auto_resume_countdown": self.sp_auto_resume_countdown.value() if hasattr(self, 'sp_auto_resume_countdown') else 3,
             },
         }
 
@@ -245,38 +234,17 @@ class SettingsPresetMixin:
         if "play_sound" in settings:
             self.chk_sound.setChecked(settings["play_sound"])
 
+        # Input style - just store internal state (UI controls removed from main GUI)
         if "input_style" in settings:
-            style_name = settings["input_style"]
-            self._current_input_style = style_name
-            self._select_style_in_combo(self.cmb_input_style, style_name)
-            self._select_style_in_combo(self.cmb_style_tab, style_name)
-            self._update_style_params_display(style_name)
+            self._current_input_style = settings["input_style"]
 
+        # Error config - feature removed from main GUI, just store internal state
         if "error_config" in settings:
             ec = settings["error_config"]
             if "enabled" in ec:
                 self._error_enabled = ec["enabled"]
-                self.chk_error_enabled.setChecked(ec["enabled"])
-                self.chk_quick_error_enable.setChecked(ec["enabled"])
             if "errors_per_8bars" in ec:
                 self._error_freq = ec["errors_per_8bars"]
-                self.sp_error_freq.setValue(ec["errors_per_8bars"])
-            if "wrong_note" in ec:
-                self.chk_wrong_note.setChecked(ec["wrong_note"])
-                self.chk_quick_wrong.setChecked(ec["wrong_note"])
-            if "miss_note" in ec:
-                self.chk_miss_note.setChecked(ec["miss_note"])
-                self.chk_quick_miss.setChecked(ec["miss_note"])
-            if "extra_note" in ec:
-                self.chk_extra_note.setChecked(ec["extra_note"])
-                self.chk_quick_extra.setChecked(ec["extra_note"])
-            if "pause_error" in ec:
-                self.chk_pause_error.setChecked(ec["pause_error"])
-                self.chk_quick_pause.setChecked(ec["pause_error"])
-            if "pause_min_ms" in ec:
-                self.sp_pause_min.setValue(ec["pause_min_ms"])
-            if "pause_max_ms" in ec:
-                self.sp_pause_max.setValue(ec["pause_max_ms"])
 
         if "input_manager" in settings:
             self._input_manager_params = settings["input_manager"]
@@ -286,41 +254,4 @@ class SettingsPresetMixin:
         # Unconditionally sync diagnostics state after preset apply
         self._sync_diagnostics_state()
 
-        # Apply eight_bar_config (nested structure)
-        if "eight_bar_config" in settings:
-            ebc = settings["eight_bar_config"]
-            if "enabled" in ebc:
-                self.chk_eight_bar_enabled.setChecked(ebc["enabled"])
-                self.chk_quick_eight_bar.setChecked(ebc["enabled"])
-            if "mode" in ebc:
-                mode = ebc["mode"]
-                for i in range(self.cmb_eight_bar_mode.count()):
-                    if self.cmb_eight_bar_mode.itemData(i) == mode:
-                        self.cmb_eight_bar_mode.setCurrentIndex(i)
-                        break
-            if "pattern" in ebc:
-                pattern = ebc["pattern"]
-                for i in range(self.cmb_eight_bar_pattern.count()):
-                    if self.cmb_eight_bar_pattern.itemData(i) == pattern:
-                        self.cmb_eight_bar_pattern.setCurrentIndex(i)
-                        break
-            if "speed_min" in ebc:
-                self.sp_speed_min.setValue(ebc["speed_min"])
-            if "speed_max" in ebc:
-                self.sp_speed_max.setValue(ebc["speed_max"])
-            if "timing_min" in ebc:
-                self.sp_timing_var_min.setValue(ebc["timing_min"])
-            if "timing_max" in ebc:
-                self.sp_timing_var_max.setValue(ebc["timing_max"])
-            if "duration_min" in ebc:
-                self.sp_dur_var_min.setValue(ebc["duration_min"])
-            if "duration_max" in ebc:
-                self.sp_dur_var_max.setValue(ebc["duration_max"])
-            if "clamp_enabled" in ebc:
-                self.chk_eight_bar_clamp.setChecked(ebc["clamp_enabled"])
-            if "clamp_min" in ebc:
-                self.sp_eight_bar_clamp_min.setValue(ebc["clamp_min"])
-            if "clamp_max" in ebc:
-                self.sp_eight_bar_clamp_max.setValue(ebc["clamp_max"])
-            if "show_indicator" in ebc:
-                self.chk_show_indicator.setChecked(ebc["show_indicator"])
+        # Eight-bar config - feature removed from main GUI, skip widget updates

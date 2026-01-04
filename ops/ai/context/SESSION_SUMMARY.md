@@ -1,27 +1,7 @@
-- 背景/目标:
-  - 处理 CC64 延音修复后的验证路径、补齐本地 SoundFont，以及厘清 Windows/WSL git status 差异。
-  - 用户反馈 3 个问题：悬浮窗闪退、主界面播放与乐谱不一致/进度不走、编辑器切换 MIDI 未同步主界面。
-- 已完成:
-  - 在 Windows 创建 `C:\soundfonts\`，下载 `fluid-soundfont.zip` 并提取为 `C:\soundfonts\FluidR3_GM.sf2`，删除 zip。
-  - 更新 `LyreAutoPlayer/settings.json` 的 `soundfont_path` 为 `C:\soundfonts\FluidR3_GM.sf2`，提交 `bc83ada chore: update soundfont path`。
-  - 删除误生成的 `nul` 文件，`git status --short` 为空。
-  - 排查 Windows/WSL 行尾差异：WSL 设置 `core.autocrlf true` 后 `git checkout -- .`，两边状态一致（操作会丢弃未暂存修改）。
-- 关键修改:
-  - `LyreAutoPlayer/settings.json`: `soundfont_path` 更新为 `C:\soundfonts\FluidR3_GM.sf2`。
-  - 工作区外部文件：`C:\soundfonts\FluidR3_GM.sf2`（不入仓）。
-- 相关文件:
-  - `LyreAutoPlayer/settings.json`
-  - `LyreAutoPlayer/ui/floating.py`（未改，但排查到 `_sync_from_main` 缺失）
-  - `LyreAutoPlayer/ui/mixins/playback_mixin.py`
-  - `LyreAutoPlayer/main.py`
-  - `LyreAutoPlayer/player/thread.py`
-- 验证:
-  - `cmd.exe /c dir C:\soundfonts\FluidR3_GM.sf2` 确认文件存在。
-  - 启动 `python main.py` 失败（缺 PyQt6）；未做 GUI 音频/CC64 实测。
-- 风险/待办:
-  - 悬浮窗闪退：`PlaybackMixin.on_show_floating()` 调用不存在的 `_sync_from_main()`。
-  - 进度不走：`FloatingController` 读取 `current_time/total_duration`，主窗口未维护且 `PlayerThread.progress` 未 emit/连接。
-  - 编辑器与主界面不同步：编辑器加载新 MIDI 未更新主播放；CC64 延音修复仅在编辑器解析逻辑。
-- 下一步:
-  - 用 `D:\dw11\piano\LyreAutoPlayer\.venv\Scripts\python.exe D:\dw11\piano\LyreAutoPlayer\main.py` 启动并做音频预览验证。
-  - 修复悬浮窗 `_sync_from_main()`、主播放进度更新、编辑器→主界面同步与 CC64 解析落地。
+- 背景/目标: 审核多份 Claude 输出的“实现总结/计划/修订摘要”，核对与代码一致性并给出修订建议。
+- 已完成: 使用 message-review 技能逐条比对代码与摘要，指出不一致处并生成可直接给 Claude 的提示词；最终确认 v3 版本摘要内容基本准确。
+- 关键修改: 无代码改动；主要是审计结论与修订指引（例如：统一播放引擎并非完全替代编辑器本地预览、i18n 仅在 parent 为 MainWindow 时生效、语法检查命令与 shell 匹配、Phase 5 方法归属 main.py）。
+- 相关文件: d:\dw11\piano\LyreAutoPlayer\ui\editor\editor_window.py（follow mode/倒计时 i18n 行为核对）, d:\dw11\piano\LyreAutoPlayer\ui\mixins\playback_mixin.py（统一播放连接核对）, d:\dw11\piano\LyreAutoPlayer\player\thread.py（自动暂停/倒计时逻辑核对）, d:\dw11\piano\LyreAutoPlayer\main.py（_on_strict_mode_changed 位置核对）, d:\dw11\piano\LyreAutoPlayer\ui\mixins\config_mixin.py（严格模式配置持久化核对）。
+- 验证: 未在本会话运行实际测试或语法检查；仅做代码阅读核对与摘要审计。
+- 风险/待办: 如需“语法验证 PASS”结论，需在目标 shell 中实际执行命令并记录 exit code；若要确保 i18n 提示一致，需确认 parent() 为 MainWindow 的场景覆盖。
+- 下一步: 由用户决定是否执行实机验证与提交；若继续开发严格跟谱/自动暂停等功能，建议基于 v3 摘要和现有实现继续推进。

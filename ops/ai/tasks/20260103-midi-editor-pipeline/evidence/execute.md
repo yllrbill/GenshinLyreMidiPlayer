@@ -1,84 +1,182 @@
-# Execute Log - Session 4 (BPM Scaling) - **未生效**
+# Execute Log - Session 6-8
 
-## Date: 2026-01-04
+---
 
-## 用户反馈 (实际测试结果)
-> 调 BPM 后秒数/音符长度不变，保存后仍原速
+# Session 8 (2026-01-05) - Bug Fixes & i18n
 
-**结论**: BPM 缩放功能代码存在，但实际运行时不生效。
+## Session Info
+- Date: 2026-01-05
+- Focus: Bug fixes, i18n, keyboard config sync
+- Status: DONE
 
-## Git Status (Updated)
+## Tasks Completed
+
+| Task | Description | Status |
+|------|-------------|--------|
+| 1 | Fix `_apply_input_style_jitter` crash (add ApplyJitterCommand) | DONE |
+| 2 | Implement `KeyLabelWidget.set_scroll_offset` | DONE |
+| 3 | Add `set_keyboard_config` method for root/layout sync | DONE |
+| 4 | Menu i18n for Apply Input Style Jitter | DONE |
+| 5 | effective_root calculation with octave offset | DONE |
+| 6 | Real-time sync when main window settings change | DONE |
+| 7 | Fix `_update_style_params_display` AttributeError | DONE |
+
+## Changes Made
+
+### undo_commands.py (+90 lines)
+- Added `ApplyJitterCommand` class for undoable jitter operations
+- Pre-generates random offsets for redo consistency
+- Supports timing_offset_ms and duration_variation
+
+### key_list_widget.py
+- Added `_scroll_offset` instance variable
+- Implemented `set_scroll_offset()` method
+- Modified `paintEvent` to subtract scroll offset from y coordinates
+- Performance optimization: skip invisible rows
+
+### editor_window.py
+- Added `ApplyJitterCommand` import
+- Added `set_keyboard_config(root_note, layout_name)` method
+- Menu action now uses `tr("apply_jitter")` and `tr("apply_jitter_tooltip")`
+- Rewrote `_apply_input_style_jitter` to use QUndoCommand
+
+### main.py
+- Added signal connections: `cmb_root`, `cmb_octave`, `cmb_preset` → `_sync_editor_keyboard_config`
+- Added `_sync_editor_keyboard_config()` method for real-time editor sync
+- Fixed `effective_root` calculation: `root_note + (octave_shift * 12)`
+- Removed orphaned `_update_style_params_display` call (line 195)
+
+### translations.py
+- Fixed format string placeholders: `{min_offset}`, `{max_offset}`, `{duration_pct:.0f}`
+
+## Verification
+```bash
+cd d:/dw11/piano/LyreAutoPlayer
+python main.py
+# Result: Starts successfully (AttributeError fixed)
 ```
-$ git status --short
-M LyreAutoPlayer/main.py
- M LyreAutoPlayer/midi-change/index.json
- M LyreAutoPlayer/player/midi_parser.py
- M LyreAutoPlayer/player/thread.py
- M LyreAutoPlayer/settings.json
- M LyreAutoPlayer/ui/editor/editor_window.py
- M LyreAutoPlayer/ui/editor/piano_roll.py
- M LyreAutoPlayer/ui/editor/timeline.py
- M LyreAutoPlayer/ui/floating.py
- M LyreAutoPlayer/ui/mixins/playback_mixin.py
- M ops/ai/state/STATE.md
- M ops/ai/tasks/20260103-midi-editor-pipeline/evidence/context_pack.md
- M ops/ai/tasks/20260103-midi-editor-pipeline/evidence/diff.patch
- M ops/ai/tasks/20260103-midi-editor-pipeline/handoff.md
-?? LyreAutoPlayer/midi-change/Megalovania-Undertale-OST_custom.mid
-?? LyreAutoPlayer/midi-change/《凡人修仙传》op-不凡_custom_custom.mid
+
+## Files Modified (5)
+| File | Lines Changed |
+|------|---------------|
+| undo_commands.py | +90 |
+| key_list_widget.py | +15 |
+| editor_window.py | +20 |
+| main.py | +15 |
+| translations.py | +5 |
+
+---
+
+# Session 7 (2026-01-04) - KeyListWidget & Cleanup
+
+## Session Info
+- Date: 2026-01-04
+- Focus: KeyListWidget + Main GUI Cleanup + i18n
+- Status: DONE
+
+## Tasks Completed
+
+| Task | Description | Status |
+|------|-------------|--------|
+| 5 | Main GUI Cleanup (removed 8-bar/input style/error widgets) | DONE |
+| 6 | KeyListWidget (new key sequence progress display) | DONE |
+| 7 | i18n translations update | DONE |
+
+## Changes Made
+
+### config_mixin.py
+- `collect_cfg()` returns default disabled `ErrorConfig`
+- `_collect_eight_bar_style()` returns default disabled `EightBarStyle`
+- `load_settings()` skips widget updates for removed features
+
+### settings_preset_mixin.py
+- `on_apply_settings_preset()` only stores internal state
+- `on_reset_defaults()` removed widget references
+- `_collect_current_settings()` returns defaults
+- `_apply_settings_dict()` skips widget updates
+
+### key_list_widget.py (NEW ~307 lines)
+- `NoteLabel` - note display with index, name, time, duration
+- `KeyListWidget` - scrollable list with auto-scroll, highlighting
+
+### editor_window.py
+- Added `KeyListWidget` as right sidebar with QSplitter
+- Added `chk_key_list` toggle checkbox
+- Updated playback methods to update key list
+
+### translations.py
+- +6 translation keys for Key List and Editor controls
+
+## Verification
+```bash
+python -m py_compile ui/editor/key_list_widget.py ui/editor/editor_window.py
+python -m py_compile ui/mixins/config_mixin.py ui/mixins/settings_preset_mixin.py
+python -m py_compile i18n/translations.py main.py
+# All passed
 ```
 
-## Recent Commits
+---
+
+# Session 6 (Unified Playback Engine)
+
+## Session Info
+- Date: 2026-01-04
+- Focus: 统一播放引擎 Phase 1-7 实现
+- Status: DONE
+
+## Plan Reference
+- Plan File: `C:\Users\yllrb\.claude\plans\linked-gathering-glade.md`
+- Goal: 主界面与编辑器共用 PlayerThread、严格跟谱模式、自动小节暂停、倒计时覆盖
+
+## Git Status
 ```
-$ git log -3 --oneline
-b7e218e docs: update task evidence and state for Session 3
-80f31e1 chore: update midi index and add new midi file
-bc83ada chore: update soundfont path
+Latest commit: d44912b fix(editor): sync timeline tempo on load
+Changes: 12 files modified, 1 new file (countdown_overlay.py)
 ```
 
-## Key Changes (Session 4)
+## Phase Implementation Summary
 
-### BPM Scaling Implementation
-- **File**: `LyreAutoPlayer/ui/editor/editor_window.py`
-- **Method**: `_apply_global_bpm(new_bpm: int)`
-- **Formula**: `scale = old_bpm / new_bpm`
-- **Affected fields**:
-  - `note_item.start_time *= scale`
-  - `note_item.duration *= scale`
-  - `playback_time *= scale`
-  - `total_duration` recalculated
+| Phase | File | Changes | Status |
+|-------|------|---------|--------|
+| 1 | `player/config.py` | +5 fields: strict_mode, pause_every_bars, auto_resume_countdown, bar_duration_override, editor_bpm | DONE |
+| 2 | `player/thread.py` | +2 signals: countdown_tick, auto_pause_at_bar; auto-pause logic | DONE |
+| 3 | `ui/editor/editor_window.py` | set_follow_mode(), export_events(), on_external_progress(), update_countdown() | DONE |
+| 4 | `ui/mixins/playback_mixin.py` | _on_countdown_tick(), editor signal connections | DONE |
+| 5 | `main.py` | _on_strict_mode_changed() UI disable logic | DONE |
+| 6 | `ui/editor/countdown_overlay.py` | CountdownOverlay widget (NEW FILE ~66 lines) | DONE |
+| 7 | `ui/mixins/settings_preset_mixin.py`, `config_mixin.py` | Settings persistence + i18n fix | DONE |
 
-### Signal Flow (代码审查验证，未实际运行验证)
-1. `sp_bpm.valueChanged` → `_on_bpm_changed()` → `_apply_global_bpm()` - 代码存在
-2. `timeline.sig_bpm_changed` → `_on_timeline_bpm_changed()` → `_apply_global_bpm()` - 代码存在
+## Key Commands Executed
 
-### Save Path (代码审查验证，未实际运行验证)
-- `_rebuild_midi_from_notes()` 代码中使用 `note_item.start_time` 和 `note_item.duration`
-- **用户反馈: 保存后仍原速，缩放未生效**
+```powershell
+# Syntax verification (external environment)
+cd d:\dw11\piano\LyreAutoPlayer; python -m py_compile ui\editor\editor_window.py
+# Exit code: 0
 
-### BPM Scaling Logic Verification (Code Review)
-> 注: 以下为代码审查验证，非实际运行测试脚本
-
-**验证公式**:
-- 120 → 60 BPM: `scale = 120/60 = 2.0` → 时间 ×2
-- 120 → 240 BPM: `scale = 120/240 = 0.5` → 时间 ×0.5
-
-**代码路径确认** (editor_window.py:654-711):
-1. `_apply_global_bpm()` 计算 `scale = old_bpm / new_bpm`
-2. 遍历 `piano_roll.notes` 缩放 `start_time` 和 `duration`
-3. 调用 `_redraw_all()` 更新几何
-4. `_rebuild_midi_from_notes()` 直接使用缩放后的值保存
-
-## Syntax Check (实际运行 2026-01-04)
+# Git diff generation
+git diff HEAD -- LyreAutoPlayer/ > evidence/diff.patch
+# Size: 29030 bytes
 ```
-$ cd d:/dw11/piano/LyreAutoPlayer && python -m py_compile ui/editor/editor_window.py 2>&1; echo "Exit code: $?"
-Exit code: 0
-```
-> py_compile 成功时无输出，仅返回 exit code 0
 
-## Debug Print Check (实际运行 2026-01-04)
-```
-$ grep -n "\[BPM\]" d:/dw11/piano/LyreAutoPlayer/ui/editor/editor_window.py 2>&1; echo "Exit code: $?"
-Exit code: 1
-```
-> grep 未找到匹配时返回 exit code 1，无输出表示代码中不存在 [BPM] 调试打印
+## Technical Notes
+
+1. **i18n**: `update_countdown()` uses `getattr(self.parent(), "lang", LANG_ZH)` - only works when parent() is MainWindow with lang attribute
+2. **velocity/channel**: `export_events()` exports but NoteEvent constructor ignores
+3. **Playback architecture**: Main window → editor follows PlayerThread; editor standalone → local QTimer
+
+## Files Modified (12 + 1 new)
+
+| File | Lines Changed |
+|------|---------------|
+| player/config.py | +7 |
+| player/thread.py | +40 |
+| ui/editor/editor_window.py | +124 |
+| ui/editor/__init__.py | +2 |
+| ui/editor/countdown_overlay.py | +66 (NEW) |
+| ui/floating.py | +24 |
+| ui/mixins/playback_mixin.py | +45 |
+| ui/mixins/config_mixin.py | +50 |
+| ui/mixins/settings_preset_mixin.py | +5 |
+| ui/tab_builders.py | +37 |
+| main.py | +32 |
+| i18n/translations.py | +10 |

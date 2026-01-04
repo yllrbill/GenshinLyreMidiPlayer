@@ -45,3 +45,10 @@ class PlayerConfig:
 
     # Diagnostics (for debugging input issues)
     enable_diagnostics: bool = False
+
+    # Unified playback engine (统一播放引擎)
+    strict_mode: bool = True              # 严格跟谱模式 (默认开启)
+    pause_every_bars: int = 0             # 自动暂停间隔 (0=禁用, 1/2/4/8)
+    auto_resume_countdown: int = 3        # 倒计时秒数
+    bar_duration_override: float = 0.0    # 覆盖小节时长 (秒), 0=自动计算
+    editor_bpm: int = 0                   # 编辑器 BPM, 0=使用 MIDI 原始值

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from PyQt6.QtWidgets import QMessageBox
 
 from player import PlayerThread
+from player.midi_parser import NoteEvent
 from i18n import tr
 
 if TYPE_CHECKING:
@@ -24,11 +25,51 @@ class PlaybackMixin:
             return
 
         cfg = self.collect_cfg()
-        self.thread = PlayerThread(self.events, cfg)
+
+        # Unified Playback: Get events from editor if available
+        events_to_use = self.events
+        editor = getattr(self, 'editor_window', None)
+        if editor is not None and editor.isVisible():
+            # Export events from editor (syncs drag offsets)
+            editor_events = editor.export_events()
+            if editor_events:
+                # Convert dict to NoteEvent objects
+                events_to_use = [
+                    NoteEvent(time=ev["time"], note=ev["note"], duration=ev["duration"])
+                    for ev in editor_events
+                ]
+                self.append_log(f"Using {len(events_to_use)} events from editor")
+
+            # Use editor BPM for bar duration calculation
+            cfg.bar_duration_override = editor.get_bar_duration()
+            cfg.editor_bpm = editor.sp_bpm.value() if hasattr(editor, 'sp_bpm') else 0
+
+            # Use editor's pause, octave, and input style settings
+            cfg.pause_every_bars = editor.get_pause_bars()
+            cfg.auto_resume_countdown = editor.get_auto_resume_countdown()
+            cfg.octave_shift = editor.get_octave_shift()
+            cfg.input_style = editor.get_input_style()
+
+        self.thread = PlayerThread(events_to_use, cfg)
         self.thread.log.connect(self.append_log)
         self.thread.finished.connect(self.on_finished)
         self.thread.paused.connect(self._on_thread_paused)
+        self.thread.resumed.connect(self._on_thread_resumed)
         self.thread.progress.connect(self._on_progress_update)
+
+        # Connect countdown signals
+        self.thread.countdown_tick.connect(self._on_countdown_tick)
+        self.thread.auto_pause_at_bar.connect(self._on_auto_pause_at_bar)
+
+        # Connect to EditorWindow if open
+        if editor is not None and editor.isVisible():
+            self.thread.progress.connect(editor.on_external_progress)
+            self.thread.paused.connect(editor.on_external_paused)
+            self.thread.resumed.connect(editor.on_external_resumed)
+            self.thread.finished.connect(editor.on_external_stopped)
+            self.thread.countdown_tick.connect(editor.update_countdown)
+            editor.set_follow_mode(True)
+            editor._main_window = self
 
         self.btn_start.setEnabled(False)
         self.btn_stop.setEnabled(True)
@@ -115,6 +156,11 @@ class PlaybackMixin:
         if self.floating_controller:
             self.floating_controller.update_playback_state(True, is_paused=True)
 
+    def _on_thread_resumed(self: "MainWindow"):
+        """Called when playback thread resumes (after pause or auto-pause countdown)."""
+        if self.floating_controller:
+            self.floating_controller.update_playback_state(True, is_paused=False, is_pending=False)
+
     def _on_progress_update(self: "MainWindow", current_time: float, total_duration: float):
         """Called when playback progress updates."""
         self.current_time = current_time
@@ -122,6 +168,16 @@ class PlaybackMixin:
         # Update floating controller progress if visible
         if self.floating_controller and self.floating_controller.isVisible():
             self.floating_controller._update_progress()
+
+    def _on_countdown_tick(self: "MainWindow", remaining: int):
+        """Called when countdown tick updates (for auto-pause/resume)."""
+        # Forward countdown to floating controller
+        if self.floating_controller and self.floating_controller.isVisible():
+            self.floating_controller.show_countdown(remaining)
+
+    def _on_auto_pause_at_bar(self: "MainWindow", bar_index: int):
+        """Called when auto-pause triggers at a bar boundary."""
+        self.append_log(f"Auto-paused at bar {bar_index}")
 
     def on_octave_up(self: "MainWindow"):
         """Shortcut handler: increase octave shift."""

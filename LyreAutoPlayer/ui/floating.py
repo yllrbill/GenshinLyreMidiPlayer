@@ -124,6 +124,16 @@ class FloatingController(QWidget):
         info_row.addWidget(self.lbl_bpm)
         layout.addLayout(info_row)
 
+        # Countdown label (hidden by default)
+        self.lbl_countdown = QLabel("")
+        self.lbl_countdown.setStyleSheet(
+            "font-size: 28px; font-weight: bold; color: #ffcc00; "
+            "background: transparent;"
+        )
+        self.lbl_countdown.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_countdown.hide()
+        layout.addWidget(self.lbl_countdown)
+
         layout.addStretch()
 
     def _update_progress(self):
@@ -141,6 +151,20 @@ class FloatingController(QWidget):
             self.lbl_progress.setText(f"{fmt_time(current)} / {fmt_time(total)}")
         except Exception:
             pass  # Ignore errors during update
+
+    def show_countdown(self, remaining: int):
+        """Show countdown overlay for auto-pause/resume.
+
+        Args:
+            remaining: Seconds remaining (0 = countdown finished, hide)
+        """
+        if remaining > 0:
+            self.lbl_countdown.setText(str(remaining))
+            self.lbl_countdown.show()
+            self.lbl_progress.hide()
+        else:
+            self.lbl_countdown.hide()
+            self.lbl_progress.show()
 
     def set_file_name(self, name: str):
         """Set the displayed file name."""

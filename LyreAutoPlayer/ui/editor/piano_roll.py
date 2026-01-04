@@ -13,7 +13,7 @@ from .note_item import NoteItem
 from .undo_commands import (
     AddNoteCommand, DeleteNotesCommand, MoveNotesCommand,
     TransposeCommand, QuantizeCommand, AutoTransposeCommand,
-    HumanizeCommand
+    HumanizeCommand, ApplyJitterCommand
 )
 
 
@@ -476,12 +476,29 @@ class PianoRollWidget(QGraphicsView):
         self.playhead = self.scene.addLine(0, 0, 0, scene_height, pen)
         self.playhead.setZValue(100)  # 在最上层
 
-    def set_playhead_position(self, time_sec: float):
-        """更新播放头位置"""
+    def set_playhead_position(self, time_sec: float, auto_scroll: bool = True):
+        """更新播放头位置
+
+        Args:
+            time_sec: 播放时间（秒）
+            auto_scroll: 是否自动滚动（当 playhead 超出可视区域时）
+        """
         self._playhead_time = time_sec
         if self.playhead:
             x = time_sec * self.pixels_per_second
             self.playhead.setLine(x, 0, x, self.playhead.line().y2())
+
+            # 自动滚动：当 playhead 超出视口右侧 80% 时，滚动到 30% 位置
+            if auto_scroll:
+                viewport_width = self.viewport().width()
+                scroll_offset = self.horizontalScrollBar().value()
+                playhead_viewport_x = x - scroll_offset
+
+                if playhead_viewport_x > viewport_width * 0.8:
+                    # 滚动使 playhead 位于视口 30% 位置
+                    new_scroll = int(x - viewport_width * 0.3)
+                    new_scroll = max(0, new_scroll)
+                    self.horizontalScrollBar().setValue(new_scroll)
 
     def set_zoom(self, h_zoom: float, v_zoom: float):
         """设置缩放比例"""
