@@ -265,7 +265,7 @@ class PlayerThread(QThread):
                 self.log.emit("IME disabled for target window")
 
         # Build event queue
-        event_queue, notes_scheduled, notes_dropped = self._build_event_queue(
+        event_queue, notes_scheduled, notes_dropped, notes_dropped_accidental, notes_dropped_octave_conflict = self._build_event_queue(
             note_to_key, avail_notes
         )
 
@@ -292,7 +292,13 @@ class PlayerThread(QThread):
             self._total_duration = 0.0
 
         if notes_dropped > 0:
-            self.log.emit(f"Dropped {notes_dropped} out-of-range notes")
+            detail_parts = []
+            if notes_dropped_accidental > 0:
+                detail_parts.append(f"accidental/black-key={notes_dropped_accidental}")
+            if notes_dropped_octave_conflict > 0:
+                detail_parts.append(f"octave-conflict={notes_dropped_octave_conflict}")
+            detail = f" ({', '.join(detail_parts)})" if detail_parts else ""
+            self.log.emit(f"Dropped {notes_dropped} notes{detail}. Try 36-key or accidental_policy=lower/upper")
 
         # Main playback loop
         pressed_keys: Dict[str, int] = {}
@@ -315,7 +321,11 @@ class PlayerThread(QThread):
         # Final statistics
         total = notes_scheduled + notes_dropped
         if total > 0:
-            self.log.emit(f"Stats: played={notes_scheduled}, dropped={notes_dropped} ({100*notes_dropped//total}% dropped)")
+            drop_pct = 100 * notes_dropped // total
+            if notes_dropped > 0:
+                self.log.emit(f"Stats: played={notes_scheduled}, dropped={notes_dropped} ({drop_pct}%) [accidental={notes_dropped_accidental}, octave-conflict={notes_dropped_octave_conflict}]")
+            else:
+                self.log.emit(f"Stats: played={notes_scheduled}, dropped=0")
 
         if errors_applied > 0:
             self.log.emit(f"Errors simulated: {errors_applied}")
@@ -412,6 +422,8 @@ class PlayerThread(QThread):
 
         notes_scheduled = 0
         notes_dropped = 0
+        notes_dropped_accidental = 0  # 黑键/无法映射到布局
+        notes_dropped_octave_conflict = 0  # 八度冲突
 
         # Calculate bar duration
         beat_duration_for_filter = 0.5
@@ -499,16 +511,19 @@ class PlayerThread(QThread):
                             higher = beat_highest.get(beat_idx)
                             if higher is not None and higher > note:
                                 notes_dropped += 1
+                                notes_dropped_octave_conflict += 1
                                 continue
                         else:
                             lower = beat_lowest.get(beat_idx)
                             if lower is not None and lower < note:
                                 notes_dropped += 1
+                                notes_dropped_octave_conflict += 1
                                 continue
 
             q = quantize_note(note, avail_notes, self.cfg.accidental_policy, oct_min, oct_max)
             if q is None:
                 notes_dropped += 1
+                notes_dropped_accidental += 1
                 continue
 
             key = note_to_key[q]
@@ -679,7 +694,7 @@ class PlayerThread(QThread):
                     KeyEvent(pause_marker_time, 0, "pause_marker", "", 0, bar_index=bar_idx)
                 )
 
-        return event_queue, notes_scheduled, notes_dropped
+        return event_queue, notes_scheduled, notes_dropped, notes_dropped_accidental, notes_dropped_octave_conflict
 
     def _setup_eight_bar(self, eight_bar, speed: float):
         """Setup 8-bar style variation parameters."""

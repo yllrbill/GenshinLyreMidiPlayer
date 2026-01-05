@@ -583,6 +583,10 @@ class EditorWindow(QMainWindow):
 
             self.piano_roll.load_midi(self.midi_file)
 
+            # 清空可变小节数据，避免跨曲污染 BPM/网格/导出
+            self.timeline.set_bar_durations([])
+            self.piano_roll.set_bar_times([])
+
             # 解析 tempo 和 time signature 传递给时间轴
             tempo_events, time_sig_events = self._extract_tempo_and_time_sig()
             self.timeline.set_tempo_info(
@@ -591,8 +595,9 @@ class EditorWindow(QMainWindow):
                 time_sig_events
             )
 
-            # 缓存 tempo 信息，供 BPM 变更时重建 timeline
+            # 缓存 tempo 信息，供 BPM 变更时重建 timeline 和保存时复用
             self._ticks_per_beat = self.midi_file.ticks_per_beat
+            self._tempo_events_tick = tempo_events  # 原始 tempo 事件，用于无改动时复用
             self._time_sig_events_tick = time_sig_events
 
             # 更新时间轴
@@ -619,8 +624,9 @@ class EditorWindow(QMainWindow):
             self.sp_octave_shift.setValue(0)
             self.sp_octave_shift.blockSignals(False)
 
-            # 同步时间轴为单一 BPM，确保与钢琴卷帘小节线对齐
-            self._sync_timeline_tempo(midi_bpm)
+            # 注: 不再调用 _sync_timeline_tempo()，避免覆盖原始 tempo map
+            # set_tempo_info() 已正确处理 tempo map，_rebuild_bar_times() 会基于 tick 精确计算小节边界
+            # _sync_timeline_tempo() 仅在用户手动改 BPM 时调用
 
             # 更新量化网格（使用新 MIDI 的 BPM）
             self._on_quantize_changed(self.cmb_quantize.currentText())
@@ -1017,8 +1023,8 @@ class EditorWindow(QMainWindow):
             self.key_list.set_total_duration(self.piano_roll.total_duration)
         # 更新 timeline duration
         self.timeline.set_duration(self.piano_roll.total_duration)
-        # 重置 spinbox
-        self.spin_bar_duration_delta.setValue(0)
+        # 注: 不再重置 spinbox，保留最近输入值供用户连续调整
+        # self.spin_bar_duration_delta.setValue(0)
 
     def _on_notes_changed_refresh(self):
         """当音符变化时刷新 key_list 和 timeline"""
@@ -1202,7 +1208,7 @@ class EditorWindow(QMainWindow):
         当前为简化单轨输出（多轨合并为单轨）。
 
         支持可变小节时长：如果 timeline 有 bar_durations，则为每个不同时长的小节
-        生成对应的 tempo 事件。公式：microseconds_per_beat = bar_duration_sec / beats_per_bar * 1_000_000
+        生成对应的 tempo 事件。公式: seconds_per_quarter = bar_duration_sec / beats_per_bar * 4 / beat_unit (微秒/四分音符)
 
         WARNING: 此方法会丢失原始 MIDI 的以下信息：
         - 原始 tempo map (多个速度变化事件) → 替换为单一用户 BPM 或可变小节时长
@@ -1233,6 +1239,18 @@ class EditorWindow(QMainWindow):
             # 公式: seconds_per_quarter = bar_duration_sec / beats_per_bar * 4 / beat_unit
             tempo_events = []
             prev_tempo = None
+
+            # DEBUG: 打印首小节信息帮助定位 640 BPM 问题
+            if bar_times:
+                first_bar_num = bar_times[0][0]
+                if first_bar_num <= len(bar_durations):
+                    first_bar_duration = bar_durations[first_bar_num - 1]
+                    first_spq = first_bar_duration / beats_per_bar * 4 / beat_unit
+                    first_tempo = int(first_spq * 1_000_000)
+                    first_bpm = 60_000_000 / first_tempo if first_tempo > 0 else 0
+                    print(f"[DEBUG SAVE] bar_durations={bar_durations[:3]}..., beats_per_bar={beats_per_bar}, beat_unit={beat_unit}")
+                    print(f"[DEBUG SAVE] First bar: duration={first_bar_duration:.3f}s, seconds_per_quarter={first_spq:.4f}, tempo={first_tempo}, BPM≈{first_bpm:.1f}")
+
             for i, (bar_num, bar_start_sec) in enumerate(bar_times):
                 if bar_num <= len(bar_durations):
                     bar_duration_sec = bar_durations[bar_num - 1]
@@ -1258,6 +1276,9 @@ class EditorWindow(QMainWindow):
                 user_bpm = self.sp_bpm.value()
                 user_tempo = mido.bpm2tempo(user_bpm)
                 tempo_events = [(0, user_tempo)]
+        elif self.sp_bpm.value() == getattr(self, '_base_bpm', 0) and hasattr(self, '_tempo_events_tick'):
+            # BPM 未改动且有原始 tempo 事件，复用原始 tempo map 避免无意改速
+            tempo_events = list(self._tempo_events_tick)
         else:
             # 使用用户设定的 BPM (来自工具栏 spinbox) 而非原始 MIDI tempo
             user_bpm = self.sp_bpm.value()
@@ -1713,6 +1734,9 @@ class EditorWindow(QMainWindow):
 
         # 更新按键列表进度
         if self.chk_key_list.isChecked():
+            # 显式同步滚动值到 key_list (修复播放翻页不同步)
+            scroll_value = self.piano_roll.horizontalScrollBar().value()
+            self.key_list.set_scroll_offset(scroll_value)
             self.key_list.update_playback_time(self.playback_time)
 
     def _update_time_label(self):

@@ -129,7 +129,7 @@ class KeyProgressWidget(QGraphicsView):
 
         # 视图设置
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)  # 只跟随 piano_roll
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)  # 保持与 piano_roll 视口宽度一致
         self.setRenderHint(QPainter.RenderHint.Antialiasing, False)
         self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
 
@@ -150,7 +150,6 @@ class KeyProgressWidget(QGraphicsView):
             }
             QScrollBar:vertical {
                 background-color: #2D2D2D;
-                width: 12px;
             }
             QScrollBar::handle:vertical {
                 background-color: #555;
@@ -163,9 +162,7 @@ class KeyProgressWidget(QGraphicsView):
 
     def set_scroll_offset(self, offset: int):
         """设置水平滚动位置（从 PianoRollWidget 同步）"""
-        self.horizontalScrollBar().blockSignals(True)
         self.horizontalScrollBar().setValue(offset)
-        self.horizontalScrollBar().blockSignals(False)
 
     def set_layout(self, layout_name: str):
         """设置键盘布局"""

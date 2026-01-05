@@ -129,6 +129,11 @@ class PianoRollWidget(QGraphicsView):
         self.scene.clear()
         self.notes.clear()
         self._grid_items.clear()  # scene.clear() 已删除图元，清空列表
+        # scene.clear() 会销毁图元对象，清空引用避免访问已删除对象
+        self._bar_overlay_items.clear()
+        self._drag_line_items.clear()
+        self._selected_bars.clear()
+        self._drag_boundary_active = False
 
         # 解析 MIDI
         notes_data = self._parse_midi(midi_file)

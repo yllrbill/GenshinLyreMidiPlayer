@@ -2,31 +2,36 @@
 
 ## Task
 - ID: 20260103-midi-editor-pipeline
-- Status: DONE (Session 12 - Variable Bar Length System)
+- Status: DONE (Session 13 - BPM/Tempo Preservation Fixes)
 - Last Updated: 2026-01-05
-- Latest Commit: `62f4743`
+- Previous Commit: `9b7a351`
 
-## Session 12 Summary (2026-01-05)
-Variable bar length (可变小节时长) system implementation.
+## Session 13 Summary (2026-01-05)
+BPM/tempo preservation and scroll sync fixes based on audit reports.
 
-### Tasks Completed
-| Task | Description | Status |
-|------|-------------|--------|
-| 1 | Timeline variable bar durations | DONE |
-| 2 | PianoRoll use bar_times for grid | DONE |
-| 3 | adjust_selected_bars_duration sync | DONE |
-| 4 | MIDI export with tempo events | DONE |
-| 5 | Signal connections | DONE |
-| 6 | KeyList scroll sync (verified) | DONE |
+### Issues Fixed
+| ID | Severity | Issue | Fix |
+|----|----------|-------|-----|
+| 1 | HIGH | `_sync_timeline_tempo()` overwrites multi-segment tempo | Conditional call when `len(tempo_events) <= 1` |
+| 2 | HIGH | Tempo map not preserved on save | Reuse `_tempo_events_tick` when BPM unchanged |
+| 3 | MEDIUM | Cross-song bar duration pollution | Clear bar_durations on load |
+| 4 | MEDIUM | KeyList scroll blockSignals issue | Removed blockSignals from set_scroll_offset |
+| 5 | MEDIUM | Scrollbar width inconsistency | Removed fixed width from QSS |
+| 6 | LOW | Vague note drop logging | Categorized drop reasons (accidental vs octave) |
 
 ### Key Changes
 | File | Change |
 |------|--------|
-| `timeline.py` | `_bar_durations_sec`, `sig_bar_times_changed`, API methods |
-| `piano_roll.py` | `_bar_times`, `sig_bar_duration_changed`, `_get_bar_time_range()` |
-| `editor_window.py` | Tempo events in MIDI export, signal connections |
+| `editor_window.py:586-588` | Clear variable bar data on load |
+| `editor_window.py:600` | Cache `_tempo_events_tick` |
+| `editor_window.py:627-630` | Conditional `_sync_timeline_tempo()` |
+| `editor_window.py:1266-1268` | Reuse original tempo on save |
+| `key_list_widget.py:151-153` | Remove fixed scrollbar width |
+| `key_list_widget.py:163-165` | Simplify scroll sync |
+| `thread.py:415-416,503-516,294-301` | Categorized drop logging |
 
-## Previous Sessions (11-6)
+## Previous Sessions (12-6)
+- Session 12: Variable bar length system
 - Session 11: Bar duration bug fixes (6 issues)
 - Session 10: Bug fixes + duration adjust + auto-jitter
 - Session 9: UI fixes (KeyList, auto-scroll, toolbar)
@@ -34,56 +39,39 @@ Variable bar length (可变小节时长) system implementation.
 - Session 7: Main GUI cleanup + KeyListWidget
 - Session 6: Unified Playback Engine Phase 1-7
 
-## Implementation Status
+## Verification Required
+1. **Bar grid stretch after save/reload**:
+   - Open MIDI → stretch a bar → save → reload
+   - Expected: Bar grid should remain stretched
 
-### Variable Bar Length System
-| Feature | Description | Status |
-|---------|-------------|--------|
-| Storage | `_bar_durations_sec` in timeline | DONE |
-| Boundaries | `_bar_times` in both widgets | DONE |
-| Grid Rendering | Use variable bar times | DONE |
-| Note Stretching | `_get_bar_time_range()` | DONE |
-| Duration Sync | Bidirectional signals | DONE |
-| MIDI Export | Tempo events per bar | DONE |
+2. **KeyList scroll sync during playback**:
+   - Play MIDI → observe auto-scroll
+   - Expected: KeyList and PianoRoll scroll together
 
-### Unified Playback Engine
-| Phase | Description | Status |
-|-------|-------------|--------|
-| 1-7 | All phases | DONE |
+3. **Note drop logging**:
+   - Play MIDI with black keys
+   - Expected: Log shows "accidental/black-key=N" or "octave-conflict=N"
 
 ## File Index
 
-### Session 12 Modified Files
+### Session 13 Modified Files
 | Path | Lines Changed |
 |------|---------------|
-| `timeline.py` | +75 |
-| `piano_roll.py` | +50 |
-| `editor_window.py` | +40 |
+| `editor_window.py` | +15 |
+| `key_list_widget.py` | -5 |
+| `thread.py` | +30 |
 
-### Key Files (Previous Sessions)
+### Key Files
 | Path | Purpose |
 |------|---------|
-| `ui/editor/countdown_overlay.py` | 倒计时覆盖 |
-| `ui/editor/key_list_widget.py` | 按键序列进度 |
+| `ui/editor/editor_window.py` | MIDI 加载/保存/播放协调 |
+| `ui/editor/key_list_widget.py` | 按键序列进度显示 |
 | `ui/editor/piano_roll.py` | 钢琴卷帘编辑器 |
 | `ui/editor/timeline.py` | 时间轴 |
-| `ui/editor/editor_window.py` | 编辑器主窗口 |
-
-## Data Flow
-
-```
-Timeline                        Piano Roll                    MIDI Export
-   │ _bar_durations_sec             │ _bar_times                   │
-   │                                │                              │
-   ├──sig_bar_times_changed────────►│ set_bar_times()              │
-   │◄──sig_bar_duration_changed─────┤ adjust_selected_bars_duration()
-   │  update_bar_duration()         │                              │
-   └────get_bar_durations()────────────────────────────────────────►│
-        get_bar_times()                          _rebuild_midi_from_notes()
-```
+| `player/thread.py` | 播放线程 |
 
 ## Next Steps (for Planner)
 
-1. **用户测试**: 可变小节时长功能
-2. **验证**: 拉伸后 MIDI 导出 tempo 变化
-3. **Phase 3-4**: 高级编辑 + 超音域处理预览（如需继续）
+1. **验收测试**: 拉长小节→保存→重载，确认小节刻度保持
+2. **验收测试**: 播放自动翻页时 KeyList 同步
+3. **提交**: 审计通过后 git commit

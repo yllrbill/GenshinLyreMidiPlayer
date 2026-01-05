@@ -2,9 +2,9 @@
 
 ## Latest Task
 - TASK_ID: 20260103-midi-editor-pipeline
-- Status: DONE (Session 12 - Variable Bar Length System)
+- Status: IN_PROGRESS (Session 13 - BPM/Tempo Preservation Fixes)
 - Pointer: ops/ai/tasks/20260103-midi-editor-pipeline
-- Latest Commit: `62f4743`
+- Latest Commit: `9b7a351` (pending: Session 13 changes)
 
 ## Previous Task
 - TASK_ID: 20260102-2138-main-mixin-refactor
@@ -12,9 +12,9 @@
 - Pointer: ops/ai/tasks/20260102-2138-main-mixin-refactor
 
 ## Current Focus
+- Session 13: BPM/tempo preservation fixes (审计发现的 6 个问题)
 - Session 12: Variable bar length system (可变小节时长)
 - Session 11: Bar duration adjustment bug fixes (6 issues)
-- Session 10: Bug fixes (imports, timeline snap) + new features (duration adjust, auto-jitter)
 
 ## Completed Summary (MIDI Editor)
 - **Phase 1 钢琴卷帘骨架完成**: 6 个新文件 (~745 行)
@@ -74,7 +74,8 @@
 ## Evidence
 - Handoff: ops/ai/tasks/20260103-midi-editor-pipeline/handoff.md
 - Context Pack: ops/ai/tasks/20260103-midi-editor-pipeline/evidence/context_pack.md
-- Execute Log: ops/ai/tasks/20260103-midi-editor-pipeline/evidence/execute.md
+- Execute Log: ops/ai/tasks/20260103-midi-editor-pipeline/evidence/execute.log
+- Diff Patch: ops/ai/tasks/20260103-midi-editor-pipeline/evidence/diff.patch
 
 ## How to Resume in a New Session
 1. Read `ops/ai/state/STATE.md`
@@ -88,9 +89,10 @@
 ---
 
 ## Next Actions
-1. **用户测试**: 可变小节时长功能 (拉伸后时间轴/网格同步更新)
-2. **验证**: MIDI 导出的 tempo 变化 (用其他软件打开验证)
-3. Phase 3-4: 高级编辑 + 超音域处理预览（如需继续）
+1. **验收测试**: 拉长小节→保存→重载，确认小节刻度保持
+2. **验收测试**: 播放自动翻页时 KeyList 同步
+3. **提交**: 审计通过后 git commit
+4. Phase 3-4: 高级编辑 + 超音域处理预览（如需继续）
 
 ---
-*Last Updated: 2026-01-05 (Session 12 - Variable Bar Length System, DONE, Commit: 62f4743)*
+*Last Updated: 2026-01-05 (Session 13 - BPM/Tempo Preservation Fixes, IN_PROGRESS)*

@@ -202,38 +202,94 @@ class TimelineWidget(QWidget):
     def _rebuild_bar_times(self):
         """根据 tempo/time signature 或可变小节时长重建小节边界时间列表
 
-        如果 _bar_durations_sec 非空，使用可变小节时长；
-        否则使用 BPM 计算的默认时长。
+        优先级:
+        1. 如果 _bar_durations_sec 非空，使用可变小节时长
+        2. 否则使用 tick 精确计算（基于 tempo map 和 time signature map）
         """
         self._bar_times = []
 
         if self.total_duration <= 0:
             return
 
-        # 计算默认小节时长 (从 BPM 和拍号)
-        bpm = self.bpm
-        beats_per_bar = self.time_sig_numerator
-        beat_unit = self.time_sig_denominator
-        seconds_per_beat = (60.0 / bpm) * (4.0 / beat_unit)
-        default_bar_duration = seconds_per_beat * beats_per_bar
+        # 优先使用可变小节时长
+        if self._bar_durations_sec:
+            self._rebuild_bar_times_from_durations()
+        else:
+            # 使用 tick 精确计算（基于 tempo map）
+            self._rebuild_bar_times_from_ticks()
 
-        if default_bar_duration <= 0:
-            return
-
-        # 生成小节边界
+    def _rebuild_bar_times_from_durations(self):
+        """从可变小节时长生成小节边界"""
         bar_num = 1
         t = 0.0
-        while t <= self.total_duration + default_bar_duration:
+        default_duration = self._get_default_bar_duration()
+
+        while t <= self.total_duration + default_duration:
             self._bar_times.append((bar_num, t))
 
-            # 使用可变时长或默认时长
-            if self._bar_durations_sec and bar_num <= len(self._bar_durations_sec):
+            if bar_num <= len(self._bar_durations_sec):
                 bar_duration = self._bar_durations_sec[bar_num - 1]
             else:
-                bar_duration = default_bar_duration
+                bar_duration = default_duration
 
             bar_num += 1
             t += bar_duration
+
+    def _rebuild_bar_times_from_ticks(self):
+        """从 tick 精确计算小节边界（基于 tempo map 和 time signature map）
+
+        这确保 _bar_times 与 _draw_bar_row_fixed() 使用相同的计算逻辑，
+        避免节拍线与钢琴卷帘白色竖线错位。
+        """
+        tempo_events = self._tempo_events_tick
+        time_sig_events = self._time_sig_events_tick
+        ticks_per_beat = self.ticks_per_beat
+
+        if not time_sig_events or ticks_per_beat <= 0:
+            # Fallback: 使用固定 BPM 计算
+            self._rebuild_bar_times_fixed_bpm()
+            return
+
+        # 计算最大 tick (基于总时长)
+        max_tick = self._second_to_tick(self.total_duration + 10)  # 加余量
+
+        # 遍历 time signature 区间，按 tick 生成小节边界
+        bar_num = 1
+        for i, (sig_tick, numerator, denominator) in enumerate(time_sig_events):
+            # 计算此区间的结束 tick
+            if i + 1 < len(time_sig_events):
+                next_sig_tick = time_sig_events[i + 1][0]
+            else:
+                next_sig_tick = max_tick
+
+            # 每拍/每小节 tick 数
+            beat_ticks = ticks_per_beat * 4 // denominator
+            bar_ticks = beat_ticks * numerator
+
+            if bar_ticks <= 0:
+                continue
+
+            # 从 sig_tick 开始，按 bar_ticks 步进生成小节边界
+            current_tick = sig_tick
+            while current_tick < next_sig_tick and current_tick <= max_tick:
+                time_sec = self._tick_to_second(current_tick, tempo_events, ticks_per_beat)
+                if time_sec <= self.total_duration + 1:  # 允许略微超出
+                    self._bar_times.append((bar_num, time_sec))
+                    bar_num += 1
+                current_tick += bar_ticks
+
+    def _rebuild_bar_times_fixed_bpm(self):
+        """Fallback: 使用固定 BPM 计算小节边界"""
+        default_duration = self._get_default_bar_duration()
+        if default_duration <= 0:
+            return
+
+        bar_num = 1
+        t = 0.0
+        while t <= self.total_duration + default_duration:
+            self._bar_times.append((bar_num, t))
+            bar_num += 1
+            t += default_duration
 
     def get_beat_times(self, start_time: float, end_time: float) -> List[Tuple[float, bool]]:
         """获取指定时间范围内的拍子时间
