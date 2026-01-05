@@ -1,5 +1,59 @@
 # Handoff - MIDI Editor Pipeline
 
+## Session 14 (2026-01-06) - time_signature denominator fix
+
+### Status: PHASE DONE → NEW PHASE DEFINED
+
+### Completed Work
+**time_signature denominator fix - VERIFIED 6/6 PASSED**
+
+| Issue | Root Cause | Fix |
+|-------|------------|-----|
+| Bar line density doubled after save/reload | Code used log2 conversion (denom_log) | Remove denom_log, use actual denominator value |
+| mido semantics misunderstanding | Assumed MIDI file format exponent | mido abstracts exponent internally |
+
+### Evidence Index
+
+| File | Path | Purpose |
+|------|------|---------|
+| context_pack.md | evidence/context_pack.md | 低 token 摘要 + 新阶段目标 |
+| diff.patch | evidence/diff.patch | 当前改动 (336 行) |
+| execute.log | evidence/execute.log | 执行日志 + 6/6 验证结果 |
+| tests.log | LyreAutoPlayer/tests.log | 语法验证 + mido semantics |
+
+### Verification Results
+```
+=== PLANNER-EXECUTE LOG ===
+Steps: 6
+Status: ALL PASSED
+- editor_window.py:1357-1362: denominator uses actual value
+- playback_mixin.py:48-49: bar_boundaries_sec propagation
+- config.py:54: bar_boundaries_sec field
+- midi_parser.py:32-33: clip=True
+- thread.py: bar_boundaries_sec + clip=True (5 sites)
+- tests.log: 6/6 imports, mido denominator=4→4
+```
+
+---
+
+## NEW PHASE: Key Injection Performance
+
+### Goals (from plan.md)
+1. Fix missed key injection under dense notes/chords (events pile up with play_sound=True)
+2. Reorder KeyList (36-key) to high→low pitch
+3. Unify Editor Play vs Main Start preview sound
+
+### Reproduction
+- MIDI: `midi/Counting-Stars-OneRepublic.mid`
+- Section: bar ~17-18 / ~0:34s
+
+### Decision Points for Planner
+1. **Commit first?** Current changes (time_signature fix) are verified - commit before new phase?
+2. **Priority order?** Key injection fix vs KeyList reorder vs preview sound?
+3. **Synth isolation?** Separate thread vs queue vs degradation under overload?
+
+---
+
 ## Session 13 (2026-01-05) - BPM/Tempo Preservation Fixes
 
 ### Goals

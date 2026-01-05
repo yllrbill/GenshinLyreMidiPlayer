@@ -5,7 +5,7 @@
       "saved_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\city-of-stars-星光之城-爱乐之城-原神风物之诗琴谱-原琴谱_custom.mid",
       "display_name": "City-of-Stars-星光之城-爱乐之城-原神风物之诗琴谱-原琴谱_custom",
       "edit_style": "custom",
-      "last_modified": "2026-01-05T21:49:47.473680",
+      "last_modified": "2026-01-05T21:51:32.631153",
       "source_file_size": 5682,
       "source_note_count": 626
     },
@@ -50,7 +50,7 @@
       "saved_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\counting-stars-c调简单版_custom.mid",
       "display_name": "Counting-Stars-C调简单版_custom",
       "edit_style": "custom",
-      "last_modified": "2026-01-05T19:58:45.221526",
+      "last_modified": "2026-01-06T02:47:48.842924",
       "source_file_size": 5228,
       "source_note_count": 573
     },
@@ -71,6 +71,33 @@
       "last_modified": "2026-01-04T17:53:25.156000",
       "source_file_size": 16227,
       "source_note_count": 2410
+    },
+    {
+      "source_path": "d:\\dw11\\piano\\lyreautoplayer\\midi\\绯想天-东方绯想天bgm.mid",
+      "saved_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\绯想天-东方绯想天bgm_custom.mid",
+      "display_name": "绯想天-东方绯想天BGM_custom",
+      "edit_style": "custom",
+      "last_modified": "2026-01-05T22:11:57.171074",
+      "source_file_size": 18554,
+      "source_note_count": 2047
+    },
+    {
+      "source_path": "d:\\dw11\\piano\\lyreautoplayer\\midi\\one-last-kiss-宇多田光-原神风物之诗琴谱-原琴谱.mid",
+      "saved_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\one-last-kiss-宇多田光-原神风物之诗琴谱-原琴谱_custom.mid",
+      "display_name": "One-Last-Kiss-宇多田光-原神风物之诗琴谱-原琴谱_custom",
+      "edit_style": "custom",
+      "last_modified": "2026-01-05T22:25:12.128583",
+      "source_file_size": 18491,
+      "source_note_count": 2185
+    },
+    {
+      "source_path": "d:\\dw11\\piano\\lyreautoplayer\\midi\\counting-stars-onerepublic.mid",
+      "saved_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\counting-stars-onerepublic_custom.mid",
+      "display_name": "Counting-Stars-OneRepublic_custom",
+      "edit_style": "custom",
+      "last_modified": "2026-01-06T03:39:39.009228",
+      "source_file_size": 15587,
+      "source_note_count": 1774
     }
   ]
 }

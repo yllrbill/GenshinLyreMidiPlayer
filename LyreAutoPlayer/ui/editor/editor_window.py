@@ -568,7 +568,8 @@ class EditorWindow(QMainWindow):
             source_path: 原始文件路径 (用于索引)。若为 None，则尝试从 index.json 反查
         """
         try:
-            self.midi_file = mido.MidiFile(path)
+            # clip=True: 容错模式，将超范围数据字节裁剪到 0..127 (避免 "data byte must be in range" 错误)
+            self.midi_file = mido.MidiFile(path, clip=True)
             self.midi_path = path
 
             # 确定原始文件路径
@@ -675,7 +676,7 @@ class EditorWindow(QMainWindow):
             音符数量，失败时返回 0
         """
         try:
-            midi_file = mido.MidiFile(midi_path)
+            midi_file = mido.MidiFile(midi_path, clip=True)
             count = 0
             for track in midi_file.tracks:
                 for msg in track:
@@ -1291,8 +1292,14 @@ class EditorWindow(QMainWindow):
         track = mido.MidiTrack()
         new_midi.tracks.append(track)
 
-        # 收集所有事件（tempo + 音符）
+        # 收集所有事件（time_signature + tempo + 音符）
         events = []
+
+        # 添加 time_signature 事件（复用原始拍号，避免默认 4/4 覆盖）
+        time_sig_events = getattr(self, '_time_sig_events_tick', [(0, 4, 4)])
+        for abs_tick, numerator, denominator in time_sig_events:
+            # (tick, type, numerator, denominator, 0)
+            events.append((abs_tick, 'time_signature', numerator, denominator, 0))
 
         # 添加 tempo 事件
         for abs_tick, tempo in tempo_events:
@@ -1323,15 +1330,17 @@ class EditorWindow(QMainWindow):
             events.append((start_tick, 'note_on', note_pitch, velocity, channel))
             events.append((end_tick, 'note_off', note_pitch, 0, channel))
 
-        # 按时间排序：tempo 优先，然后 note_off 优先于 note_on
+        # 按时间排序：time_signature 最先，tempo 次之，然后 note_off 优先于 note_on
         def sort_key(e):
             tick, msg_type = e[0], e[1]
-            if msg_type == 'set_tempo':
-                return (tick, 0)  # tempo 最先
+            if msg_type == 'time_signature':
+                return (tick, 0)  # time_signature 最先
+            elif msg_type == 'set_tempo':
+                return (tick, 1)  # tempo 次之
             elif msg_type == 'note_off':
-                return (tick, 1)  # note_off 次之
+                return (tick, 2)  # note_off 再次
             else:
-                return (tick, 2)  # note_on 最后
+                return (tick, 3)  # note_on 最后
 
         events.sort(key=sort_key)
 
@@ -1342,7 +1351,20 @@ class EditorWindow(QMainWindow):
             msg_type = event[1]
             delta = abs_tick - prev_tick
 
-            if msg_type == 'set_tempo':
+            if msg_type == 'time_signature':
+                numerator = event[2]
+                denominator = event[3]
+                # mido time_signature: denominator 使用实际值 (4=四分音符, 8=八分音符)
+                # mido 内部自动处理 MIDI 文件格式的指数转换
+                track.append(mido.MetaMessage(
+                    'time_signature',
+                    numerator=numerator,
+                    denominator=denominator,
+                    clocks_per_click=24,
+                    notated_32nd_notes_per_beat=8,
+                    time=delta
+                ))
+            elif msg_type == 'set_tempo':
                 tempo = event[2]
                 track.append(mido.MetaMessage('set_tempo', tempo=tempo, time=delta))
             else:
@@ -2142,6 +2164,20 @@ class EditorWindow(QMainWindow):
         # E.g., 6/8: 6 eighth notes = 6 * (60/BPM) * (4/8) = 3 * (60/BPM)
         beats_per_bar = numerator * (4.0 / denominator)
         return 60.0 / bpm * beats_per_bar
+
+    def get_bar_boundaries(self) -> list:
+        """获取小节边界时间列表 (秒)。
+
+        用于暂停标记同步可变小节时长。
+
+        Returns:
+            [time_sec, ...] - 每个小节起点的时间 (秒)
+        """
+        if hasattr(self, 'timeline'):
+            bar_times = self.timeline.get_bar_times()
+            # bar_times 格式: [(bar_num, time_sec), ...]
+            return [time_sec for _, time_sec in bar_times]
+        return []
 
     def get_pause_bars(self) -> int:
         """Get auto-pause interval (bars).

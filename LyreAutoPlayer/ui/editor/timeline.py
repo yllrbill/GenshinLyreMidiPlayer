@@ -415,12 +415,13 @@ class TimelineWidget(QWidget):
         bpm_y = int(row_bottom * 0.7)  # ~21 @ ROW_BAR=30
         painter.drawText(4, bpm_y, bpm_text)
 
-        # 检查是否使用可变小节时长
-        if self._bar_durations_sec and self._bar_times:
-            # 使用可变小节边界绘制
+        # 优先使用 _bar_times（确保 timeline 与 piano_roll 节拍线对齐）
+        # _bar_times 来源于 _rebuild_bar_times()，可能是可变时长或 tick 精确计算
+        if self._bar_times:
+            # 使用预计算的小节边界绘制（与 piano_roll 共享同一数据源）
             self._draw_bar_row_variable(painter, start_time, end_time, font_bar, row_top, row_bottom)
         else:
-            # 使用 tick 精确计算拍子和小节
+            # 兜底：_bar_times 为空时实时计算（仅在初始化阶段或特殊情况）
             self._draw_bar_row_fixed(painter, start_time, end_time, font_bar, row_top, row_bottom)
 
     def _draw_bar_row_variable(self, painter: QPainter, start_time: float, end_time: float,

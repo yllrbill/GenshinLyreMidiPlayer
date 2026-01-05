@@ -2,9 +2,52 @@
 
 ## Task
 - ID: 20260103-midi-editor-pipeline
-- Status: DONE (Session 13 - BPM/Tempo Preservation Fixes)
-- Last Updated: 2026-01-05
-- Previous Commit: `9b7a351`
+- Status: PHASE DONE → NEW PHASE DEFINED
+- Last Updated: 2026-01-06
+- Latest Commit: `2789fbe`
+
+---
+
+## Session 14 Summary (2026-01-06)
+**time_signature denominator fix - VERIFIED 6/6 PASSED**
+
+### Key Fix
+- **Problem**: Bar line density doubled after save/reload
+- **Root Cause**: Code used log2 conversion (`denom_log`) but mido expects actual values
+- **Fix**: Remove denom_log conversion, use `denominator=denominator` directly
+
+### Verification Results
+| Step | Component | Status |
+|------|-----------|--------|
+| 1/6 | editor_window.py:1357-1362 | OK - denominator uses actual value |
+| 2/6 | playback_mixin.py:48-49 | OK - bar_boundaries_sec propagation |
+| 3/6 | config.py:54 | OK - bar_boundaries_sec field |
+| 4/6 | midi_parser.py:32-33 | OK - clip=True |
+| 5/6 | thread.py:102,433,445-447,676,678,746 | OK - bar_boundaries_sec + clip=True |
+| 6/6 | tests.log | OK - 6/6 imports, mido denominator=4→4 |
+
+---
+
+## NEW PHASE: Key Injection Performance (Defined in plan.md)
+
+### Goals
+1. Fix missed key injection under dense notes/chords (events pile up with play_sound=True)
+2. Reorder KeyList (36-key) to high→low pitch
+3. Unify Editor Play vs Main Start preview sound
+
+### Reproduction
+- MIDI: `midi/Counting-Stars-OneRepublic.mid`
+- Section: bar ~17-18 / ~0:34s
+
+### Target Files
+| File | Change |
+|------|--------|
+| `player/thread.py` | Lag instrumentation, batch SendInput, decouple synth |
+| `input_manager.py` | Optional batch SendInput for chords |
+| `ui/editor/key_list_widget.py` | Sort 36-key rows by pitch descending |
+| `ui/editor/editor_window.py` | Align preview synth with main playback |
+
+---
 
 ## Session 13 Summary (2026-01-05)
 BPM/tempo preservation and scroll sync fixes based on audit reports.

@@ -44,6 +44,10 @@ class PlaybackMixin:
             cfg.bar_duration_override = editor.get_bar_duration()
             cfg.editor_bpm = editor.sp_bpm.value() if hasattr(editor, 'sp_bpm') else 0
 
+            # Pass variable bar boundaries for pause marker sync
+            if hasattr(editor, 'get_bar_boundaries'):
+                cfg.bar_boundaries_sec = editor.get_bar_boundaries()
+
             # Use editor's pause, octave, and input style settings
             cfg.pause_every_bars = editor.get_pause_bars()
             cfg.auto_resume_countdown = editor.get_auto_resume_countdown()

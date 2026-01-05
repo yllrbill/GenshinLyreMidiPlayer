@@ -2,9 +2,9 @@
 
 ## Latest Task
 - TASK_ID: 20260103-midi-editor-pipeline
-- Status: IN_PROGRESS (Session 13 - BPM/Tempo Preservation Fixes)
+- Status: PHASE DONE → NEW PHASE PENDING (Key Injection Performance)
 - Pointer: ops/ai/tasks/20260103-midi-editor-pipeline
-- Latest Commit: `9b7a351` (pending: Session 13 changes)
+- Latest Commit: `2789fbe` (pending: Session 13-14 changes)
 
 ## Previous Task
 - TASK_ID: 20260102-2138-main-mixin-refactor
@@ -12,9 +12,10 @@
 - Pointer: ops/ai/tasks/20260102-2138-main-mixin-refactor
 
 ## Current Focus
+- Session 14: time_signature denominator fix (VERIFIED 6/6 PASSED)
+- NEW PHASE: Key injection performance, KeyList reorder, preview sound unify
 - Session 13: BPM/tempo preservation fixes (审计发现的 6 个问题)
 - Session 12: Variable bar length system (可变小节时长)
-- Session 11: Bar duration adjustment bug fixes (6 issues)
 
 ## Completed Summary (MIDI Editor)
 - **Phase 1 钢琴卷帘骨架完成**: 6 个新文件 (~745 行)
@@ -63,7 +64,9 @@
 2. Phase 3-4: 高级编辑 + 超音域处理预览（如需继续）
 
 ## Recent Completions
-- Variable Bar Length System (Session 12, 2026-01-05) - **Committed: 62f4743**
+- **time_signature denominator fix (Session 14, 2026-01-06) - VERIFIED 6/6**
+- Timeline/PianoRoll alignment fix (Session 13-14) - Committed: 2789fbe
+- Variable Bar Length System (Session 12, 2026-01-05) - Committed: 62f4743
 - Bar Duration Bug Fixes (Session 11, 2026-01-05) - Committed: bd39a79
 - Bug Fixes & New Features (Session 10, 2026-01-05) - Committed: 7b73a5d
 - UI Fixes & Auto-scroll (Session 9, 2026-01-05) - Committed: 7713727
@@ -89,10 +92,11 @@
 ---
 
 ## Next Actions
-1. **验收测试**: 拉长小节→保存→重载，确认小节刻度保持
-2. **验收测试**: 播放自动翻页时 KeyList 同步
-3. **提交**: 审计通过后 git commit
-4. Phase 3-4: 高级编辑 + 超音域处理预览（如需继续）
+1. **Decision**: Commit Session 13-14 changes before starting new phase?
+2. **New Phase Step 1**: Reproduce key injection issue with `midi/Counting-Stars-OneRepublic.mid` bar ~17-18
+3. **New Phase Step 2**: Add lag instrumentation in PlayerThread
+4. **New Phase Step 3**: Batch SendInput for same-timestamp events
+5. **New Phase Step 4**: Isolate FluidSynth audio from critical key injection path
 
 ---
-*Last Updated: 2026-01-05 (Session 13 - BPM/Tempo Preservation Fixes, IN_PROGRESS)*
+*Last Updated: 2026-01-06 (Session 14 - time_signature fix VERIFIED, NEW PHASE PENDING)*

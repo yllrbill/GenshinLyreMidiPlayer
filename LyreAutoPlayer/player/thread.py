@@ -99,6 +99,7 @@ class PlayerThread(QThread):
         self._pause_start = 0.0
         self._total_pause_time = 0.0
         self._bar_duration = 2.0  # Default bar duration (120BPM 4/4)
+        self._bar_boundaries_sec: list = []  # 可变小节边界时间列表 (秒)
         self._current_bar = -1  # Current bar index
         self._total_duration = 0.0  # Total playback duration (for progress)
         self._last_progress_emit = 0.0  # Last time progress was emitted
@@ -429,7 +430,7 @@ class PlayerThread(QThread):
         beat_duration_for_filter = 0.5
         if self.cfg.midi_path and os.path.isfile(self.cfg.midi_path):
             try:
-                mid_obj = mido.MidiFile(self.cfg.midi_path)
+                mid_obj = mido.MidiFile(self.cfg.midi_path, clip=True)
                 bar_duration, beat_duration_for_filter = calculate_bar_and_beat_duration(mid_obj)
                 self._bar_duration = bar_duration
             except Exception:
@@ -439,6 +440,11 @@ class PlayerThread(QThread):
         if self.cfg.bar_duration_override > 0:
             self._bar_duration = self.cfg.bar_duration_override
             self.log.emit(f"Using editor bar duration: {self._bar_duration:.3f}s")
+
+        # Use variable bar boundaries if provided (for stretched bars)
+        if self.cfg.bar_boundaries_sec:
+            self._bar_boundaries_sec = list(self.cfg.bar_boundaries_sec)
+            self.log.emit(f"Using {len(self._bar_boundaries_sec)} variable bar boundaries")
 
         # 8-bar style setup
         eight_bar = self.cfg.eight_bar_style
@@ -666,7 +672,35 @@ class PlayerThread(QThread):
                     prev_release = release_time
 
         # Insert pause markers at bar boundaries (for pause-at-bar)
-        if self._bar_duration > 1e-9 and self.events:
+        # 优先使用可变小节边界列表 (支持拉长/压缩的小节)
+        if self._bar_boundaries_sec and self.events:
+            # 使用预计算的小节边界时间
+            for bar_idx, boundary_orig in enumerate(self._bar_boundaries_sec, start=1):
+                if boundary_orig <= 0:
+                    continue  # 跳过 0 时刻 (第 1 小节起点不需要暂停标记)
+                boundary_time = boundary_orig / speed
+                if eight_bar.enabled:
+                    _, timing_mult, _, _ = self._get_section_multipliers(
+                        boundary_time, eight_bar_segments, segment_duration
+                    )
+                    seg_start = int(boundary_time / segment_duration) * segment_duration if segment_duration > 1e-9 else 0.0
+                    mapped_time = seg_start + (boundary_time - seg_start) * timing_mult
+                    if use_warp:
+                        mapped_time, _ = self._map_time_warp(
+                            mapped_time, 1.0, eight_bar_segments, segment_duration, warp_start
+                        )
+                    elif use_beat_lock:
+                        mapped_time, _ = self._map_time_beat_lock(
+                            mapped_time, 1.0, eight_bar_segments, segment_duration, beat_duration
+                        )
+                    boundary_time = mapped_time
+                pause_marker_time = max(0.0, boundary_time - 0.001)
+                heapq.heappush(
+                    event_queue,
+                    KeyEvent(pause_marker_time, 0, "pause_marker", "", 0, bar_index=bar_idx)
+                )
+        elif self._bar_duration > 1e-9 and self.events:
+            # 兜底: 使用固定小节时长计算边界
             total_time = max(e.time + e.duration for e in self.events)
             num_bars = int(total_time / self._bar_duration) + 1
             for bar_idx in range(1, num_bars + 1):
@@ -687,8 +721,7 @@ class PlayerThread(QThread):
                             mapped_time, 1.0, eight_bar_segments, segment_duration, beat_duration
                         )
                     boundary_time = mapped_time
-                # Add small epsilon to ensure pause_marker is processed before events at exact boundary
-                pause_marker_time = max(0.0, boundary_time - 0.001)  # 1ms epsilon
+                pause_marker_time = max(0.0, boundary_time - 0.001)
                 heapq.heappush(
                     event_queue,
                     KeyEvent(pause_marker_time, 0, "pause_marker", "", 0, bar_index=bar_idx)
@@ -710,7 +743,7 @@ class PlayerThread(QThread):
         bar_duration = 2.0
         if self.cfg.midi_path and os.path.isfile(self.cfg.midi_path):
             try:
-                mid_obj = mido.MidiFile(self.cfg.midi_path)
+                mid_obj = mido.MidiFile(self.cfg.midi_path, clip=True)
                 bar_duration, beat_duration = calculate_bar_and_beat_duration(mid_obj)
                 self.log.emit(f"8-Bar: bar_duration={bar_duration:.3f}s, beat_duration={beat_duration:.3f}s")
             except Exception as e:

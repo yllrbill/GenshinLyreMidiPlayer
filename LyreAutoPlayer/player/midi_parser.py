@@ -29,7 +29,8 @@ def midi_to_events_with_duration(mid_path: str) -> List[NoteEvent]:
     Returns:
         List of NoteEvent sorted by time
     """
-    mid = mido.MidiFile(mid_path)
+    # clip=True: 容错模式，裁剪超范围数据字节到 0..127
+    mid = mido.MidiFile(mid_path, clip=True)
     tempo = 500000  # default 120 BPM
     t = 0.0
 
