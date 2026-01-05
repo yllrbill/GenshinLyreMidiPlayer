@@ -1,29 +1,22 @@
-# Plan: 20260103-midi-editor-pipeline
+# Plan
 
-## Goal/Scope
-在现有钢琴卷帘时间轴上补充节拍速度（BPM）与小节数显示，保持秒数刻度不回归。
+## Steps
+1. 手动验收 Ctrl+拖拽选择小节：确认仅显示黄色竖线与小节高亮，未出现蓝色选区矩形。
+   - Acceptance: 选区拖拽时蓝色矩形不出现；黄色边界线与小节高亮正常。
+2. 手动验收非连续小节拉伸：选择 bar 1-2 与 bar 5-6，执行拉伸/压缩。
+   - Acceptance: 每个区间独立拉伸；bar 3-4 平移仅受前置区间影响；bar 7+ 受累计平移影响。
+3. 手动验收“未选中小节”提示：未选中小节时点击拉伸按钮。
+   - Acceptance: 弹窗显示中文提示，文案来自 i18n（`no_bars_selected_*`）。
+4. 若需进入 Phase 3-4（高级编辑 + 超音域处理预览），先明确需求范围与验收标准。
+   - Acceptance: 需求范围与验收标准明确后再规划后续实现。
 
-## Constraints/Assumptions
-- 仅改动编辑器模块（timeline.py / editor_window.py）
-- 保持现有播放与保存流程不受影响
-- 若 MIDI 无 tempo/time_signature，使用 120 BPM 与 4/4 作为默认值
+## Commands
+- （无）
 
-## Plan Steps
-1. 阅读 `LyreAutoPlayer/ui/editor/timeline.py` 和 `LyreAutoPlayer/ui/editor/editor_window.py` 的时间轴与 MIDI 解析逻辑。
-2. 在 EditorWindow 中解析 MIDI 的 tempo/time_signature，并缓存供时间轴使用。
-3. 扩展 TimelineWidget：新增 BPM 显示与小节/拍刻度线绘制逻辑（与秒刻度并存）。
-4. 在加载 MIDI 时将 tempo/time_signature 传入时间轴，并确保 corner widget 高度与时间轴一致。
-5. 做最小验证：加载含/不含 tempo 的 MIDI，确认秒数+BPM+小节数同时显示且播放头贯穿。
+## Evidence Checklist
+- 手动验收记录（步骤 + 结果）。
+- 异常截图或日志（如有）。
 
-## Acceptance Checklist
-- [ ] 时间轴持续显示秒数刻度
-- [ ] 时间轴显示 BPM（或默认 120）
-- [ ] 时间轴显示小节号与拍刻度线
-- [ ] 读取 MIDI 时可正确更新 tempo/time_signature
-- [ ] UI 高度对齐（corner widget 与时间轴一致）
-
-## Risks/Dependencies
-- 多 tempo / 多拍号 MIDI 的处理策略可能需要后续扩展
-
----
-*Generated: 2026-01-03 22:57*
+## Stop Conditions
+- 任一手动验收不符合预期。
+- Phase 3-4 需求范围或验收标准未明确。

@@ -1386,7 +1386,7 @@ class PianoRollWidget(QGraphicsView):
         """设置选中的小节并绘制覆盖层
 
         Args:
-            bar_numbers: 选中的小节号列表 (从 0 开始)
+            bar_numbers: 选中的小节号列表 (1-based, 从 1 开始, 与 timeline 显示一致)
         """
         self._selected_bars = bar_numbers[:]
         self._update_bar_overlay()
@@ -1485,9 +1485,12 @@ class PianoRollWidget(QGraphicsView):
         - 后续区间和音符累计平移
         - delta 按小节数量累计：total_delta = delta_sec * bar_count
 
-        音符归属判定：
-        - 使用区间重叠检测（音符时间区间与小节区间有交集）
-        - 不使用音符中心点
+        音符归属判定（起点命中策略）：
+        - 仅当音符的 start_time 落在选中小节区间内时，才对该音符进行拉伸
+        - 跨区间的长音符（起点在区间外，尾部延伸入区间）不会被拉伸，仅随前置区间平移
+        - 这确保未选中小节内的音符不会被意外拉伸
+        - 注意：起点在选中区间内但尾部跨出的长音符仍会整体拉伸，
+          其尾部可能延伸到未选中小节（影响幅度取决于拉伸比例）
 
         Args:
             delta_ms: 每小节时值增量 (毫秒，正=拉伸，负=压缩)
@@ -1520,16 +1523,6 @@ class PianoRollWidget(QGraphicsView):
         if not intervals:
             return
 
-        # 收集所有音符的旧状态
-        all_notes_old_data = [{
-            "note": item.note,
-            "start": item.start_time,
-            "duration": item.duration,
-            "velocity": item.velocity,
-            "track": item.track,
-            "channel": getattr(item, 'channel', 0)
-        } for item in self.notes]
-
         # 按起始时间排序音符（用于处理后续平移）
         notes_by_start = sorted(self.notes, key=lambda n: n.start_time)
 
@@ -1557,25 +1550,18 @@ class PianoRollWidget(QGraphicsView):
             # 应用累计平移到此区间的起点
             shifted_interval_start = interval_start_sec + cumulative_shift
 
-            # 找出与此区间重叠的音符（区间重叠检测）
+            # 找出起点落在此区间内的音符（起点命中策略）
             for item in notes_by_start:
                 note_start = item.start_time
-                note_end = item.start_time + item.duration
 
                 # 跳过已处理的音符
                 if item in note_updates:
                     continue
 
-                # 区间重叠检测：音符区间 [note_start, note_end) 与小节区间 [interval_start, interval_end) 有交集
-                # 注意：比较时需要考虑之前的累计平移
-                adjusted_note_start = note_start
-                if cumulative_shift != 0 and note_start >= interval_start_sec:
-                    # 此音符在当前或之后的区间，需要考虑累计平移
-                    pass  # 暂不调整，在下面处理
-
-                # 判断音符是否与原始区间重叠
-                if note_end > interval_start_sec and note_start < interval_end_sec:
-                    # 音符与此区间重叠，进行拉伸
+                # 起点命中策略：仅当音符的 start_time 落在区间 [interval_start, interval_end) 内
+                # 这确保跨区间的长音符（起点在区间外）不会被拉伸，只会随前置区间平移
+                if interval_start_sec <= note_start < interval_end_sec:
+                    # 起点命中，进行拉伸
                     rel_start = note_start - interval_start_sec
                     rel_end = rel_start + item.duration
 
@@ -1615,8 +1601,7 @@ class PianoRollWidget(QGraphicsView):
                 }
             else:
                 # 在区间之间或之前，检查是否需要部分平移
-                # 找出此音符应该受到多少累计平移
-                shift_for_note = 0.0
+                # 计算此音符应该受到的累计平移量
                 temp_shift = 0.0
                 for first_bar, last_bar in intervals:
                     interval_start_sec = (first_bar - 1) * self._bar_duration_sec
