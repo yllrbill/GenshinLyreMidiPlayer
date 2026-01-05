@@ -519,6 +519,10 @@ class EditorWindow(QMainWindow):
         self.timeline.sig_bar_selection_changed.connect(self.piano_roll.set_selected_bars)
         self.timeline.sig_drag_range.connect(self.piano_roll.set_drag_boundary)
 
+        # 可变小节时长同步: timeline ↔ piano_roll
+        self.timeline.sig_bar_times_changed.connect(self.piano_roll.set_bar_times)
+        self.piano_roll.sig_bar_duration_changed.connect(self.timeline.update_bar_duration)
+
         # Notes changed → refresh key_list and timeline
         self.piano_roll.sig_notes_changed.connect(self._on_notes_changed_refresh)
 
@@ -1197,25 +1201,64 @@ class EditorWindow(QMainWindow):
         使用用户设定的 BPM (来自工具栏 spinbox)，使用原始 channel。
         当前为简化单轨输出（多轨合并为单轨）。
 
+        支持可变小节时长：如果 timeline 有 bar_durations，则为每个不同时长的小节
+        生成对应的 tempo 事件。公式：microseconds_per_beat = bar_duration_sec / beats_per_bar * 1_000_000
+
         WARNING: 此方法会丢失原始 MIDI 的以下信息：
-        - 原始 tempo map (多个速度变化事件) → 替换为单一用户 BPM
+        - 原始 tempo map (多个速度变化事件) → 替换为单一用户 BPM 或可变小节时长
         - 多轨道结构 → 合并为单轨
         - 控制器事件、弯音、歌词等 → 仅保留音符
 
         如需保留原始 tempo map，应使用原始文件并仅应用音符编辑。
 
         Returns:
-            mido.MidiFile: 重建的 MIDI 文件 (简化版，单一 BPM)
+            mido.MidiFile: 重建的 MIDI 文件 (简化版，支持可变小节时长)
         """
         # 使用原始 ticks_per_beat，默认 480
         ticks_per_beat = 480
         if self.midi_file:
             ticks_per_beat = self.midi_file.ticks_per_beat
 
-        # 使用用户设定的 BPM (来自工具栏 spinbox) 而非原始 MIDI tempo
-        user_bpm = self.sp_bpm.value()
-        user_tempo = mido.bpm2tempo(user_bpm)  # 转换为微秒/拍
-        tempo_events = [(0, user_tempo)]  # 单一全局 tempo
+        # 获取节拍信息
+        beats_per_bar = getattr(self.timeline, "time_sig_numerator", 4)
+
+        # 检查是否有可变小节时长
+        bar_durations = self.timeline.get_bar_durations()
+        bar_times = self.timeline.get_bar_times()
+
+        if bar_durations and bar_times:
+            # 使用可变小节时长生成 tempo 事件
+            # 公式: microseconds_per_beat = bar_duration_sec / beats_per_bar * 1_000_000
+            tempo_events = []
+            prev_tempo = None
+            for i, (bar_num, bar_start_sec) in enumerate(bar_times):
+                if bar_num <= len(bar_durations):
+                    bar_duration_sec = bar_durations[bar_num - 1]
+                else:
+                    # 超出定义范围，使用默认 BPM
+                    bar_duration_sec = 60.0 / self.sp_bpm.value() * beats_per_bar
+
+                # 计算此小节的 tempo
+                seconds_per_beat = bar_duration_sec / beats_per_bar
+                tempo = int(seconds_per_beat * 1_000_000)  # 微秒/拍
+
+                # 仅在 tempo 变化时添加事件（避免冗余）
+                if tempo != prev_tempo:
+                    # 转换小节起始时间为 ticks（相对于已有的 tempo_events）
+                    start_tick = self._second_to_tick(bar_start_sec, tempo_events if tempo_events else [(0, tempo)], ticks_per_beat)
+                    tempo_events.append((start_tick, tempo))
+                    prev_tempo = tempo
+
+            # 如果没有任何 tempo 事件，使用默认 BPM
+            if not tempo_events:
+                user_bpm = self.sp_bpm.value()
+                user_tempo = mido.bpm2tempo(user_bpm)
+                tempo_events = [(0, user_tempo)]
+        else:
+            # 使用用户设定的 BPM (来自工具栏 spinbox) 而非原始 MIDI tempo
+            user_bpm = self.sp_bpm.value()
+            user_tempo = mido.bpm2tempo(user_bpm)  # 转换为微秒/拍
+            tempo_events = [(0, user_tempo)]  # 单一全局 tempo
 
         new_midi = mido.MidiFile(ticks_per_beat=ticks_per_beat)
 

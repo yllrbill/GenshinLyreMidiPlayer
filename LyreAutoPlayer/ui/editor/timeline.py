@@ -19,6 +19,7 @@ class TimelineWidget(QWidget):
     sig_select_range = pyqtSignal(float, float)  # 拖动选择范围 (start, end)
     sig_bar_selection_changed = pyqtSignal(list)  # 选中小节列表变化 [bar_num, ...]
     sig_drag_range = pyqtSignal(float, float, bool)  # 拖动边界线 (start, end, active)
+    sig_bar_times_changed = pyqtSignal(list)  # 小节边界时间变化 [(bar_num, time_sec), ...]
 
     # 常量 - 颜色
     BG_COLOR = QColor(40, 40, 40)
@@ -60,6 +61,9 @@ class TimelineWidget(QWidget):
         self._time_sig_map: List[Tuple[float, int, int]] = [(0.0, 4, 4)]
         # 小节边界缓存: [(bar_number, time_sec), ...]
         self._bar_times: List[Tuple[int, float]] = []
+        # 可变小节时长: bar_durations_sec[i] = 第 i+1 小节的时长 (秒)
+        # 若为空列表，则使用 BPM 计算的默认时长
+        self._bar_durations_sec: List[float] = []
         # 原始 tick 事件 (用于精确计算)
         self._tempo_events_tick: List[Tuple[int, int]] = [(0, 500000)]
         self._time_sig_events_tick: List[Tuple[int, int, int]] = [(0, 4, 4)]
@@ -194,35 +198,40 @@ class TimelineWidget(QWidget):
         return current_sec
 
     def _rebuild_bar_times(self):
-        """根据 tempo/time signature 重建小节边界时间列表"""
+        """根据 tempo/time signature 或可变小节时长重建小节边界时间列表
+
+        如果 _bar_durations_sec 非空，使用可变小节时长；
+        否则使用 BPM 计算的默认时长。
+        """
         self._bar_times = []
 
         if self.total_duration <= 0:
             return
 
-        # 简化处理：使用第一个 tempo 和 time signature
-        # (完整实现需要处理变速变拍)
+        # 计算默认小节时长 (从 BPM 和拍号)
         bpm = self.bpm
         beats_per_bar = self.time_sig_numerator
         beat_unit = self.time_sig_denominator
-
-        # 每拍时长 (秒)
-        # 注意：beat_unit 表示几分音符为一拍
-        # 4 表示四分音符，所以 60/bpm 是四分音符时长
-        # 如果 beat_unit=8，则一拍是八分音符，时长 = 60/bpm * 4/8
         seconds_per_beat = (60.0 / bpm) * (4.0 / beat_unit)
-        seconds_per_bar = seconds_per_beat * beats_per_bar
+        default_bar_duration = seconds_per_beat * beats_per_bar
 
-        if seconds_per_bar <= 0:
+        if default_bar_duration <= 0:
             return
 
         # 生成小节边界
         bar_num = 1
         t = 0.0
-        while t <= self.total_duration + seconds_per_bar:
+        while t <= self.total_duration + default_bar_duration:
             self._bar_times.append((bar_num, t))
+
+            # 使用可变时长或默认时长
+            if self._bar_durations_sec and bar_num <= len(self._bar_durations_sec):
+                bar_duration = self._bar_durations_sec[bar_num - 1]
+            else:
+                bar_duration = default_bar_duration
+
             bar_num += 1
-            t += seconds_per_bar
+            t += bar_duration
 
     def get_beat_times(self, start_time: float, end_time: float) -> List[Tuple[float, bool]]:
         """获取指定时间范围内的拍子时间
@@ -608,6 +617,84 @@ class TimelineWidget(QWidget):
             self._selected_bars = []
             self.sig_bar_selection_changed.emit([])
             self.update()
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # 可变小节时长 API
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def get_bar_times(self) -> List[Tuple[int, float]]:
+        """获取小节边界时间列表
+
+        Returns:
+            [(bar_number, start_time_sec), ...] - bar_number 从 1 开始
+        """
+        return list(self._bar_times)
+
+    def get_bar_durations(self) -> List[float]:
+        """获取可变小节时长列表
+
+        Returns:
+            [duration_sec, ...] - 索引 i 对应小节 i+1 的时长
+            若为空列表，表示使用 BPM 计算的默认时长
+        """
+        return list(self._bar_durations_sec)
+
+    def set_bar_durations(self, durations: List[float]):
+        """设置可变小节时长
+
+        Args:
+            durations: [duration_sec, ...] - 索引 i 对应小节 i+1 的时长
+                       传入空列表恢复使用 BPM 计算的默认时长
+        """
+        self._bar_durations_sec = list(durations)
+        self._rebuild_bar_times()
+        self.sig_bar_times_changed.emit(self._bar_times)
+        self.update()
+
+    def update_bar_duration(self, bar_num: int, new_duration: float):
+        """更新单个小节的时长
+
+        Args:
+            bar_num: 小节编号 (1-based)
+            new_duration: 新时长 (秒)
+        """
+        if bar_num < 1 or new_duration <= 0:
+            return
+
+        # 确保列表足够长
+        default_duration = self._get_default_bar_duration()
+        while len(self._bar_durations_sec) < bar_num:
+            self._bar_durations_sec.append(default_duration)
+
+        self._bar_durations_sec[bar_num - 1] = new_duration
+        self._rebuild_bar_times()
+        self.sig_bar_times_changed.emit(self._bar_times)
+        self.update()
+
+    def get_bar_duration(self, bar_num: int) -> float:
+        """获取指定小节的时长
+
+        Args:
+            bar_num: 小节编号 (1-based)
+
+        Returns:
+            该小节的时长 (秒)
+        """
+        if bar_num < 1:
+            return 0.0
+
+        if self._bar_durations_sec and bar_num <= len(self._bar_durations_sec):
+            return self._bar_durations_sec[bar_num - 1]
+
+        return self._get_default_bar_duration()
+
+    def _get_default_bar_duration(self) -> float:
+        """计算默认小节时长 (从 BPM 和拍号)"""
+        bpm = self.bpm
+        beats_per_bar = self.time_sig_numerator
+        beat_unit = self.time_sig_denominator
+        seconds_per_beat = (60.0 / bpm) * (4.0 / beat_unit)
+        return seconds_per_beat * beats_per_bar
 
     def mousePressEvent(self, event):
         """点击/开始拖动（不吸附，记录精确位置）"""
