@@ -118,6 +118,7 @@ class KeyProgressWidget(QGraphicsView):
         # 布局参数
         self._root_note = 60  # C4
         self._layout: KeyboardLayout = LAYOUT_21KEY
+        self._layout_name = "21-key"  # For sort direction
         self.pixels_per_second = 100.0
         self.row_height = self.ROW_HEIGHT
         self._total_duration = 0.0  # 总时长（从 piano_roll 同步）
@@ -169,6 +170,7 @@ class KeyProgressWidget(QGraphicsView):
         layout = KEYBOARD_LAYOUTS.get(layout_name)
         if layout:
             self._layout = layout
+            self._layout_name = layout_name  # Store for sort direction
             self._rebuild_key_rows()
             self._rebuild_bars()
 
@@ -198,7 +200,10 @@ class KeyProgressWidget(QGraphicsView):
         self._key_rows.clear()
 
         # 获取所有按键（按音符顺序）
-        sorted_items = sorted(self._layout.note_to_key.items(), key=lambda x: x[0])
+        # 36-key layout: sort high→low pitch for better visual alignment
+        # 21-key layout: sort low→high pitch (original behavior)
+        reverse_sort = self._layout_name == "36-key"
+        sorted_items = sorted(self._layout.note_to_key.items(), key=lambda x: x[0], reverse=reverse_sort)
 
         for offset, key_char in sorted_items:
             self._key_rows.append((key_char.lower(), offset))

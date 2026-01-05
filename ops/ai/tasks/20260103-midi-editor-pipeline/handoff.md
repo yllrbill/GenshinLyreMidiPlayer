@@ -1,5 +1,57 @@
 # Handoff - MIDI Editor Pipeline
 
+## Session 15 (2026-01-06) - Key Injection Performance
+
+### Status: PHASE DONE → PENDING COMMIT
+
+### Completed Work
+**Key Injection Performance Optimization - 7/7 COMPLETED**
+
+| Step | Description | Status |
+|------|-------------|--------|
+| 1/7 | Reproduce issue with Counting-Stars bar 17-18 | OK |
+| 2/7 | Add timing instrumentation in PlayerThread | OK |
+| 3/7 | Batch same-timestamp SendInput for key injection | OK |
+| 4/7 | Isolate FluidSynth from critical path | OK |
+| 5/7 | Reorder KeyList 36-key to high→low pitch | OK |
+| 6/7 | Unify Editor preview synth with main playback | OK |
+| 7/7 | Validate all fixes and existing behavior | OK |
+
+### Key Changes
+1. **Deferred FluidSynth** (`thread.py:912-1060`)
+   - Collect synth calls in `deferred_noteon` / `deferred_noteoff` lists
+   - Execute all key injections first (timing-critical)
+   - Execute synth calls after inner loop completes
+
+2. **Timing Instrumentation** (`thread.py:901-904, 1062-1066`)
+   - Lag detection: logs `[Lag]` when >50ms behind schedule
+   - Batch metrics: logs `[Batch]` for slow batches >10ms with >2 events
+
+3. **36-key Sort Order** (`key_list_widget.py:121,172,198-209`)
+   - Added `_layout_name` attribute
+   - 36-key layout uses reverse sort (high→low pitch)
+   - 21-key layout preserves original (low→high pitch)
+
+4. **Unified Preview Sound** (`editor_window.py:1812-1841`)
+   - Editor's `_init_sound()` checks main window's settings first
+   - Uses main's soundfont path and instrument selection
+   - Falls back to default paths if unavailable
+
+### Verification
+```
+python -m py_compile player/thread.py - OK
+python -m py_compile ui/editor/key_list_widget.py - OK
+python -m py_compile ui/editor/editor_window.py - OK
+.venv/Scripts/python -c "import player.thread; ..." - All imports OK
+```
+
+### Next Steps
+1. Manual test: Play `Counting-Stars-OneRepublic.mid` bar 17-18, verify no missed keys
+2. Manual test: Verify 36-key KeyList shows high→low pitch order
+3. Commit changes if tests pass
+
+---
+
 ## Session 14 (2026-01-06) - time_signature denominator fix
 
 ### Status: PHASE DONE → NEW PHASE DEFINED

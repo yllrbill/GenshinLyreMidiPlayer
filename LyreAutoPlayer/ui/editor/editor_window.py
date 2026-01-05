@@ -1809,12 +1809,23 @@ class EditorWindow(QMainWindow):
                 fs.delete()
                 return False
 
-            # 加载 SoundFont
-            sf_paths = [
+            # 加载 SoundFont - try main window's configured path first for consistency
+            sf_paths = []
+            instrument = 0  # Default to Piano
+            if self._main_window and hasattr(self._main_window, 'cmb_soundfont'):
+                main_sf_path = self._main_window.cmb_soundfont.currentText()
+                if main_sf_path and Path(main_sf_path).exists():
+                    sf_paths.append(Path(main_sf_path))
+                # Get instrument setting from main window
+                if hasattr(self._main_window, 'sp_instrument'):
+                    instrument = self._main_window.sp_instrument.value()
+
+            # Fallback paths
+            sf_paths.extend([
                 self._app_root / "assets" / "FluidR3_GM.sf2",
                 self._app_root / "FluidR3_GM.sf2",
                 Path("C:/soundfonts/FluidR3_GM.sf2"),
-            ]
+            ])
 
             sfid = -1
             for sf_path in sf_paths:
@@ -1827,7 +1838,7 @@ class EditorWindow(QMainWindow):
                 fs.delete()
                 return False
 
-            fs.program_select(self._chan, sfid, 0, 0)  # Piano
+            fs.program_select(self._chan, sfid, 0, instrument)  # Use main's instrument
 
             self._fs = fs
             self._sfid = sfid

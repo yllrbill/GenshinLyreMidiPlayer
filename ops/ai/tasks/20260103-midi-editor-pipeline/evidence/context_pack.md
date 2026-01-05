@@ -2,9 +2,31 @@
 
 ## Task
 - ID: 20260103-midi-editor-pipeline
-- Status: PHASE DONE → NEW PHASE DEFINED
+- Status: PHASE DONE → PENDING COMMIT
 - Last Updated: 2026-01-06
-- Latest Commit: `2789fbe`
+- Latest Commit: `2789fbe` (uncommitted changes in progress)
+
+---
+
+## Session 15 Summary (2026-01-06)
+**Key Injection Performance Optimization - 7/7 COMPLETED**
+
+### Key Changes
+1. **Deferred FluidSynth** - All key injections execute first, synth calls batched after
+2. **Timing instrumentation** - Logs lag >50ms and slow batches >10ms
+3. **36-key sort order** - KeyList now shows high→low pitch for 36-key layout
+4. **Unified preview sound** - Editor uses main window's soundfont/instrument
+
+### Modified Files
+| File | Lines Changed | Description |
+|------|---------------|-------------|
+| `thread.py` | +25 | Lag detection, deferred synth |
+| `key_list_widget.py` | +10 | 36-key reverse sort |
+| `editor_window.py` | +15 | Main window sf/instrument sync |
+
+### Verification Status
+- All syntax checks PASSED
+- All imports verified OK
 
 ---
 

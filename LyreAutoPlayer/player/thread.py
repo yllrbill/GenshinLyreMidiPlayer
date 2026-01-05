@@ -898,10 +898,20 @@ class PlayerThread(QThread):
             if self._stop:
                 break
 
+            # Timing instrumentation: detect lag (when we're behind schedule)
+            lag_ms = -dt * 1000  # positive when behind schedule
+            if lag_ms > 50:  # Log if >50ms behind
+                self.log.emit(f"[Lag] {lag_ms:.1f}ms behind @ t={target_time:.3f}s, queue={len(event_queue)}")
+
             # Process all events at this time
             eps = 0.001
             processed_bar = None
             paused_now = False
+            batch_start = time.perf_counter()
+            batch_count = 0
+            # Deferred synth calls - prioritize key injection over audio
+            deferred_noteon = []   # [(note, velocity), ...]
+            deferred_noteoff = []  # [note, ...]
             while event_queue and not self._stop:
                 next_event = event_queue[0]
                 if next_event.time > target_time + eps:
@@ -909,6 +919,7 @@ class PlayerThread(QThread):
 
                 heapq.heappop(event_queue)
                 processed_bar = next_event.bar_index
+                batch_count += 1
 
                 if next_event.event_type == "pause_marker":
                     # Check if auto-pause should trigger at this bar
@@ -1004,11 +1015,11 @@ class PlayerThread(QThread):
                     if skip_note:
                         continue
 
-                    # Press key
+                    # Press key - prioritize key injection, defer synth
                     if key not in pressed_keys or pressed_keys[key] == 0:
                         self._input_manager.press(key, note)
                         if fs is not None:
-                            fs.noteon(chan, note, self.cfg.velocity)
+                            deferred_noteon.append((note, self.cfg.velocity))
                     pressed_keys[key] = pressed_keys.get(key, 0) + 1
 
                     # Handle extra note
@@ -1016,7 +1027,7 @@ class PlayerThread(QThread):
                         if extra_key not in pressed_keys or pressed_keys[extra_key] == 0:
                             self._input_manager.press(extra_key, extra_note)
                             if fs is not None and extra_note is not None:
-                                fs.noteon(chan, extra_note, self.cfg.velocity)
+                                deferred_noteon.append((extra_note, self.cfg.velocity))
                         pressed_keys[extra_key] = pressed_keys.get(extra_key, 0) + 1
                         heapq.heappush(event_queue, KeyEvent(
                             next_event.time + 0.05, 1, "release", extra_key, extra_note or 0,
@@ -1037,8 +1048,22 @@ class PlayerThread(QThread):
                         if pressed_keys[key] <= 0:
                             self._input_manager.release(key, next_event.note)
                             if fs is not None:
-                                fs.noteoff(chan, next_event.note)
+                                deferred_noteoff.append(next_event.note)
                             pressed_keys[key] = 0
+
+            # Execute deferred synth calls after all key injections are done
+            # This prioritizes key injection (timing-critical) over audio (can tolerate latency)
+            if fs is not None:
+                for note, velocity in deferred_noteon:
+                    fs.noteon(chan, note, velocity)
+                for note in deferred_noteoff:
+                    fs.noteoff(chan, note)
+
+            # Batch processing time instrumentation
+            if batch_count > 0:
+                batch_elapsed_ms = (time.perf_counter() - batch_start) * 1000
+                if batch_elapsed_ms > 10 and batch_count > 2:  # Log slow batches with multiple events
+                    self.log.emit(f"[Batch] {batch_count} events in {batch_elapsed_ms:.1f}ms @ t={target_time:.3f}s")
 
             if paused_now:
                 continue
