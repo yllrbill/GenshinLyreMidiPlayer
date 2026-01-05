@@ -539,28 +539,36 @@ class AdjustBarsDurationCommand(QUndoCommand):
 
     - 选中的小节内所有音符按比例拉伸/压缩
     - 选中小节之后的所有音符整体平移
+    - 同时保存/恢复小节时长以支持完整的 undo/redo
     """
 
-    def __init__(self, piano_roll, old_notes_data: list, new_notes_data: list, parent=None):
+    def __init__(self, piano_roll, old_notes_data: list, new_notes_data: list,
+                 old_bar_durations: list = None, new_bar_durations: list = None, parent=None):
         """
         Args:
             piano_roll: PianoRollWidget 实例
             old_notes_data: 原始音符数据 [{note, start, duration, velocity, track, channel}, ...]
             new_notes_data: 新音符数据（与 old_notes_data 一一对应）
+            old_bar_durations: 原始小节时长 [(bar_num, duration_sec), ...] - 可选
+            new_bar_durations: 新小节时长 [(bar_num, duration_sec), ...] - 可选
         """
         super().__init__(parent)
         self._piano_roll = weakref.ref(piano_roll)
         self._old_notes_data = [d.copy() for d in old_notes_data]
         self._new_notes_data = [d.copy() for d in new_notes_data]
+        self._old_bar_durations = list(old_bar_durations) if old_bar_durations else []
+        self._new_bar_durations = list(new_bar_durations) if new_bar_durations else []
         self.setText(f"Adjust Bars Duration ({len(old_notes_data)} notes)")
 
     def redo(self):
         """执行/重做: 应用新的音符位置和时值"""
         self._apply_notes_data(self._old_notes_data, self._new_notes_data)
+        self._apply_bar_durations(self._new_bar_durations)
 
     def undo(self):
         """撤销: 恢复原始音符位置和时值"""
         self._apply_notes_data(self._new_notes_data, self._old_notes_data)
+        self._apply_bar_durations(self._old_bar_durations)
 
     def _apply_notes_data(self, from_data: list, to_data: list):
         """将音符从 from_data 状态更新到 to_data 状态"""
@@ -581,3 +589,13 @@ class AdjustBarsDurationCommand(QUndoCommand):
         pr._refresh_notes()
         if pr.notes:
             pr.total_duration = max(n.start_time + n.duration for n in pr.notes)
+
+    def _apply_bar_durations(self, bar_durations: list):
+        """应用小节时长变更并通过信号同步到 timeline"""
+        pr = self._piano_roll()
+        if not pr or not bar_durations:
+            return
+
+        # 通过 piano_roll 的 sig_bar_duration_changed 信号同步到 timeline
+        for bar_num, duration in bar_durations:
+            pr.sig_bar_duration_changed.emit(bar_num, duration)

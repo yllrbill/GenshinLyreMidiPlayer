@@ -94,6 +94,7 @@ class TimelineWidget(QWidget):
         """设置总时长"""
         self.total_duration = duration
         self._rebuild_bar_times()
+        self.sig_bar_times_changed.emit(self._bar_times)
         self.update()
 
     def set_playhead(self, time_sec: float):
@@ -163,6 +164,7 @@ class TimelineWidget(QWidget):
             _, self.time_sig_numerator, self.time_sig_denominator = self._time_sig_map[0]
 
         self._rebuild_bar_times()
+        self.sig_bar_times_changed.emit(self._bar_times)
         self.update()
 
     def _tick_to_second(
@@ -342,7 +344,7 @@ class TimelineWidget(QWidget):
 
     def _draw_bar_row(self, painter: QPainter, start_time: float, end_time: float,
                        font_bar: QFont, font_bpm: QFont):
-        """绘制上行: 小节编号 + BPM 指示 (使用 tick 精确计算)"""
+        """绘制上行: 小节编号 + BPM 指示 (支持可变小节时长)"""
         row_top = 0
         row_bottom = self.ROW_BAR
 
@@ -357,7 +359,63 @@ class TimelineWidget(QWidget):
         bpm_y = int(row_bottom * 0.7)  # ~21 @ ROW_BAR=30
         painter.drawText(4, bpm_y, bpm_text)
 
-        # 使用 tick 精确计算拍子和小节
+        # 检查是否使用可变小节时长
+        if self._bar_durations_sec and self._bar_times:
+            # 使用可变小节边界绘制
+            self._draw_bar_row_variable(painter, start_time, end_time, font_bar, row_top, row_bottom)
+        else:
+            # 使用 tick 精确计算拍子和小节
+            self._draw_bar_row_fixed(painter, start_time, end_time, font_bar, row_top, row_bottom)
+
+    def _draw_bar_row_variable(self, painter: QPainter, start_time: float, end_time: float,
+                                font_bar: QFont, row_top: int, row_bottom: int):
+        """使用可变小节边界绘制小节行"""
+        beats_per_bar = self.time_sig_numerator
+
+        for i, (bar_num, bar_start) in enumerate(self._bar_times):
+            # 获取小节结束时间
+            if i + 1 < len(self._bar_times):
+                bar_end = self._bar_times[i + 1][1]
+            else:
+                bar_end = self.total_duration
+
+            # 跳过不在可视区的小节
+            if bar_end < start_time:
+                continue
+            if bar_start > end_time:
+                break
+
+            # 绘制小节线 (粗)
+            x = int((bar_start - start_time) * self.pixels_per_second)
+            painter.setPen(QPen(self.BAR_LINE_COLOR, 2))
+            painter.drawLine(x, row_top + 2, x, row_bottom)
+
+            # 小节编号
+            painter.setFont(font_bar)
+            painter.setPen(self.TEXT_COLOR)
+            painter.drawText(x + 3, row_bottom - 4, str(bar_num))
+
+            # 在小节内均分绘制拍线
+            if beats_per_bar > 1:
+                bar_duration = bar_end - bar_start
+                beat_duration = bar_duration / beats_per_bar
+                for beat in range(1, beats_per_bar):
+                    beat_time = bar_start + beat * beat_duration
+                    if start_time <= beat_time <= end_time:
+                        bx = int((beat_time - start_time) * self.pixels_per_second)
+                        painter.setPen(QPen(self.BEAT_LINE_COLOR, 1))
+                        beat_line_top = row_top + int(self.ROW_BAR * 0.5)
+                        painter.drawLine(bx, beat_line_top, bx, row_bottom)
+
+        # 绘制最后一条小节线 (总时长位置)
+        if self._bar_times and self.total_duration > start_time:
+            x = int((self.total_duration - start_time) * self.pixels_per_second)
+            painter.setPen(QPen(self.BAR_LINE_COLOR, 2))
+            painter.drawLine(x, row_top + 2, x, row_bottom)
+
+    def _draw_bar_row_fixed(self, painter: QPainter, start_time: float, end_time: float,
+                             font_bar: QFont, row_top: int, row_bottom: int):
+        """使用固定 tick 计算绘制小节行 (原有逻辑)"""
         tempo_events = self._tempo_events_tick
         time_sig_events = self._time_sig_events_tick
         ticks_per_beat = self.ticks_per_beat

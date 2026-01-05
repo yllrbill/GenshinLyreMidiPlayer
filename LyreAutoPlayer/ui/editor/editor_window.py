@@ -1221,6 +1221,7 @@ class EditorWindow(QMainWindow):
 
         # 获取节拍信息
         beats_per_bar = getattr(self.timeline, "time_sig_numerator", 4)
+        beat_unit = getattr(self.timeline, "time_sig_denominator", 4)  # 拍号分母 (4=四分音符, 8=八分音符)
 
         # 检查是否有可变小节时长
         bar_durations = self.timeline.get_bar_durations()
@@ -1228,7 +1229,8 @@ class EditorWindow(QMainWindow):
 
         if bar_durations and bar_times:
             # 使用可变小节时长生成 tempo 事件
-            # 公式: microseconds_per_beat = bar_duration_sec / beats_per_bar * 1_000_000
+            # MIDI tempo 始终以"微秒/四分音符"计量，需要根据拍号分母调整
+            # 公式: seconds_per_quarter = bar_duration_sec / beats_per_bar * 4 / beat_unit
             tempo_events = []
             prev_tempo = None
             for i, (bar_num, bar_start_sec) in enumerate(bar_times):
@@ -1236,11 +1238,13 @@ class EditorWindow(QMainWindow):
                     bar_duration_sec = bar_durations[bar_num - 1]
                 else:
                     # 超出定义范围，使用默认 BPM
-                    bar_duration_sec = 60.0 / self.sp_bpm.value() * beats_per_bar
+                    bar_duration_sec = 60.0 / self.sp_bpm.value() * beats_per_bar * 4 / beat_unit
 
-                # 计算此小节的 tempo
-                seconds_per_beat = bar_duration_sec / beats_per_bar
-                tempo = int(seconds_per_beat * 1_000_000)  # 微秒/拍
+                # 计算此小节的 tempo (MIDI tempo = 微秒/四分音符)
+                # 对于 4/4 拍: seconds_per_quarter = bar_duration / 4
+                # 对于 3/8 拍: seconds_per_quarter = bar_duration / 3 * 4 / 8 = bar_duration / 3 * 0.5
+                seconds_per_quarter = bar_duration_sec / beats_per_bar * 4 / beat_unit
+                tempo = int(seconds_per_quarter * 1_000_000)  # 微秒/四分音符
 
                 # 仅在 tempo 变化时添加事件（避免冗余）
                 if tempo != prev_tempo:

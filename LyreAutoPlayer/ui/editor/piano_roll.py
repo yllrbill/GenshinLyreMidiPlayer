@@ -471,9 +471,25 @@ class PianoRollWidget(QGraphicsView):
                 self._grid_items.append(line)
 
         # 3. 绘制小节竖线
-        if self._bar_duration_sec > 1e-6:
-            scene_height = (note_max - note_min + 1) * self.pixels_per_note
-            pen = QPen(self.GRID_BAR_LINE, 1.0)
+        scene_height = (note_max - note_min + 1) * self.pixels_per_note
+        pen = QPen(self.GRID_BAR_LINE, 1.0)
+        if self._bar_times:
+            # 使用可变小节边界绘制
+            for bar_idx, bar_time in self._bar_times:
+                x = bar_time * self.pixels_per_second
+                line = self.scene.addLine(x, 0, x, scene_height, pen)
+                line.setZValue(-9)
+                line.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+                self._grid_items.append(line)
+            # 添加最后一条线（总时长位置）
+            if self._bar_times:
+                x = self.total_duration * self.pixels_per_second
+                line = self.scene.addLine(x, 0, x, scene_height, pen)
+                line.setZValue(-9)
+                line.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+                self._grid_items.append(line)
+        elif self._bar_duration_sec > 1e-6:
+            # 兜底：固定间隔
             t = 0.0
             max_t = self.total_duration + self._bar_duration_sec
             while t <= max_t:
@@ -1411,6 +1427,9 @@ class PianoRollWidget(QGraphicsView):
         """
         self._bar_times = bar_times[:]
         self._update_bar_overlay()  # 重绘覆盖层
+        # 触发网格重绘以更新小节竖线
+        self._clear_grid()
+        self._draw_grid()
 
     def get_bar_times(self) -> List[Tuple[int, float]]:
         """获取小节边界时间列表"""
@@ -1583,8 +1602,9 @@ class PianoRollWidget(QGraphicsView):
         note_updates = {}
         cumulative_shift = 0.0  # 累计平移量
 
-        # 记录修改的小节时长 [(bar_num, new_duration), ...]
-        bar_duration_updates = []
+        # 记录修改的小节时长 [(bar_num, duration), ...]
+        old_bar_durations = []  # 原始小节时长 (用于 undo)
+        new_bar_durations = []  # 新小节时长 (用于 redo)
 
         for interval_idx, (first_bar, last_bar) in enumerate(intervals):
             # 使用可变小节边界计算区间时间范围
@@ -1634,12 +1654,13 @@ class PianoRollWidget(QGraphicsView):
                         "channel": getattr(item, 'channel', 0)
                     }
 
-            # 记录每个小节的新时长（用于同步到 timeline）
+            # 记录每个小节的旧/新时长（用于 undo/redo 同步到 timeline）
             for bar_num in range(first_bar, last_bar + 1):
                 old_bar_start, old_bar_end = self._get_bar_time_range(bar_num)
                 old_bar_duration = old_bar_end - old_bar_start
                 new_bar_duration = max(0.01, old_bar_duration + delta_sec_per_bar)
-                bar_duration_updates.append((bar_num, new_bar_duration))
+                old_bar_durations.append((bar_num, old_bar_duration))
+                new_bar_durations.append((bar_num, new_bar_duration))
 
             # 更新累计平移量
             cumulative_shift += (new_duration - original_duration)
@@ -1707,11 +1728,12 @@ class PianoRollWidget(QGraphicsView):
             })
             new_notes_data.append(new_data)
 
-        # 使用 undo 命令
-        cmd = AdjustBarsDurationCommand(self, old_notes_data, new_notes_data)
+        # 使用 undo 命令 (包含小节时长以支持完整 undo/redo)
+        cmd = AdjustBarsDurationCommand(
+            self, old_notes_data, new_notes_data,
+            old_bar_durations=old_bar_durations,
+            new_bar_durations=new_bar_durations
+        )
         self.undo_stack.push(cmd)
         self.sig_notes_changed.emit()
-
-        # 发送小节时长变化信号（用于同步到 timeline）
-        for bar_num, new_duration in bar_duration_updates:
-            self.sig_bar_duration_changed.emit(bar_num, new_duration)
+        # 注意: 小节时长信号现在由 AdjustBarsDurationCommand.redo() 发送
