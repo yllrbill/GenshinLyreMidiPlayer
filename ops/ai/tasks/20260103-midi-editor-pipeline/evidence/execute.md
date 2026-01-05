@@ -1,4 +1,60 @@
-# Execute Log - Session 6-11
+# Execute Log - Session 6-12
+
+---
+
+# Session 12 (2026-01-05) - Variable Bar Length System
+
+## Session Info
+- Date: 2026-01-05
+- Latest Commit: `62f4743` feat: implement variable bar length system
+- Focus: Variable bar length (可变小节时长) implementation
+- Status: DONE
+
+## Tasks Completed
+
+| Task | Description | Status |
+|------|-------------|--------|
+| 1 | Timeline variable bar durations (`_bar_durations_sec`) | DONE |
+| 2 | PianoRoll use `_bar_times` for grid/overlay | DONE |
+| 3 | `adjust_selected_bars_duration()` sync bar durations | DONE |
+| 4 | MIDI export with tempo events | DONE |
+| 5 | Signal connections (timeline ↔ piano_roll) | DONE |
+| 6 | KeyList scroll sync (verified already connected) | DONE |
+
+## Changes Made
+
+### timeline.py
+- Added `_bar_durations_sec: List[float]` - variable bar duration storage
+- Added `sig_bar_times_changed` signal
+- Modified `_rebuild_bar_times()` to use variable durations
+- Added API: `get_bar_times()`, `get_bar_durations()`, `set_bar_durations()`, `update_bar_duration()`, `get_bar_duration()`, `_get_default_bar_duration()`
+
+### piano_roll.py
+- Added `_bar_times: List[Tuple[int, float]]` - bar boundary times
+- Added `sig_bar_duration_changed` signal
+- Added `set_bar_times()`, `get_bar_times()`, `_get_bar_time_range()` methods
+- Modified `_update_bar_overlay()` to use variable bar times
+- Modified `adjust_selected_bars_duration()` to use `_get_bar_time_range()` and emit `sig_bar_duration_changed`
+
+### editor_window.py
+- Modified `_rebuild_midi_from_notes()` to generate tempo events for variable bar lengths
+- Formula: `microseconds_per_beat = bar_duration_sec / beats_per_bar * 1_000_000`
+- Added signal connections:
+  - `timeline.sig_bar_times_changed` → `piano_roll.set_bar_times`
+  - `piano_roll.sig_bar_duration_changed` → `timeline.update_bar_duration`
+
+## Files Modified (3)
+| File | Change |
+|------|--------|
+| timeline.py | +75 lines (variable bar length API) |
+| piano_roll.py | +50 lines (bar_times support + adjust sync) |
+| editor_window.py | +40 lines (tempo events + signal connections) |
+
+## Git Summary
+```
+62f4743 feat: implement variable bar length system
+3 files changed, 232 insertions(+), 33 deletions(-)
+```
 
 ---
 

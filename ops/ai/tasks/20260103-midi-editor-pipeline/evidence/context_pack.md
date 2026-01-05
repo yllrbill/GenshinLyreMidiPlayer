@@ -2,88 +2,88 @@
 
 ## Task
 - ID: 20260103-midi-editor-pipeline
-- Status: DONE (Session 11 - Bar Duration Bug Fixes)
+- Status: DONE (Session 12 - Variable Bar Length System)
 - Last Updated: 2026-01-05
-- Latest Commit: `bd39a79`
+- Latest Commit: `62f4743`
 
-## Session 11 Summary (2026-01-05)
-Bar duration adjustment algorithm fixes (6 bug fixes).
+## Session 12 Summary (2026-01-05)
+Variable bar length (可变小节时长) system implementation.
 
 ### Tasks Completed
 | Task | Description | Status |
 |------|-------------|--------|
-| Fix 1 | Bar numbering: 1-based → 0-based conversion | DONE |
-| Fix 2 | Continuous interval grouping for non-contiguous bars | DONE |
-| Fix 3 | Delta calculation + interval overlap detection | DONE |
-| Fix 4 | Ctrl drag: no blue rect, only yellow lines | DONE |
-| Fix 5 | i18n for "no bars selected" message | DONE |
-| Fix 6 | List modified files | DONE |
+| 1 | Timeline variable bar durations | DONE |
+| 2 | PianoRoll use bar_times for grid | DONE |
+| 3 | adjust_selected_bars_duration sync | DONE |
+| 4 | MIDI export with tempo events | DONE |
+| 5 | Signal connections | DONE |
+| 6 | KeyList scroll sync (verified) | DONE |
 
 ### Key Changes
 | File | Change |
 |------|--------|
-| `piano_roll.py` | Bar numbering fix + duration adjustment rewrite |
-| `timeline.py` | Ctrl drag blue rect fix |
-| `translations.py` | +2 translation keys |
-| `editor_window.py` | Use tr() for no bars message |
+| `timeline.py` | `_bar_durations_sec`, `sig_bar_times_changed`, API methods |
+| `piano_roll.py` | `_bar_times`, `sig_bar_duration_changed`, `_get_bar_time_range()` |
+| `editor_window.py` | Tempo events in MIDI export, signal connections |
 
-## Session 10 Summary (2026-01-05)
-Bug fixes + new features: imports, timeline snap, duration adjust, auto-jitter.
-
-## Session 9 Summary (2026-01-05)
-UI fixes: KeyList width, progress bar highlighting, auto-scroll, audio sync, toolbar layout.
-
-## Session 8 Summary (2026-01-05)
-Bug fixes, i18n improvements, keyboard config sync.
-
-## Session 7 Summary (2026-01-04)
-Main GUI cleanup + KeyListWidget + i18n updates.
-
-## Session 6 Summary
-Unified Playback Engine Phase 1-7 complete.
+## Previous Sessions (11-6)
+- Session 11: Bar duration bug fixes (6 issues)
+- Session 10: Bug fixes + duration adjust + auto-jitter
+- Session 9: UI fixes (KeyList, auto-scroll, toolbar)
+- Session 8: Bug fixes, i18n, keyboard config sync
+- Session 7: Main GUI cleanup + KeyListWidget
+- Session 6: Unified Playback Engine Phase 1-7
 
 ## Implementation Status
 
-### Bar Duration Adjustment Algorithm
+### Variable Bar Length System
 | Feature | Description | Status |
 |---------|-------------|--------|
-| 1-based numbering | Timeline uses 1-based bars | DONE |
-| Interval grouping | [1,2,5,6] → [[1,2], [5,6]] | DONE |
-| Overlap detection | `note_end > interval_start and note_start < interval_end` | DONE |
-| Cumulative shift | Notes after intervals shift cumulatively | DONE |
-| Ctrl drag visuals | No blue rect during Ctrl+drag | DONE |
+| Storage | `_bar_durations_sec` in timeline | DONE |
+| Boundaries | `_bar_times` in both widgets | DONE |
+| Grid Rendering | Use variable bar times | DONE |
+| Note Stretching | `_get_bar_time_range()` | DONE |
+| Duration Sync | Bidirectional signals | DONE |
+| MIDI Export | Tempo events per bar | DONE |
 
 ### Unified Playback Engine
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1-7 | All phases | DONE |
 
-### Key Features
-- 严格跟谱模式 + 自动小节暂停 + 倒计时覆盖
-- 跟随模式 + 输入风格抖动 (undo/redo)
-- 键盘配置同步 + KeyListWidget
-- 时值调整 (QSpinBox + apply)
-- 时间轴选区 (单击精确, 拖动吸附)
-- **小节时长调整 (Ctrl+拖拽选择, 连续区间分组)**
-
 ## File Index
 
-### Session 11 Modified Files
-| Path | Change |
-|------|--------|
-| `piano_roll.py:1422-1658` | `_update_bar_overlay()`, `adjust_selected_bars_duration()` |
-| `timeline.py:301` | `and not self._ctrl_dragging` |
-| `translations.py:260-264` | `no_bars_selected_*` keys |
-| `editor_window.py` | `tr()` for no bars message |
+### Session 12 Modified Files
+| Path | Lines Changed |
+|------|---------------|
+| `timeline.py` | +75 |
+| `piano_roll.py` | +50 |
+| `editor_window.py` | +40 |
 
-### New Files (Previous Sessions)
-| Path | Lines | Purpose |
-|------|-------|---------|
-| `ui/editor/countdown_overlay.py` | 66 | 倒计时覆盖 |
-| `ui/editor/key_list_widget.py` | 533 | 按键序列进度 |
+### Key Files (Previous Sessions)
+| Path | Purpose |
+|------|---------|
+| `ui/editor/countdown_overlay.py` | 倒计时覆盖 |
+| `ui/editor/key_list_widget.py` | 按键序列进度 |
+| `ui/editor/piano_roll.py` | 钢琴卷帘编辑器 |
+| `ui/editor/timeline.py` | 时间轴 |
+| `ui/editor/editor_window.py` | 编辑器主窗口 |
+
+## Data Flow
+
+```
+Timeline                        Piano Roll                    MIDI Export
+   │ _bar_durations_sec             │ _bar_times                   │
+   │                                │                              │
+   ├──sig_bar_times_changed────────►│ set_bar_times()              │
+   │◄──sig_bar_duration_changed─────┤ adjust_selected_bars_duration()
+   │  update_bar_duration()         │                              │
+   └────get_bar_durations()────────────────────────────────────────►│
+        get_bar_times()                          _rebuild_midi_from_notes()
+```
 
 ## Next Steps (for Planner)
 
-1. **用户测试**: 小节时长调整 (Ctrl+拖拽选择多个小节, 拉伸/压缩)
-2. **验证**: 非连续小节 (1,2,5,6) 独立拉伸 + 累计平移
+1. **用户测试**: 可变小节时长功能
+2. **验证**: 拉伸后 MIDI 导出 tempo 变化
 3. **Phase 3-4**: 高级编辑 + 超音域处理预览（如需继续）

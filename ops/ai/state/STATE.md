@@ -2,9 +2,9 @@
 
 ## Latest Task
 - TASK_ID: 20260103-midi-editor-pipeline
-- Status: DONE (Session 11 - Bar Duration Bug Fixes)
+- Status: DONE (Session 12 - Variable Bar Length System)
 - Pointer: ops/ai/tasks/20260103-midi-editor-pipeline
-- Latest Commit: `bd39a79`
+- Latest Commit: `62f4743`
 
 ## Previous Task
 - TASK_ID: 20260102-2138-main-mixin-refactor
@@ -12,9 +12,9 @@
 - Pointer: ops/ai/tasks/20260102-2138-main-mixin-refactor
 
 ## Current Focus
+- Session 12: Variable bar length system (可变小节时长)
 - Session 11: Bar duration adjustment bug fixes (6 issues)
 - Session 10: Bug fixes (imports, timeline snap) + new features (duration adjust, auto-jitter)
-- Session 9: UI fixes (KeyList width, progress bar, auto-scroll, audio sync, toolbar)
 
 ## Completed Summary (MIDI Editor)
 - **Phase 1 钢琴卷帘骨架完成**: 6 个新文件 (~745 行)
@@ -63,7 +63,8 @@
 2. Phase 3-4: 高级编辑 + 超音域处理预览（如需继续）
 
 ## Recent Completions
-- Bar Duration Bug Fixes (Session 11, 2026-01-05) - **Committed: bd39a79**
+- Variable Bar Length System (Session 12, 2026-01-05) - **Committed: 62f4743**
+- Bar Duration Bug Fixes (Session 11, 2026-01-05) - Committed: bd39a79
 - Bug Fixes & New Features (Session 10, 2026-01-05) - Committed: 7b73a5d
 - UI Fixes & Auto-scroll (Session 9, 2026-01-05) - Committed: 7713727
 - Bug Fixes & i18n (Session 8, 2026-01-05)
@@ -87,9 +88,9 @@
 ---
 
 ## Next Actions
-1. **用户测试**: 小节时长调整 (Ctrl+拖拽选择多个小节, 拉伸/压缩)
-2. **验证**: 非连续小节 (1,2,5,6) 独立拉伸 + 累计平移
+1. **用户测试**: 可变小节时长功能 (拉伸后时间轴/网格同步更新)
+2. **验证**: MIDI 导出的 tempo 变化 (用其他软件打开验证)
 3. Phase 3-4: 高级编辑 + 超音域处理预览（如需继续）
 
 ---
-*Last Updated: 2026-01-05 (Session 11 - Bar Duration Bug Fixes, DONE, Commit: bd39a79)*
+*Last Updated: 2026-01-05 (Session 12 - Variable Bar Length System, DONE, Commit: 62f4743)*
