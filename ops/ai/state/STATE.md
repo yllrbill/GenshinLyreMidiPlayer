@@ -2,9 +2,9 @@
 
 ## Latest Task
 - TASK_ID: 20260103-midi-editor-pipeline
-- Status: PHASE DONE → NEW PHASE PENDING (Key Injection Performance)
+- Status: DRAFT - Session 17 uncommitted (strict_midi_timing), pending Planner decision
 - Pointer: ops/ai/tasks/20260103-midi-editor-pipeline
-- Latest Commit: `2789fbe` (pending: Session 13-14 changes)
+- Latest Commit: `6b18283` (Session 15 committed)
 
 ## Previous Task
 - TASK_ID: 20260102-2138-main-mixin-refactor
@@ -12,10 +12,10 @@
 - Pointer: ops/ai/tasks/20260102-2138-main-mixin-refactor
 
 ## Current Focus
+- Session 17: Strict MIDI Timing flag (UNCOMMITTED, pending Planner decision)
+- Session 16: Batch press_many (ROLLED BACK - worsened dense sections)
+- Session 15: Key injection performance (COMMITTED 6b18283)
 - Session 14: time_signature denominator fix (VERIFIED 6/6 PASSED)
-- NEW PHASE: Key injection performance, KeyList reorder, preview sound unify
-- Session 13: BPM/tempo preservation fixes (审计发现的 6 个问题)
-- Session 12: Variable bar length system (可变小节时长)
 
 ## Completed Summary (MIDI Editor)
 - **Phase 1 钢琴卷帘骨架完成**: 6 个新文件 (~745 行)
@@ -64,6 +64,7 @@
 2. Phase 3-4: 高级编辑 + 超音域处理预览（如需继续）
 
 ## Recent Completions
+- **Key Injection Performance (Session 15, 2026-01-06) - Committed: 6b18283**
 - **time_signature denominator fix (Session 14, 2026-01-06) - VERIFIED 6/6**
 - Timeline/PianoRoll alignment fix (Session 13-14) - Committed: 2789fbe
 - Variable Bar Length System (Session 12, 2026-01-05) - Committed: 62f4743
@@ -92,11 +93,11 @@
 ---
 
 ## Next Actions
-1. **Decision**: Commit Session 13-14 changes before starting new phase?
-2. **New Phase Step 1**: Reproduce key injection issue with `midi/Counting-Stars-OneRepublic.mid` bar ~17-18
-3. **New Phase Step 2**: Add lag instrumentation in PlayerThread
-4. **New Phase Step 3**: Batch SendInput for same-timestamp events
-5. **New Phase Step 4**: Isolate FluidSynth audio from critical key injection path
+1. **Planner Decision**: Commit strict_midi_timing feature?
+2. **Test**: Play Counting-Stars bar 17-18 with strict_midi_timing=True
+3. **Validate**: KeyList 36-key order, Editor/Main sound, bar_boundaries_sec
+4. **Document**: Timing config inventory (see handoff.md table)
+5. **Consider**: Additional timing tweaks if pile-up persists
 
 ---
-*Last Updated: 2026-01-06 (Session 14 - time_signature fix VERIFIED, NEW PHASE PENDING)*
+*Last Updated: 2026-01-06 (Session 17 - DRAFT, strict_midi_timing pending)*

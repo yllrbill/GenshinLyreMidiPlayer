@@ -377,3 +377,7 @@ private/tasks/*
 
 # Large binary files (use Git LFS or download separately)
 LyreAutoPlayer/FluidR3_GM.sf2
+
+# 播放日志（不提交）
+LyreAutoPlayer/logs/
+*.csv

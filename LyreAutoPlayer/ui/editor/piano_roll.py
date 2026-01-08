@@ -722,6 +722,9 @@ class PianoRollWidget(QGraphicsView):
         if key == Qt.Key.Key_Y and modifiers == Qt.KeyboardModifier.ControlModifier:
             self.undo_stack.redo()
             return
+        if key == Qt.Key.Key_X and modifiers == Qt.KeyboardModifier.ControlModifier:
+            self.undo_stack.redo()
+            return
         if key == Qt.Key.Key_Z and modifiers == (Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier):
             self.undo_stack.redo()
             return
@@ -787,6 +790,9 @@ class PianoRollWidget(QGraphicsView):
                     return
 
         super().mousePressEvent(event)
+        # 记录拖拽前位置，用于撤销/重做
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._drag_snapshot = self._snapshot_selected_positions()
 
     def mouseReleaseEvent(self, event: QMouseEvent):
         """鼠标释放后同步拖拽结果到数据模型"""
@@ -817,6 +823,9 @@ class PianoRollWidget(QGraphicsView):
         selected = [item for item in self.notes if item.isSelected()]
         if selected:
             self._sync_notes_from_graphics()
+            self._push_move_undo_if_needed()
+        else:
+            self._drag_snapshot = []
 
     def mouseMoveEvent(self, event: QMouseEvent):
         """鼠标移动事件 - 更新拖拽创建预览"""
@@ -880,6 +889,41 @@ class PianoRollWidget(QGraphicsView):
             # 发出变化信号
             self.sig_notes_changed.emit()
 
+    def _snapshot_selected_positions(self) -> List[dict]:
+        """记录选中音符位置 (用于撤销/重做)"""
+        return [
+            {
+                "id": id(item),
+                "note": item.note,
+                "start": item.start_time
+            }
+            for item in self.notes
+            if item.isSelected()
+        ]
+
+    def _push_move_undo_if_needed(self):
+        """移动/拖拽后的撤销记录"""
+        if not self._drag_snapshot:
+            return
+
+        new_positions = self._snapshot_selected_positions()
+        if self._positions_changed(self._drag_snapshot, new_positions):
+            cmd = MoveNotesCommand(self, self._drag_snapshot, new_positions)
+            self.undo_stack.push(cmd)
+
+        self._drag_snapshot = []
+
+    @staticmethod
+    def _positions_changed(old_positions: List[dict], new_positions: List[dict]) -> bool:
+        old_map = {pos["id"]: pos for pos in old_positions}
+        for pos in new_positions:
+            old = old_map.get(pos["id"])
+            if not old:
+                continue
+            if old["note"] != pos["note"] or abs(old["start"] - pos["start"]) > 0.001:
+                return True
+        return False
+
     def select_all(self):
         """全选所有音符"""
         for item in self.notes:
@@ -940,27 +984,30 @@ class PianoRollWidget(QGraphicsView):
         # 取消当前选择
         self.scene.clearSelection()
 
-        note_max = self.NOTE_RANGE[1]
         paste_time = self._playhead_time
+        old_count = len(self.notes)
 
-        # 创建新音符
+        self.undo_stack.beginMacro("Paste Notes")
         for nd in self._clipboard:
-            item = NoteItem(
-                note=nd["note"],
-                start_time=paste_time + nd["start"],
-                duration=nd["duration"],
-                velocity=nd["velocity"],
-                track=nd["track"],
-                channel=nd.get("channel", 0)  # 保留 channel
-            )
-            item.update_geometry(self.pixels_per_second, self.pixels_per_note, note_max)
-            self.scene.addItem(item)
-            self.notes.append(item)
-            # 选中新粘贴的音符
+            note_data = {
+                "note": nd["note"],
+                "start": paste_time + nd["start"],
+                "duration": nd["duration"],
+                "velocity": nd["velocity"],
+                "track": nd["track"],
+                "channel": nd.get("channel", 0)
+            }
+            cmd = AddNoteCommand(self, note_data)
+            self.undo_stack.push(cmd)
+        self.undo_stack.endMacro()
+
+        # 选中新粘贴的音符
+        for item in self.notes[old_count:]:
             item.setSelected(True)
 
         # 更新总时长
-        self.total_duration = max(n.start_time + n.duration for n in self.notes)
+        if self.notes:
+            self.total_duration = max(n.start_time + n.duration for n in self.notes)
 
         # 扩展场景大小
         scene_width = self._calc_scene_width()

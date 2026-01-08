@@ -18,6 +18,7 @@ class PlayerConfig:
     transpose: int = 0
     speed: float = 1.0
     accidental_policy: str = "octave"
+    enable_accidental_policy: bool = True
     octave_min_note: int = 36  # C2
     octave_max_note: int = 84  # C6
     octave_range_auto: bool = False
@@ -48,6 +49,7 @@ class PlayerConfig:
 
     # Unified playback engine (统一播放引擎)
     strict_mode: bool = True              # 严格跟谱模式 (默认开启)
+    strict_midi_timing: bool = False      # 严格遵循 MIDI 时序（禁用风格演奏）
     pause_every_bars: int = 0             # 自动暂停间隔 (0=禁用, 1/2/4/8)
     auto_resume_countdown: int = 3        # 倒计时秒数
     bar_duration_override: float = 0.0    # 覆盖小节时长 (秒), 0=自动计算
@@ -55,3 +57,7 @@ class PlayerConfig:
     editor_bpm: int = 0                   # 编辑器 BPM, 0=使用 MIDI 原始值
     start_at_time: float = 0.0            # 从指定时间开始播放 (秒)
     skip_countdown: bool = False          # 跳过倒计时 (用于从上一小节恢复)
+
+    # Output scheduler (key injection timing)
+    late_drop_ms: float = 25.0            # 丢弃超时阈值 (毫秒), 超过则跳过该按键
+    enable_late_drop: bool = True         # 启用延迟丢弃策略 (防止密集和弦堆积)

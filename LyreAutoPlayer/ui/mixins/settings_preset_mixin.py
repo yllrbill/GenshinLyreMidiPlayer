@@ -136,6 +136,9 @@ class SettingsPresetMixin:
             },
             "octave_range_auto": self.chk_octave_range_auto.isChecked(),
             "transpose": self.sp_transpose.value(),
+            "accidental_policy": self.cmb_policy.currentText() if hasattr(self, 'cmb_policy') else "octave",
+            "enable_accidental_policy": getattr(self, 'chk_enable_accidental_policy', None) is not None
+            and self.chk_enable_accidental_policy.isChecked(),
             "speed": self.sp_speed.value(),
             "press_ms": self.sp_press.value(),
             "countdown_sec": self.sp_countdown.value(),
@@ -177,8 +180,11 @@ class SettingsPresetMixin:
             },
             "strict_mode_config": {
                 "enabled": hasattr(self, 'chk_strict_mode') and self.chk_strict_mode.isChecked(),
+                "strict_midi_timing": hasattr(self, 'chk_strict_midi_timing') and self.chk_strict_midi_timing.isChecked(),
                 "pause_every_bars": self.cmb_pause_bars.currentData() if hasattr(self, 'cmb_pause_bars') else 0,
                 "auto_resume_countdown": self.sp_auto_resume_countdown.value() if hasattr(self, 'sp_auto_resume_countdown') else 3,
+                "enable_late_drop": hasattr(self, 'chk_late_drop') and self.chk_late_drop.isChecked(),
+                "late_drop_ms": self.sp_late_drop_ms.value() if hasattr(self, 'sp_late_drop_ms') else 25.0,
             },
         }
 
@@ -214,6 +220,14 @@ class SettingsPresetMixin:
 
         if "transpose" in settings:
             self.sp_transpose.setValue(settings["transpose"])
+        if "accidental_policy" in settings and hasattr(self, 'cmb_policy'):
+            policy = settings["accidental_policy"]
+            for i in range(self.cmb_policy.count()):
+                if self.cmb_policy.itemText(i) == policy:
+                    self.cmb_policy.setCurrentIndex(i)
+                    break
+        if "enable_accidental_policy" in settings and hasattr(self, 'chk_enable_accidental_policy'):
+            self.chk_enable_accidental_policy.setChecked(bool(settings["enable_accidental_policy"]))
         if "speed" in settings:
             self.sp_speed.setValue(settings["speed"])
         if "press_ms" in settings:
@@ -251,6 +265,8 @@ class SettingsPresetMixin:
 
         if "enable_diagnostics" in settings:
             self._enable_diagnostics = settings["enable_diagnostics"]
+            if hasattr(self, 'chk_enable_diagnostics'):
+                self.chk_enable_diagnostics.setChecked(self._enable_diagnostics)
         # Unconditionally sync diagnostics state after preset apply
         self._sync_diagnostics_state()
 

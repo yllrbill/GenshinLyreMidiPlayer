@@ -2,13 +2,42 @@
 
 ## Task
 - ID: 20260103-midi-editor-pipeline
-- Status: PHASE DONE → PENDING COMMIT
+- Status: DRAFT - Session 17 Strict MIDI Timing (uncommitted)
 - Last Updated: 2026-01-06
-- Latest Commit: `2789fbe` (uncommitted changes in progress)
+- Latest Commit: `6b18283` (Session 15 committed)
 
 ---
 
-## Session 15 Summary (2026-01-06)
+## Session 17 Summary (2026-01-06)
+**Strict MIDI Timing Flag - UNCOMMITTED (Session 16 rollback included)**
+
+### Key Changes
+| File | Lines | Change |
+|------|-------|--------|
+| `config.py:51` | +1 | `strict_midi_timing: bool = False` |
+| `thread.py:421-424` | +4/-1 | Force mechanical style when strict=True |
+| `thread.py:628-634` | +7/-6 | Skip chord-lock delay when strict=True |
+| `main.py:186,201,368,733,744` | +22 | UI checkbox + handler |
+| `tab_builders.py:176-182` | +7 | Checkbox widget |
+| `config_mixin.py:70-99,292` | +11/-2 | Config propagation |
+| `translations.py:208-212` | +5 | i18n strings |
+
+### What It Does
+- New checkbox "严格 MIDI 时序" (Strict MIDI Timing) - **default ON**
+- When enabled:
+  - Forces `mechanical` input style (no humanization timing offsets)
+  - Disables chord-lock delay (chord notes fire at raw MIDI timestamps)
+  - Forces `use_midi_duration=True`
+- Does NOT affect: speed slider, pause markers, error simulation
+
+### Planner Decision Required
+1. **Commit** Session 17 (strict_midi_timing)?
+2. **Test** with Counting-Stars bar 17-18 before commit?
+3. **Document** all timing configs (see handoff.md)?
+
+---
+
+## Session 15 Summary (2026-01-06) - Committed: 6b18283
 **Key Injection Performance Optimization - 7/7 COMPLETED**
 
 ### Key Changes

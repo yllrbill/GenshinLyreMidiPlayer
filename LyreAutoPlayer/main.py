@@ -183,6 +183,7 @@ class MainWindow(
         self.editor_window: Optional[EditorWindow] = None
         self._current_input_style = "mechanical"
         self._strict_mode = True  # Strict mode default ON
+        self._strict_midi_timing = True  # Strict MIDI timing default ON
 
         # Playback progress tracking (for floating controller)
         self.current_time: float = 0.0
@@ -197,6 +198,8 @@ class MainWindow(
         # Apply initial strict mode state (disables controls when ON)
         if self._strict_mode and hasattr(self, 'chk_strict_mode'):
             self._on_strict_mode_changed(Qt.CheckState.Checked.value)
+        if self._strict_midi_timing and hasattr(self, 'chk_strict_midi_timing'):
+            self._on_strict_midi_timing_changed(Qt.CheckState.Checked.value)
 
     def init_ui(self):
         self.resize(950, 680)
@@ -306,6 +309,10 @@ class MainWindow(
         self.lbl_octave.setText(tr("octave_shift", self.lang))
         self.lbl_transpose.setText(tr("transpose", self.lang))
         self.lbl_policy.setText(tr("accidental_policy", self.lang))
+        if hasattr(self, 'lbl_enable_accidental_policy'):
+            self.lbl_enable_accidental_policy.setText(tr("enable_accidental_policy", self.lang))
+        if hasattr(self, 'chk_enable_accidental_policy'):
+            self.chk_enable_accidental_policy.setToolTip(tr("enable_accidental_policy_hint", self.lang))
         self.lbl_octave_range_mode.setText(tr("octave_range_mode", self.lang))
         self.chk_octave_range_auto.setText(tr("octave_range_auto", self.lang))
         self.lbl_octave_range.setText(tr("octave_range", self.lang))
@@ -362,8 +369,16 @@ class MainWindow(
         self.grp_strict_mode.setTitle(tr("strict_mode_group", self.lang))
         self.lbl_strict_mode.setText(tr("strict_mode", self.lang))
         self.chk_strict_mode.setToolTip(tr("strict_mode_hint", self.lang))
+        self.lbl_strict_midi_timing.setText(tr("strict_midi_timing", self.lang))
+        self.chk_strict_midi_timing.setToolTip(tr("strict_midi_timing_hint", self.lang))
         self.lbl_pause_bars.setText(tr("pause_every_bars", self.lang))
         self.lbl_auto_resume_countdown.setText(tr("auto_resume_countdown", self.lang))
+        self.lbl_late_drop.setText(tr("late_drop", self.lang))
+        self.chk_late_drop.setToolTip(tr("late_drop_hint", self.lang))
+        if hasattr(self, 'lbl_enable_diagnostics'):
+            self.lbl_enable_diagnostics.setText(tr("enable_diagnostics", self.lang))
+        if hasattr(self, 'chk_enable_diagnostics'):
+            self.chk_enable_diagnostics.setToolTip(tr("enable_diagnostics_hint", self.lang))
         # Sync diagnostics window language if open
         if self.diagnostics_window:
             self.diagnostics_window.apply_language(self.lang)
@@ -725,12 +740,36 @@ class MainWindow(
 
         # Disable controls that strict mode overrides (only remaining widgets)
         self.sp_speed.setEnabled(not enabled)
-        self.chk_midi_duration.setEnabled(not enabled)
+        if enabled:
+            self.chk_midi_duration.setChecked(True)
+            self.chk_midi_duration.setEnabled(False)
+        else:
+            self.chk_midi_duration.setEnabled(not self._strict_midi_timing)
 
         # Log state change
         self.append_log(f"Strict mode: {'ON' if enabled else 'OFF'}")
         if enabled:
             self.append_log("  → Speed=1.0, Duration=ON")
+
+    def _on_strict_midi_timing_changed(self, state: int):
+        """Toggle strict MIDI timing on/off (disable humanization only)."""
+        enabled = state == Qt.CheckState.Checked.value
+        self._strict_midi_timing = enabled
+        self.append_log(f"Strict MIDI timing: {'ON' if enabled else 'OFF'}")
+        if enabled:
+            self.chk_midi_duration.setChecked(True)
+            if not self._strict_mode:
+                self.chk_midi_duration.setEnabled(False)
+        else:
+            if not self._strict_mode:
+                self.chk_midi_duration.setEnabled(True)
+
+    def _on_enable_diagnostics_changed(self, state: int):
+        """Toggle diagnostics logging on/off."""
+        enabled = state == Qt.CheckState.Checked.value
+        self._enable_diagnostics = enabled
+        self._sync_diagnostics_state()
+        self.append_log(f"Diagnostics: {'ON' if enabled else 'OFF'}")
 
     def closeEvent(self, event):
         """Cleanup global hotkeys on window close."""

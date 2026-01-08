@@ -15,6 +15,10 @@
 3. 若无法解析：列出 `ops/ai/tasks/*/` 目录，sorted 后取最后一个
 4. 若 tasks 目录为空：停止并提示"请先让 Claude 执行 /ai-intake 立案"
 
+## 默认执行环境
+
+- 未明确说明时，工具执行/排查一律按 Windows 环境处理（如需使用 cmd/PowerShell 或 Windows 路径）。
+
 ## 禁止行为
 
 - ❌ 不要在仓库根查找 STATE.md / request.md / context_pack.md

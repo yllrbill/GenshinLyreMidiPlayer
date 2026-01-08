@@ -8,7 +8,9 @@
       "Skill(ai-intake)",
       "Skill(ai-intake:*)",
       "Skill(repo-push)",
-      "Skill(repo-push:*)"
+      "Skill(repo-push:*)",
+      "Skill(repo-audit)",
+      "Skill(repo-audit:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

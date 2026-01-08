@@ -34,6 +34,11 @@ TRANSLATIONS = {
     },
     "transpose": {LANG_EN: "Transpose (semitones)", LANG_ZH: "移调 (半音)"},
     "accidental_policy": {LANG_EN: "Accidental policy", LANG_ZH: "变音策略"},
+    "enable_accidental_policy": {LANG_EN: "Enable accidental policy", LANG_ZH: "启用变音策略"},
+    "enable_accidental_policy_hint": {
+        LANG_EN: "When off, only play in-range notes without octave/lower/upper mapping.",
+        LANG_ZH: "关闭后仅播放音域内原始音符，不做八度/上下邻近映射。",
+    },
     "speed": {LANG_EN: "Speed", LANG_ZH: "速度"},
     "press_duration": {LANG_EN: "Press duration (ms)", LANG_ZH: "按键时长 (ms)"},
     "use_midi_duration": {LANG_EN: "Use MIDI note duration", LANG_ZH: "使用MIDI音符时值"},
@@ -205,8 +210,23 @@ TRANSLATIONS = {
         LANG_EN: "Forces mechanical input, speed=1.0, MIDI duration, disables errors/8-bar",
         LANG_ZH: "强制机械输入、速度=1.0、使用MIDI时值，禁用失误/8小节风格",
     },
+    "strict_midi_timing": {LANG_EN: "Strict MIDI Timing", LANG_ZH: "严格 MIDI 时序"},
+    "strict_midi_timing_hint": {
+        LANG_EN: "Disable humanization (timing offset/stagger/duration variation) while keeping speed settings",
+        LANG_ZH: "禁用人性化抖动（时序偏移/分解/时值变化），保留速度设置",
+    },
     "pause_every_bars": {LANG_EN: "Auto Pause", LANG_ZH: "自动暂停"},
     "auto_resume_countdown": {LANG_EN: "Resume Countdown", LANG_ZH: "恢复倒计时"},
+    "late_drop": {LANG_EN: "Late Drop", LANG_ZH: "延迟丢弃"},
+    "late_drop_hint": {
+        LANG_EN: "Skip key events that are too far behind schedule (prevents dense chord pile-up)",
+        LANG_ZH: "跳过超时过久的按键事件（防止密集和弦堆积）",
+    },
+    "enable_diagnostics": {LANG_EN: "Enable Diagnostics", LANG_ZH: "启用诊断"},
+    "enable_diagnostics_hint": {
+        LANG_EN: "Write playback trace logs (expected/actual) for debugging",
+        LANG_ZH: "写入播放验证日志（期望/实际）用于排查问题",
+    },
     "press_f5_continue": {LANG_EN: "Press F5 to continue", LANG_ZH: "按 F5 继续"},
     # Editor Key List Widget
     "key_sequence": {LANG_EN: "Key Sequence", LANG_ZH: "按键序列"},

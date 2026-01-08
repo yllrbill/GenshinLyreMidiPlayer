@@ -51,8 +51,17 @@ class PlaybackMixin:
             # Use editor's pause, octave, and input style settings
             cfg.pause_every_bars = editor.get_pause_bars()
             cfg.auto_resume_countdown = editor.get_auto_resume_countdown()
-            cfg.octave_shift = editor.get_octave_shift()
+            # Editor octave shift already transposes note data; avoid double shift.
+            cfg.octave_shift = 0
             cfg.input_style = editor.get_input_style()
+
+            if cfg.strict_mode or cfg.strict_midi_timing:
+                cfg.input_style = "mechanical"
+
+            # Start playback at editor playhead (absolute time in seconds).
+            cfg.start_at_time = max(0.0, float(editor.playback_time))
+            if cfg.start_at_time > 0:
+                self.append_log(f"Start at editor playhead: {cfg.start_at_time:.2f}s")
 
         self.thread = PlayerThread(events_to_use, cfg)
         self.thread.log.connect(self.append_log)
@@ -60,6 +69,7 @@ class PlaybackMixin:
         self.thread.paused.connect(self._on_thread_paused)
         self.thread.resumed.connect(self._on_thread_resumed)
         self.thread.progress.connect(self._on_progress_update)
+        self.thread.playback_key.connect(self._on_playback_key)
 
         # Connect countdown signals
         self.thread.countdown_tick.connect(self._on_countdown_tick)
@@ -172,6 +182,11 @@ class PlaybackMixin:
         # Update floating controller progress if visible
         if self.floating_controller and self.floating_controller.isVisible():
             self.floating_controller._update_progress()
+
+    def _on_playback_key(self: "MainWindow", key_name: str, action: str):
+        """Log playback key events to diagnostics window if open."""
+        if self.diagnostics_window is not None:
+            self.diagnostics_window.sig_log_key.emit(key_name, action, "playback")
 
     def _on_countdown_tick(self: "MainWindow", remaining: int):
         """Called when countdown tick updates (for auto-pause/resume)."""

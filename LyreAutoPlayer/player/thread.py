@@ -15,6 +15,9 @@ import os
 import time
 import heapq
 import random
+import csv
+import re
+import threading
 from typing import List, Dict, Tuple, Optional
 
 from PyQt6.QtCore import QThread, pyqtSignal
@@ -27,7 +30,7 @@ from style_manager import INPUT_STYLES
 
 from .config import PlayerConfig
 from .midi_parser import NoteEvent
-from .scheduler import KeyEvent
+from .scheduler import KeyEvent, OutputScheduler
 from .quantize import build_available_notes, quantize_note, get_octave_shift
 from .errors import plan_errors_for_group
 from .bar_utils import calculate_bar_and_beat_duration
@@ -88,6 +91,7 @@ class PlayerThread(QThread):
     resumed = pyqtSignal()  # Emitted when playback resumes (for UI update)
     countdown_tick = pyqtSignal(int)  # remaining seconds (0=countdown finished)
     auto_pause_at_bar = pyqtSignal(int)  # bar_index where auto-paused
+    playback_key = pyqtSignal(str, str)  # (key, action) from scheduler
 
     def __init__(self, events: List[NoteEvent], cfg: PlayerConfig):
         super().__init__()
@@ -112,9 +116,24 @@ class PlayerThread(QThread):
             enable_focus_monitor=True  # Auto-release keys when window loses focus
         )
 
+        # Output scheduler for non-blocking key injection with late-drop
+        self._output_scheduler: Optional[OutputScheduler] = None
+
+        # Playback trace (expected vs actual), only used in diagnostics mode
+        self._trace_expected_file = None
+        self._trace_actual_file = None
+        self._trace_expected_writer = None
+        self._trace_actual_writer = None
+        self._trace_expected_path = ""
+        self._trace_actual_path = ""
+        self._trace_lock = threading.Lock()
+
     def stop(self):
         """Stop playback immediately."""
         self._stop = True
+        # Stop the output scheduler if running
+        if self._output_scheduler is not None:
+            self._output_scheduler.stop()
         # Release all keys immediately when stopping
         released = self._input_manager.release_all()
         if released > 0:
@@ -132,6 +151,9 @@ class PlayerThread(QThread):
             self._paused = True
             self._pause_pending = False
             self._pause_start = time.perf_counter()
+            # Pause the output scheduler
+            if self._output_scheduler is not None:
+                self._output_scheduler.pause()
             self.log.emit("Paused")
             self.paused.emit()  # Notify UI
 
@@ -164,6 +186,9 @@ class PlayerThread(QThread):
             pause_duration = time.perf_counter() - self._pause_start
             self._total_pause_time += pause_duration
             self._paused = False
+            # Resume the output scheduler
+            if self._output_scheduler is not None:
+                self._output_scheduler.resume()
             self.log.emit(f"Resumed (paused {pause_duration:.1f}s)")
             self.resumed.emit()  # Notify UI
 
@@ -190,6 +215,102 @@ class PlayerThread(QThread):
         if self._current_bar <= 1 or self._bar_duration <= 0:
             return 0.0
         return (self._current_bar - 1) * self._bar_duration
+
+    def _safe_trace_basename(self, midi_path: str) -> str:
+        base = os.path.splitext(os.path.basename(midi_path or ""))[0] or "midi"
+        safe = re.sub(r"[^A-Za-z0-9._-]+", "_", base).strip("_")
+        return safe or "midi"
+
+    def _start_playback_trace(self, event_queue: List[KeyEvent]):
+        if not self.cfg.enable_diagnostics:
+            return
+        if self._trace_expected_file or self._trace_actual_file:
+            self._close_playback_trace()
+
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        logs_dir = os.path.join(base_dir, "logs")
+        os.makedirs(logs_dir, exist_ok=True)
+
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        safe_base = self._safe_trace_basename(self.cfg.midi_path)
+        prefix = f"{safe_base}_{timestamp}"
+
+        self._trace_expected_path = os.path.join(logs_dir, f"expected_{prefix}.csv")
+        self._trace_actual_path = os.path.join(logs_dir, f"actual_{prefix}.csv")
+        self._trace_expected_file = open(self._trace_expected_path, "w", newline="", encoding="utf-8")
+        self._trace_actual_file = open(self._trace_actual_path, "w", newline="", encoding="utf-8")
+        self._trace_expected_writer = csv.writer(self._trace_expected_file)
+        self._trace_actual_writer = csv.writer(self._trace_actual_file)
+
+        self._trace_expected_writer.writerow([
+            "scheduled_s", "event_type", "key", "note", "bar_index"
+        ])
+        self._trace_actual_writer.writerow([
+            "scheduled_s", "actual_s", "late_ms", "event_type", "key", "note",
+            "bar_index", "executed", "dropped", "success", "active_before", "queue_size"
+        ])
+
+        self._dump_expected_events(event_queue)
+        self.log.emit(f"[Trace] expected={self._trace_expected_path}")
+        self.log.emit(f"[Trace] actual={self._trace_actual_path}")
+
+    def _dump_expected_events(self, event_queue: List[KeyEvent]):
+        if not self._trace_expected_writer:
+            return
+        expected_events = [ev for ev in event_queue if ev.event_type in ("press", "release")]
+        expected_events.sort()
+        for ev in expected_events:
+            self._trace_expected_writer.writerow([
+                f"{ev.time:.6f}",
+                ev.event_type,
+                ev.key,
+                ev.note,
+                ev.bar_index,
+            ])
+
+    def _trace_actual_event(self, **kwargs):
+        if not self._trace_actual_writer:
+            return
+        event = kwargs.get("event")
+        active_before = kwargs.get("active_before")
+        if active_before is None:
+            active_before_value = ""
+        else:
+            active_before_value = 1 if active_before else 0
+        if (
+            kwargs.get("executed")
+            and kwargs.get("success")
+            and event
+            and event.event_type in ("press", "release")
+        ):
+            self.playback_key.emit(event.key, event.event_type)
+        with self._trace_lock:
+            self._trace_actual_writer.writerow([
+                f"{kwargs.get('scheduled_time', 0.0):.6f}",
+                f"{kwargs.get('actual_time', 0.0):.6f}",
+                f"{kwargs.get('late_ms', 0.0):.3f}",
+                event.event_type if event else "",
+                event.key if event else "",
+                event.note if event else "",
+                event.bar_index if event else "",
+                1 if kwargs.get("executed") else 0,
+                1 if kwargs.get("dropped") else 0,
+                1 if kwargs.get("success") else 0,
+                active_before_value,
+                kwargs.get("queue_size", 0),
+            ])
+
+    def _close_playback_trace(self):
+        if self._trace_expected_file:
+            self._trace_expected_file.flush()
+            self._trace_expected_file.close()
+        if self._trace_actual_file:
+            self._trace_actual_file.flush()
+            self._trace_actual_file.close()
+        self._trace_expected_file = None
+        self._trace_actual_file = None
+        self._trace_expected_writer = None
+        self._trace_actual_writer = None
 
     def run(self):
         """Main playback loop."""
@@ -265,6 +386,10 @@ class PlayerThread(QThread):
                 ime_disabled_hwnd = self.cfg.target_hwnd
                 self.log.emit("IME disabled for target window")
 
+        start_at_time = max(0.0, self.cfg.start_at_time)
+        speed = max(1e-9, self.cfg.speed)
+        start_at_time_scaled = start_at_time / speed
+
         # Build event queue
         event_queue, notes_scheduled, notes_dropped, notes_dropped_accidental, notes_dropped_octave_conflict = self._build_event_queue(
             note_to_key, avail_notes
@@ -272,19 +397,20 @@ class PlayerThread(QThread):
 
         # Skip events before start_at_time (for resume from previous bar)
         skipped_events = 0
-        if self.cfg.start_at_time > 0:
+        if start_at_time_scaled > 0:
             new_queue = []
             for ev in event_queue:
-                if ev.time >= self.cfg.start_at_time:
+                if ev.time >= start_at_time_scaled:
                     new_queue.append(ev)
                 else:
                     skipped_events += 1
             event_queue = new_queue
             heapq.heapify(event_queue)
-            self.log.emit(f"Starting at {self.cfg.start_at_time:.2f}s, skipped {skipped_events} events")
+            self.log.emit(f"Starting at {start_at_time:.2f}s, skipped {skipped_events} events")
 
         n_events = len(event_queue)
         self.log.emit(f"Playing {notes_scheduled} notes ({n_events} events)... (speed x{self.cfg.speed}, midi_dur={self.cfg.use_midi_duration})")
+        self._start_playback_trace(event_queue)
 
         # Calculate total duration for progress tracking
         if event_queue:
@@ -301,11 +427,47 @@ class PlayerThread(QThread):
             detail = f" ({', '.join(detail_parts)})" if detail_parts else ""
             self.log.emit(f"Dropped {notes_dropped} notes{detail}. Try 36-key or accidental_policy=lower/upper")
 
+        # Create output scheduler for non-blocking key injection
+        def log_scheduler(msg: str):
+            self.log.emit(msg)
+
+        # Capture playback start time for scheduler sync
+        playback_start_time = time.perf_counter()
+        if start_at_time_scaled > 0:
+            playback_start_time -= start_at_time_scaled
+
+        self._output_scheduler = OutputScheduler(
+            press_fn=self._input_manager.press_force,
+            release_fn=self._input_manager.release,
+            late_drop_ms=self.cfg.late_drop_ms,
+            enable_late_drop=self.cfg.enable_late_drop,
+            log_fn=log_scheduler,
+            event_log_fn=self._trace_actual_event if self._trace_actual_writer else None,
+            active_check_fn=self._input_manager.is_pressed if self._trace_actual_writer else None,
+            retrigger_release_fn=self._input_manager.release_force,
+            retrigger_gap_ms=self._input_manager.config.min_press_interval_ms,
+        )
+        self._output_scheduler.start(playback_start_time)
+        if self.cfg.enable_late_drop:
+            self.log.emit(f"Output scheduler: ON (late_drop={self.cfg.late_drop_ms:.0f}ms)")
+
         # Main playback loop
         pressed_keys: Dict[str, int] = {}
         errors_applied = self._run_playback_loop(
-            event_queue, pressed_keys, note_to_key, fs, chan
+            event_queue, pressed_keys, note_to_key, fs, chan, playback_start_time
         )
+
+        # Stop output scheduler and get stats
+        if self._output_scheduler is not None:
+            self._output_scheduler.stop()
+            stats = self._output_scheduler.get_stats()
+            if stats["events_dropped"] > 0 or stats["max_late_ms"] > 10:
+                self.log.emit(f"[Scheduler] executed={stats['events_executed']}, dropped={stats['events_dropped']}, max_late={stats['max_late_ms']:.1f}ms, avg_late={stats['avg_late_ms']:.1f}ms")
+            elif self.cfg.enable_diagnostics:
+                # Always log stats in diagnostics mode
+                self.log.emit(f"[Scheduler] executed={stats['events_executed']}, dropped={stats['events_dropped']}, max_late={stats['max_late_ms']:.1f}ms, avg_late={stats['avg_late_ms']:.1f}ms")
+            self._output_scheduler = None
+        self._close_playback_trace()
 
         # Release any stuck keys
         released = self._input_manager.release_all()
@@ -410,15 +572,21 @@ class PlayerThread(QThread):
         event_queue: List[KeyEvent] = []
         default_press_s = max(0.001, self.cfg.press_ms / 1000.0)
         speed = max(1e-9, self.cfg.speed)
+        start_at_time = max(0.0, self.cfg.start_at_time)
+        start_at_time_scaled = start_at_time / speed
 
         # Timeline normalization
         next_free_time: Dict[str, float] = {}
         min_hold_ms = max(30.0, self._input_manager.config.min_key_hold_ms * 3)
         min_hold_s = min_hold_ms / 1000.0
         post_release_s = 0.010  # 10ms
+        token_counter = 0
 
         # Get input style
-        style = INPUT_STYLES.get(self.cfg.input_style, INPUT_STYLES["mechanical"])
+        if self.cfg.strict_midi_timing:
+            style = INPUT_STYLES.get("mechanical", INPUT_STYLES["mechanical"])
+        else:
+            style = INPUT_STYLES.get(self.cfg.input_style, INPUT_STYLES["mechanical"])
         self.log.emit(f"Input style: {self.cfg.input_style}")
 
         notes_scheduled = 0
@@ -452,14 +620,31 @@ class PlayerThread(QThread):
         use_warp = eight_bar.enabled and eight_bar.mode == "warp"
         use_beat_lock = eight_bar.enabled and eight_bar.mode == "beat_lock"
 
+        # Pre-filter/trim events for start_at_time (preserve overlaps)
+        source_events = []
+        for ev in self.events:
+            ev_time = ev.time
+            ev_duration = max(0.0, ev.duration)
+            if start_at_time > 0:
+                ev_end = ev_time + ev_duration
+                if ev_duration > 0:
+                    if ev_end <= start_at_time:
+                        continue
+                    if ev_time < start_at_time:
+                        ev_duration = max(0.0, ev_end - start_at_time)
+                        ev_time = start_at_time
+                elif ev_time < start_at_time:
+                    continue
+            source_events.append((ev_time, ev_duration, ev))
+
         # Precompute chord info for octave policy
         chord_tolerance = 0.005
-        is_chord_note = [False] * len(self.events)
+        is_chord_note = [False] * len(source_events)
         i = 0
-        while i < len(self.events):
-            chord_start = self.events[i].time
+        while i < len(source_events):
+            chord_start = source_events[i][0]
             j = i + 1
-            while j < len(self.events) and abs(self.events[j].time - chord_start) < chord_tolerance:
+            while j < len(source_events) and abs(source_events[j][0] - chord_start) < chord_tolerance:
                 j += 1
             if j - i > 1:
                 for idx in range(i, j):
@@ -472,15 +657,15 @@ class PlayerThread(QThread):
         beat_lowest: Dict[int, int] = {}
 
         if beat_duration_for_filter > 1e-9:
-            for idx, ev in enumerate(self.events):
+            for idx, (ev_time, ev_duration, ev) in enumerate(source_events):
                 if is_chord_note[idx]:
                     continue
                 pitch = ev.note + self.cfg.transpose
-                beat_idx = int(ev.time / beat_duration_for_filter)
+                beat_idx = int(ev_time / beat_duration_for_filter)
                 key = (beat_idx, pitch)
                 best = beat_pitch_best.get(key)
-                if best is None or ev.duration > best[0]:
-                    beat_pitch_best[key] = (ev.duration, idx)
+                if best is None or ev_duration > best[0]:
+                    beat_pitch_best[key] = (ev_duration, idx)
 
             for (beat_idx, pitch), (duration, idx) in beat_pitch_best.items():
                 if beat_idx not in beat_highest or pitch > beat_highest[beat_idx]:
@@ -489,6 +674,7 @@ class PlayerThread(QThread):
                     beat_lowest[beat_idx] = pitch
 
         # First pass: collect notes with quantization
+        effective_policy = self.cfg.accidental_policy if self.cfg.enable_accidental_policy else "drop"
         processed_notes = []
         avail_set = set(avail_notes)
         if self.cfg.octave_range_auto and avail_notes:
@@ -497,45 +683,51 @@ class PlayerThread(QThread):
         else:
             oct_min = self.cfg.octave_min_note
             oct_max = self.cfg.octave_max_note
+            if effective_policy == "octave" and avail_notes:
+                # Clamp to playable range so octave-shift can map notes like E6/D#6.
+                oct_min = max(oct_min, min(avail_notes))
+                oct_max = min(oct_max, max(avail_notes))
         if oct_min > oct_max:
             oct_min, oct_max = oct_max, oct_min
 
-        for idx, ev in enumerate(self.events):
+        for idx, (ev_time, ev_duration, ev) in enumerate(source_events):
             note = ev.note + self.cfg.transpose
             shifted = False
-            if self.cfg.accidental_policy == "octave":
+            if effective_policy == "octave":
                 beat_idx = None
                 if beat_duration_for_filter > 1e-9 and not is_chord_note[idx]:
                     beat_idx = int(ev.time / beat_duration_for_filter)
                 shift = get_octave_shift(note, oct_min, oct_max)
                 if shift is not None:
                     shifted = True
-                    if beat_idx is None and beat_duration_for_filter > 1e-9 and not is_chord_note[idx]:
-                        beat_idx = int(ev.time / beat_duration_for_filter)
-                    if beat_idx is not None:
-                        if shift < 0:
-                            higher = beat_highest.get(beat_idx)
-                            if higher is not None and higher > note:
-                                notes_dropped += 1
-                                notes_dropped_octave_conflict += 1
-                                continue
-                        else:
-                            lower = beat_lowest.get(beat_idx)
-                            if lower is not None and lower < note:
-                                notes_dropped += 1
-                                notes_dropped_octave_conflict += 1
-                                continue
+                    # Avoid dropping octave-shifted notes in strict timing mode.
+                    if not self.cfg.strict_midi_timing:
+                        if beat_idx is None and beat_duration_for_filter > 1e-9 and not is_chord_note[idx]:
+                            beat_idx = int(ev.time / beat_duration_for_filter)
+                        if beat_idx is not None:
+                            if shift < 0:
+                                higher = beat_highest.get(beat_idx)
+                                if higher is not None and higher > note:
+                                    notes_dropped += 1
+                                    notes_dropped_octave_conflict += 1
+                                    continue
+                            else:
+                                lower = beat_lowest.get(beat_idx)
+                                if lower is not None and lower < note:
+                                    notes_dropped += 1
+                                    notes_dropped_octave_conflict += 1
+                                    continue
 
-            q = quantize_note(note, avail_notes, self.cfg.accidental_policy, oct_min, oct_max)
+            q = quantize_note(note, avail_notes, effective_policy, oct_min, oct_max)
             if q is None:
                 notes_dropped += 1
                 notes_dropped_accidental += 1
                 continue
 
             key = note_to_key[q]
-            if self.cfg.accidental_policy == "octave":
+            if effective_policy == "octave":
                 shifted = (q != note)
-            processed_notes.append((ev.time, ev.duration, key, q, shifted))
+            processed_notes.append((ev_time, ev_duration, key, q, shifted))
 
         # Second pass: apply humanization and schedule events
         i = 0
@@ -587,7 +779,7 @@ class PlayerThread(QThread):
                             base_time, 1.0, eight_bar_segments, segment_duration, beat_duration
                         )
 
-                desired_time = max(0, base_time)
+                desired_time = max(start_at_time_scaled, base_time)
 
                 # Determine note duration
                 if self.cfg.use_midi_duration and orig_duration > 0:
@@ -610,7 +802,10 @@ class PlayerThread(QThread):
                     duration *= duration_8bar_mult
 
                 key_lower = key.lower()
-                nf = next_free_time.get(key_lower, 0.0)
+                if self.cfg.strict_midi_timing:
+                    nf = 0.0
+                else:
+                    nf = next_free_time.get(key_lower, 0.0)
 
                 chord_processed.append({
                     'key': key,
@@ -625,12 +820,13 @@ class PlayerThread(QThread):
 
             # Calculate unified delay (Chord-Lock Normalization)
             chord_delay = 0.0
-            for note_info in chord_processed:
-                delay_needed = note_info['next_free'] - note_info['desired_time']
-                if delay_needed > chord_delay:
-                    chord_delay = delay_needed
-            if chord_delay < 0:
-                chord_delay = 0.0
+            if not self.cfg.strict_midi_timing:
+                for note_info in chord_processed:
+                    delay_needed = note_info['next_free'] - note_info['desired_time']
+                    if delay_needed > chord_delay:
+                        chord_delay = delay_needed
+                if chord_delay < 0:
+                    chord_delay = 0.0
 
             # Schedule events (serialize same-key notes within the same chord)
             key_groups: Dict[str, List[dict]] = {}
@@ -660,14 +856,20 @@ class PlayerThread(QThread):
                     start_time = note_info['desired_time'] + chord_delay
                     if prev_release is not None:
                         start_time = max(start_time, prev_release + post_release_s)
-                    if note_info['next_free'] > start_time:
+                    if not self.cfg.strict_midi_timing and note_info['next_free'] > start_time:
                         start_time = note_info['next_free']
 
                     release_time = start_time + duration
-                    next_free_time[key_lower] = release_time + post_release_s
+                    if not self.cfg.strict_midi_timing:
+                        next_free_time[key_lower] = release_time + post_release_s
 
-                    heapq.heappush(event_queue, KeyEvent(start_time, 2, "press", key, q, bar_index=bar_index))
-                    heapq.heappush(event_queue, KeyEvent(release_time, 1, "release", key, q, bar_index=bar_index))
+                    token_counter += 1
+                    heapq.heappush(event_queue, KeyEvent(
+                        start_time, 2, "press", key, q, bar_index=bar_index, token=token_counter
+                    ))
+                    heapq.heappush(event_queue, KeyEvent(
+                        release_time, 1, "release", key, q, bar_index=bar_index, token=token_counter
+                    ))
                     notes_scheduled += 1
                     prev_release = release_time
 
@@ -845,7 +1047,7 @@ class PlayerThread(QThread):
 
         return (mapped_time, effective_speed)
 
-    def _run_playback_loop(self, event_queue: List[KeyEvent], pressed_keys: Dict[str, int], note_to_key: Dict[int, str], fs, chan: int) -> int:
+    def _run_playback_loop(self, event_queue: List[KeyEvent], pressed_keys: Dict[str, int], note_to_key: Dict[int, str], fs, chan: int, playback_start_time: float) -> int:
         """Run the main playback loop."""
         error_cfg = self.cfg.error_config
         bar_duration = 2.0
@@ -855,11 +1057,13 @@ class PlayerThread(QThread):
         error_index = 0
         errors_applied = 0
         speed = max(1e-9, self.cfg.speed)
+        use_token_release = self.cfg.strict_midi_timing
+        active_tokens: Dict[str, int] = {}
 
         if error_cfg.enabled:
             self.log.emit(f"Error simulation: ON ({error_cfg.errors_per_8bars}/8bars)")
 
-        start = time.perf_counter()
+        start = playback_start_time  # Use synchronized start time for scheduler alignment
 
         while event_queue and not self._stop:
             # Handle pause state
@@ -934,6 +1138,8 @@ class PlayerThread(QThread):
                             f"[Pause] {'auto-' if should_auto_pause else 'pending '}at bar {next_event.bar_index} (t={next_event.time:.3f}s)"
                         )
                         self._release_all_pressed(pressed_keys, fs, chan)
+                        if use_token_release:
+                            active_tokens.clear()
                         self._do_pause()
                         self.auto_pause_at_bar.emit(next_event.bar_index)
                         paused_now = True
@@ -1015,20 +1221,38 @@ class PlayerThread(QThread):
                     if skip_note:
                         continue
 
-                    # Press key - prioritize key injection, defer synth
-                    if key not in pressed_keys or pressed_keys[key] == 0:
-                        self._input_manager.press(key, note)
-                        if fs is not None:
-                            deferred_noteon.append((note, self.cfg.velocity))
-                    pressed_keys[key] = pressed_keys.get(key, 0) + 1
+                    # Press key - enqueue to scheduler for non-blocking execution with late-drop
+                    self._output_scheduler.enqueue(KeyEvent(
+                        time=next_event.time,  # Use event time for late-drop calculation
+                        priority=2,
+                        event_type="press",
+                        key=key,
+                        note=note,
+                        bar_index=next_event.bar_index
+                    ))
+                    if fs is not None:
+                        deferred_noteon.append((note, self.cfg.velocity))
+                    if use_token_release:
+                        active_tokens[key] = next_event.token
+                    else:
+                        pressed_keys[key] = pressed_keys.get(key, 0) + 1
 
                     # Handle extra note
                     if extra_key is not None:
-                        if extra_key not in pressed_keys or pressed_keys[extra_key] == 0:
-                            self._input_manager.press(extra_key, extra_note)
-                            if fs is not None and extra_note is not None:
-                                deferred_noteon.append((extra_note, self.cfg.velocity))
-                        pressed_keys[extra_key] = pressed_keys.get(extra_key, 0) + 1
+                        self._output_scheduler.enqueue(KeyEvent(
+                            time=next_event.time,  # Use event time for late-drop calculation
+                            priority=2,
+                            event_type="press",
+                            key=extra_key,
+                            note=extra_note or 0,
+                            bar_index=next_event.bar_index
+                        ))
+                        if fs is not None and extra_note is not None:
+                            deferred_noteon.append((extra_note, self.cfg.velocity))
+                        if use_token_release:
+                            active_tokens[extra_key] = 0
+                        else:
+                            pressed_keys[extra_key] = pressed_keys.get(extra_key, 0) + 1
                         heapq.heappush(event_queue, KeyEvent(
                             next_event.time + 0.05, 1, "release", extra_key, extra_note or 0,
                             bar_index=next_event.bar_index
@@ -1043,13 +1267,35 @@ class PlayerThread(QThread):
 
                 elif next_event.event_type == "release":
                     key = next_event.key
-                    if key in pressed_keys:
-                        pressed_keys[key] -= 1
-                        if pressed_keys[key] <= 0:
-                            self._input_manager.release(key, next_event.note)
+                    if use_token_release:
+                        if active_tokens.get(key) == next_event.token:
+                            self._output_scheduler.enqueue(KeyEvent(
+                                time=next_event.time,  # Use event time for timing alignment
+                                priority=1,
+                                event_type="release",
+                                key=key,
+                                note=next_event.note,
+                                bar_index=next_event.bar_index,
+                                token=next_event.token,
+                            ))
                             if fs is not None:
                                 deferred_noteoff.append(next_event.note)
-                            pressed_keys[key] = 0
+                            active_tokens.pop(key, None)
+                    else:
+                        if key in pressed_keys:
+                            pressed_keys[key] -= 1
+                            if pressed_keys[key] <= 0:
+                                self._output_scheduler.enqueue(KeyEvent(
+                                    time=next_event.time,  # Use event time for timing alignment
+                                    priority=1,
+                                    event_type="release",
+                                    key=key,
+                                    note=next_event.note,
+                                    bar_index=next_event.bar_index
+                                ))
+                                if fs is not None:
+                                    deferred_noteoff.append(next_event.note)
+                                pressed_keys[key] = 0
 
             # Execute deferred synth calls after all key injections are done
             # This prioritizes key injection (timing-critical) over audio (can tolerate latency)

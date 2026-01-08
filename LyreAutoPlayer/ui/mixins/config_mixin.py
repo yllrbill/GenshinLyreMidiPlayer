@@ -67,17 +67,23 @@ class ConfigMixin:
         if hasattr(self, 'sp_auto_resume_countdown'):
             auto_resume_countdown = self.sp_auto_resume_countdown.value()
 
+        # Strict MIDI timing (disable humanization without forcing speed=1.0)
+        strict_midi_timing = getattr(self, '_strict_midi_timing', False)
+        if hasattr(self, 'chk_strict_midi_timing'):
+            strict_midi_timing = self.chk_strict_midi_timing.isChecked()
+
         return PlayerConfig(
             root_mid_do=int(self.cmb_root.currentData()),
             octave_shift=int(self.cmb_octave.currentData()),
             transpose=int(self.sp_transpose.value()),
             speed=1.0 if strict_mode else float(self.sp_speed.value()),
             accidental_policy=str(self.cmb_policy.currentText()),
+            enable_accidental_policy=hasattr(self, 'chk_enable_accidental_policy') and self.chk_enable_accidental_policy.isChecked(),
             octave_min_note=octave_min,
             octave_max_note=octave_max,
             octave_range_auto=self.chk_octave_range_auto.isChecked(),
             press_ms=int(self.sp_press.value()),
-            use_midi_duration=True if strict_mode else self.chk_midi_duration.isChecked(),
+            use_midi_duration=True if (strict_mode or strict_midi_timing) else self.chk_midi_duration.isChecked(),
             keyboard_preset=str(self.cmb_preset.currentData()),
             countdown_sec=int(self.sp_countdown.value()),
             target_hwnd=self.cmb_window.currentData(),
@@ -86,13 +92,17 @@ class ConfigMixin:
             soundfont_path=self.soundfont_path,
             instrument=str(self.cmb_instrument.currentText()),
             velocity=int(self.sp_velocity.value()),
-            input_style="mechanical" if strict_mode else self._current_input_style,
+            input_style="mechanical" if (strict_mode or strict_midi_timing) else self._current_input_style,
             error_config=error_cfg,
             enable_diagnostics=self._enable_diagnostics,
             eight_bar_style=eight_bar,
             strict_mode=strict_mode,
+            strict_midi_timing=strict_midi_timing,
             pause_every_bars=pause_every_bars,
             auto_resume_countdown=auto_resume_countdown,
+            # Late-drop policy for output scheduler
+            late_drop_ms=self.sp_late_drop_ms.value() if hasattr(self, 'sp_late_drop_ms') else 25.0,
+            enable_late_drop=hasattr(self, 'chk_late_drop') and self.chk_late_drop.isChecked(),
         )
 
     def _collect_eight_bar_style(self: "MainWindow") -> EightBarStyle:
@@ -210,6 +220,14 @@ class ConfigMixin:
             # Apply transpose
             if "transpose" in settings:
                 self.sp_transpose.setValue(settings["transpose"])
+            if "accidental_policy" in settings and hasattr(self, 'cmb_policy'):
+                policy = settings["accidental_policy"]
+                for i in range(self.cmb_policy.count()):
+                    if self.cmb_policy.itemText(i) == policy:
+                        self.cmb_policy.setCurrentIndex(i)
+                        break
+            if "enable_accidental_policy" in settings and hasattr(self, 'chk_enable_accidental_policy'):
+                self.chk_enable_accidental_policy.setChecked(bool(settings["enable_accidental_policy"]))
 
             # Apply numeric settings
             if "speed" in settings:
@@ -262,6 +280,8 @@ class ConfigMixin:
                 self._enable_diagnostics = settings["enable_diagnostics"]
                 # Control diagnostics button visibility based on setting
                 self.btn_diagnostics.setVisible(self._enable_diagnostics)
+                if hasattr(self, 'chk_enable_diagnostics'):
+                    self.chk_enable_diagnostics.setChecked(self._enable_diagnostics)
 
             # Apply input_manager params
             if "input_manager" in settings:
@@ -283,6 +303,9 @@ class ConfigMixin:
                 if "enabled" in smc and hasattr(self, 'chk_strict_mode'):
                     self.chk_strict_mode.setChecked(smc["enabled"])
                     self._strict_mode = smc["enabled"]
+                if "strict_midi_timing" in smc and hasattr(self, 'chk_strict_midi_timing'):
+                    self.chk_strict_midi_timing.setChecked(smc["strict_midi_timing"])
+                    self._strict_midi_timing = smc["strict_midi_timing"]
                 if "pause_every_bars" in smc and hasattr(self, 'cmb_pause_bars'):
                     pause_bars = smc["pause_every_bars"]
                     for i in range(self.cmb_pause_bars.count()):
@@ -291,6 +314,10 @@ class ConfigMixin:
                             break
                 if "auto_resume_countdown" in smc and hasattr(self, 'sp_auto_resume_countdown'):
                     self.sp_auto_resume_countdown.setValue(smc["auto_resume_countdown"])
+                if "enable_late_drop" in smc and hasattr(self, 'chk_late_drop'):
+                    self.chk_late_drop.setChecked(smc["enable_late_drop"])
+                if "late_drop_ms" in smc and hasattr(self, 'sp_late_drop_ms'):
+                    self.sp_late_drop_ms.setValue(smc["late_drop_ms"])
 
             # Unconditionally sync diagnostics state after loading
             self._sync_diagnostics_state()

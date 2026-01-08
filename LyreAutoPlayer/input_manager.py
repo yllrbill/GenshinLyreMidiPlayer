@@ -689,6 +689,58 @@ class InputManager:
 
             return success
 
+    def press_force(self, key: str, note: Optional[int] = None) -> bool:
+        """
+        强制按下按键（跳过防抖与已按下检查）
+
+        用于播放引擎的同键重触发场景。
+        """
+        key = key.lower()
+        now = self._clock()
+
+        with self._lock:
+            vk_code = get_vk_code(key)
+            if vk_code is None:
+                self._stats.failed_press += 1
+                return False
+
+            scan_code = get_scan_code(vk_code)
+
+            scheduled_time = now
+            success = self._backend.key_down(key, vk_code, scan_code)
+            actual_time = self._clock()
+            latency_ms = (actual_time - scheduled_time) * 1000
+
+            if success:
+                self._active_keys[key] = now
+                self._key_codes[key] = (vk_code, scan_code)
+                self._stats.total_press += 1
+
+                current_count = len(self._active_keys)
+                if current_count > self._stats.max_simultaneous_keys:
+                    self._stats.max_simultaneous_keys = current_count
+                if current_count > 1:
+                    self._stats.chord_count += 1
+            else:
+                self._stats.failed_press += 1
+
+            self._last_key_time[key] = now
+            self._stats.record_latency(latency_ms)
+
+            if self.config.enable_diagnostics:
+                self._log_event(InputEvent(
+                    timestamp=now,
+                    event_type=InputEventType.PRESS,
+                    key=key,
+                    success=success,
+                    latency_ms=latency_ms,
+                    note=note,
+                    vk_code=vk_code,
+                    scan_code=scan_code
+                ))
+
+            return success
+
     def release(self, key: str, note: Optional[int] = None) -> bool:
         """
         释放按键
@@ -701,7 +753,8 @@ class InputManager:
             return self._release_key_internal(key, note=note)
 
     def _release_key_internal(self, key: str, note: Optional[int] = None,
-                               reason: InputEventType = InputEventType.RELEASE) -> bool:
+                               reason: InputEventType = InputEventType.RELEASE,
+                               force: bool = False) -> bool:
         """内部释放按键（需要已持有锁）"""
         key = key.lower()
         now = self._clock()
@@ -719,7 +772,7 @@ class InputManager:
         # 检查最小保持时间
         press_time = self._active_keys.get(key, now)
         hold_time_ms = (now - press_time) * 1000
-        if hold_time_ms < self.config.min_key_hold_ms:
+        if not force and hold_time_ms < self.config.min_key_hold_ms:
             # 等待达到最小保持时间
             wait_ms = self.config.min_key_hold_ms - hold_time_ms
             time.sleep(wait_ms / 1000.0)
@@ -751,6 +804,13 @@ class InputManager:
             ))
 
         return success
+
+    def release_force(self, key: str, note: Optional[int] = None) -> bool:
+        """
+        强制释放按键（跳过最小保持时间）
+        """
+        with self._lock:
+            return self._release_key_internal(key, note=note, reason=InputEventType.RELEASE, force=True)
 
     def release_all(self) -> int:
         """

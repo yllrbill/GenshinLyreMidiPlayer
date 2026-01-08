@@ -15,10 +15,10 @@ from typing import Optional, Dict
 from datetime import datetime
 
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QToolBar, QSlider, QLabel, QFileDialog, QMessageBox,
-    QSplitter, QScrollBar, QComboBox, QSpinBox, QCheckBox,
-    QPushButton
+    QSplitter, QScrollBar, QComboBox, QSpinBox, QAbstractSpinBox, QCheckBox,
+    QPushButton, QLineEdit, QTextEdit, QPlainTextEdit
 )
 from PyQt6.QtGui import QAction, QIcon, QShortcut, QKeySequence
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
@@ -435,7 +435,7 @@ class EditorWindow(QMainWindow):
 <b>Edit (requires selection):</b>
 <ul>
 <li>Ctrl+Z - Undo</li>
-<li>Ctrl+Y / Ctrl+Shift+Z - Redo</li>
+<li>Ctrl+X / Ctrl+Y / Ctrl+Shift+Z - Redo</li>
 <li>Q - Quantize to grid</li>
 <li>H - Humanize (natural: 20ms)</li>
 <li>Shift+H - Humanize (light: 10ms)</li>
@@ -481,6 +481,18 @@ class EditorWindow(QMainWindow):
         # F5 快捷键播放/暂停
         self.shortcut_f5 = QShortcut(QKeySequence(Qt.Key.Key_F5), self)
         self.shortcut_f5.activated.connect(self.on_play_pause)
+        # Ctrl+C / Ctrl+V: 复制/粘贴选中音符
+        self.shortcut_copy = QShortcut(QKeySequence(QKeySequence.StandardKey.Copy), self)
+        self.shortcut_copy.activated.connect(self._on_copy_shortcut)
+        self.shortcut_paste = QShortcut(QKeySequence(QKeySequence.StandardKey.Paste), self)
+        self.shortcut_paste.activated.connect(self._on_paste_shortcut)
+        # Ctrl+Z / Ctrl+X: 撤销/恢复
+        self.shortcut_undo = QShortcut(QKeySequence(QKeySequence.StandardKey.Undo), self)
+        self.shortcut_undo.activated.connect(self._on_undo_shortcut)
+        self.shortcut_redo = QShortcut(QKeySequence("Ctrl+X"), self)
+        self.shortcut_redo.activated.connect(self._on_redo_or_cut_shortcut)
+        self.shortcut_redo_std = QShortcut(QKeySequence(QKeySequence.StandardKey.Redo), self)
+        self.shortcut_redo_std.activated.connect(self._on_redo_shortcut)
 
         self.zoom_slider.valueChanged.connect(self.on_zoom_changed)
         self.zoom_y_slider.valueChanged.connect(self._on_zoom_y_changed)
@@ -528,6 +540,73 @@ class EditorWindow(QMainWindow):
 
         # 按键列表开关
         self.chk_key_list.toggled.connect(self._on_key_list_toggled)
+
+    def _forward_edit_action_to_focus(self, action: str) -> bool:
+        """在文本输入控件中保持默认编辑行为"""
+        focus = QApplication.focusWidget()
+        if not focus or focus is self.piano_roll:
+            return False
+
+        if isinstance(focus, QComboBox) and focus.isEditable():
+            line = focus.lineEdit()
+            if line:
+                return self._apply_edit_action(line, action)
+            return False
+
+        if isinstance(focus, QAbstractSpinBox):
+            line = focus.lineEdit()
+            if line:
+                return self._apply_edit_action(line, action)
+            return False
+
+        if isinstance(focus, (QLineEdit, QTextEdit, QPlainTextEdit)):
+            return self._apply_edit_action(focus, action)
+
+        return False
+
+    @staticmethod
+    def _apply_edit_action(widget, action: str) -> bool:
+        if action == "copy":
+            widget.copy()
+            return True
+        if action == "paste":
+            widget.paste()
+            return True
+        if action == "cut":
+            widget.cut()
+            return True
+        if action == "undo":
+            widget.undo()
+            return True
+        if action == "redo":
+            widget.redo()
+            return True
+        return False
+
+    def _on_copy_shortcut(self):
+        if self._forward_edit_action_to_focus("copy"):
+            return
+        self.piano_roll.copy_selected()
+
+    def _on_paste_shortcut(self):
+        if self._forward_edit_action_to_focus("paste"):
+            return
+        self.piano_roll.paste_at_playhead()
+
+    def _on_undo_shortcut(self):
+        if self._forward_edit_action_to_focus("undo"):
+            return
+        self.piano_roll.undo_stack.undo()
+
+    def _on_redo_or_cut_shortcut(self):
+        if self._forward_edit_action_to_focus("cut"):
+            return
+        self.piano_roll.undo_stack.redo()
+
+    def _on_redo_shortcut(self):
+        if self._forward_edit_action_to_focus("redo"):
+            return
+        self.piano_roll.undo_stack.redo()
 
     def _on_key_list_toggled(self, checked: bool):
         """切换按键进度窗显示"""

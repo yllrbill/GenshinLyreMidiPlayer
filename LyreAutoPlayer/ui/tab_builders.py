@@ -60,6 +60,12 @@ def build_main_tab(window: "MainWindow") -> QWidget:
     window.lbl_policy = QLabel()
     form.addRow(window.lbl_policy, window.cmb_policy)
 
+    # Accidental policy toggle
+    window.chk_enable_accidental_policy = QCheckBox()
+    window.chk_enable_accidental_policy.setChecked(True)
+    window.lbl_enable_accidental_policy = QLabel()
+    form.addRow(window.lbl_enable_accidental_policy, window.chk_enable_accidental_policy)
+
     # Octave range mode (auto/manual)
     window.chk_octave_range_auto = QCheckBox()
     window.chk_octave_range_auto.setChecked(False)
@@ -173,6 +179,13 @@ def build_main_tab(window: "MainWindow") -> QWidget:
     window.lbl_strict_mode = QLabel()
     strict_form.addRow(window.lbl_strict_mode, window.chk_strict_mode)
 
+    # Strict MIDI timing checkbox (disable humanization, keep speed)
+    window.chk_strict_midi_timing = QCheckBox()
+    window.chk_strict_midi_timing.setChecked(True)
+    window.chk_strict_midi_timing.stateChanged.connect(window._on_strict_midi_timing_changed)
+    window.lbl_strict_midi_timing = QLabel()
+    strict_form.addRow(window.lbl_strict_midi_timing, window.chk_strict_midi_timing)
+
     # Auto-pause interval selector
     pause_row = QHBoxLayout()
     window.cmb_pause_bars = QComboBox()
@@ -196,6 +209,28 @@ def build_main_tab(window: "MainWindow") -> QWidget:
     countdown_row.addWidget(window.sp_auto_resume_countdown)
     countdown_row.addStretch()
     strict_form.addRow(window.lbl_auto_resume_countdown, countdown_row)
+
+    # Late-drop policy (prevent dense chord pile-up)
+    late_drop_row = QHBoxLayout()
+    window.chk_late_drop = QCheckBox()
+    window.chk_late_drop.setChecked(True)  # Default enabled
+    window.sp_late_drop_ms = QDoubleSpinBox()
+    window.sp_late_drop_ms.setRange(5.0, 100.0)
+    window.sp_late_drop_ms.setValue(25.0)
+    window.sp_late_drop_ms.setSingleStep(5.0)
+    window.sp_late_drop_ms.setSuffix(" ms")
+    window.lbl_late_drop = QLabel()
+    late_drop_row.addWidget(window.chk_late_drop)
+    late_drop_row.addWidget(window.sp_late_drop_ms)
+    late_drop_row.addStretch()
+    strict_form.addRow(window.lbl_late_drop, late_drop_row)
+
+    # Diagnostics toggle
+    window.chk_enable_diagnostics = QCheckBox()
+    window.chk_enable_diagnostics.setChecked(False)
+    window.chk_enable_diagnostics.stateChanged.connect(window._on_enable_diagnostics_changed)
+    window.lbl_enable_diagnostics = QLabel()
+    strict_form.addRow(window.lbl_enable_diagnostics, window.chk_enable_diagnostics)
 
     layout.addWidget(window.grp_strict_mode)
 

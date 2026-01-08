@@ -1,8 +1,57 @@
 # Handoff - MIDI Editor Pipeline
 
+## Session 17 (2026-01-06) - Strict MIDI Timing
+
+### Status: DRAFT - Pending Planner Decision
+
+### Evidence Index
+
+| File | Path | Purpose |
+|------|------|---------|
+| context_pack.md | evidence/context_pack.md | 低 token 摘要 + 决策点 |
+| diff.patch | evidence/diff.patch | 当前未提交改动 (1528 行) |
+| execute.log | evidence/execute.log | 执行日志 Session 13-17 |
+| plan.md | .claude/private/plan.md | 用户提供的阶段目标 |
+
+### Uncommitted Changes (Session 17)
+
+| File | Lines | Change |
+|------|-------|--------|
+| `player/config.py` | +1 | `strict_midi_timing: bool = False` |
+| `player/thread.py` | +7/-6 | Strict mode: force mechanical + disable chord-lock |
+| `main.py` | +22 | UI checkbox + handler |
+| `ui/tab_builders.py` | +7 | Checkbox widget |
+| `ui/mixins/config_mixin.py` | +11/-2 | Config propagation |
+| `i18n/translations.py` | +5 | i18n strings |
+
+### Session 16 Rollback
+
+**Batch press_many was rolled back** - user reported it worsened dense sections.
+Current approach: Deferred synth (Session 15) + strict MIDI timing (Session 17).
+
+### Decision Required for Planner
+
+1. **Commit** Session 17 (strict_midi_timing feature)?
+2. **Test first** with Counting-Stars bar 17-18?
+3. **Document** all timing-affecting configs (see table below)?
+
+### Key Timing Configs Inventory (from plan.md)
+
+| Config | File | Line | Effect | Strict Mode |
+|--------|------|------|--------|-------------|
+| `input_style` | config.py | 41 | timing_offset/stagger/duration | Forced to `mechanical` |
+| `strict_midi_timing` | config.py | 51 | Master toggle | **NEW** |
+| `min_press_interval_ms` | input_manager.py | - | Debounce between presses | Unchanged |
+| `min_key_hold_ms` | config.py | - | Duration flooring | Unchanged |
+| Chord-lock delay | thread.py | 628-634 | Delay between chord notes | **Disabled** |
+| `pause_every_bars` | config.py | - | Auto-pause interval | Unchanged |
+| `use_midi_duration` | config.py | - | Use MIDI note duration | Forced to True |
+
+---
+
 ## Session 15 (2026-01-06) - Key Injection Performance
 
-### Status: PHASE DONE → PENDING COMMIT
+### Status: COMMITTED (6b18283)
 
 ### Completed Work
 **Key Injection Performance Optimization - 7/7 COMPLETED**
