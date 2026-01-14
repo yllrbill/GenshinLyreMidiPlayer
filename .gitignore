@@ -381,3 +381,6 @@ LyreAutoPlayer/FluidR3_GM.sf2
 # 播放日志（不提交）
 LyreAutoPlayer/logs/
 *.csv
+
+# Ableton 安装包（大型二进制，不提交）
+Ableton/

@@ -7,12 +7,20 @@
 - Validate OutputScheduler + late-drop integration and confirm no dense-chord pile-up regressions.
 - 继续定位 `云宫迅音-西游记-原神风物之诗琴谱-原琴谱.mid` 中仍出现的近一小节后延问题。
 - 修正 OutputScheduler 的时间戳/late-drop 行为，避免密集和弦堆积导致“近一小节后延”。
+- 新需求：为 `dwrg.exe` 制作始终置顶、全透明的幕布/叠加层，支持“捕获+曲线/LUT 叠加”的色阶/亮度/对比度调节、托盘控制、图片/准星/计时器叠加与热键、预设与 CLI 控制。
 
 ## Durable Constraints
 - Treat mido MetaMessage('time_signature').denominator as the actual value (e.g., 4 = quarter); do not convert to exponent/log2.
 - Keep evidence locations for bar_boundaries_sec chain and clip=True call sites.
 - Built-in sound must not reduce key injection reliability; prioritize key output over local audio when overloaded.
 - Editor preview play (no key injection) must remain smooth; changes should not regress follow mode.
+- 幕布必须置顶、透明、默认不拦截输入，可开关显示并可跟随 `dwrg.exe` 窗口大小/位置；需支持非 100% DPI 对齐。
+- 托盘双击切换显示/最小化，右键菜单含“设置/关闭”，图标为粉色地毯。
+- F5 计时开始/暂停、F6 重置；准星为黄色（简单/复杂样式）可调大小；小图片支持批量添加与透明度调整。
+- 色彩调节仅作用于幕布覆盖的窗口区域（捕获+渲染叠加），避免使用全局 GammaRamp。
+- 预设包含全部设置（准星/计时器/图片/色彩等），托盘右键新增预设即增加一个菜单栏位；默认值与全局匹配规则同时支持。
+- 提供命名管道 `\\.\pipe\DwrgCurtain` 的 CLI 控制接口与 `DwrgCurtain.Cli.exe`。
+- 项目拆分为 Core 类库 + 功能层，Core 代码量尽量不超过 800 行。
 
 ## Key Context / Decisions
 - Verified: mido uses the actual denominator value (not an exponent); tests.log confirms denominator=4 -> 4.
@@ -53,13 +61,21 @@
   - Per-event overhead: `_input_manager.press/release` (SendInput) + optional `fs.noteon/noteoff` interleaving; audio work may push timing over budget.
   - FluidSynth settings in `player/thread.py:_init_fluidsynth` set `synth.polyphony=64`; heavy overlap may cause local sound voice stealing (separate from game input misses).
   - KeyList 36-key 顺序已调整为高->低，确认不要回退。
+- New task request recorded: overlay幕布需要覆盖 `dwrg.exe`，托盘控制、准星/图片/计时器与色彩调节能力齐全。
+- Decision: 色彩调节采用“捕获画面 → 曲线/LUT → 叠加显示”，只作用于被幕布覆盖窗口；全局 GammaRamp 不满足需求。
+- Decision: 预设包含全部设置，支持默认值 + 全局匹配；托盘右键新增预设时动态增加菜单项。
+- Decision: CLI 控制使用命名管道 `\\.\pipe\DwrgCurtain` + JSON 命令，并提供 `DwrgCurtain.Cli.exe`。
+- Decision: 拆分 Core 类库，核心尽量保持在 800 行内。
+- DwrgCurtain update (reported): Preset 全量设置覆盖；`Preset` 新增 OverlayVisible/ClickThrough/TimerEnabled/TimerX/TimerY/TimerFontSize/ImageOverlays；`ApplyPreset()` 全量应用且深拷贝 ImageOverlays；`FromSettings()` 捕获全部设置。
+- DwrgCurtain update (reported): `SettingsWindow` 新增 ColorOverlayOpacity 滑块（0-0.9）；`ApplyColorSettings()` 综合 BlackPoint/WhitePoint/Gamma/Brightness/Contrast/ColorOverlayOpacity。
+- DwrgCurtain update (reported): 截图默认路径改为 `%LocalAppData%\DwrgCurtain\captures\`（`OverlayWindow.xaml.cs:451-458`）。
+- DwrgCurtain cleanup (reported): 删除 `DwrgCurtain\Core\NativeMethods.cs`/`GlobalHotkey.cs`/`GameWindowTracker.cs`，OverlayWindow 改用 `DwrgCurtain.Core.Win32.NativeMethods`。
+- Build validation (reported): `dotnet build` in `D:\dw11\canvas\DwrgCurtain` -> 0 错误, 0 警告。
 
 ## Open Questions
-- 是否需要再做整曲人工回放验证（UI 实际体验）？
-- 该次测试 late-drop 是否开启（UI 勾选）？阈值是否仍为 25ms？
-- 是否存在 OutputScheduler 队列积压或 playback_start_time 同步偏差导致延迟执行？
-- 该曲目是否出现队列堆积但未触发 late-drop（日志可验证）？
-- 修正 enqueue 时间戳后是否仍出现近一小节后延？
+- 捕获+渲染叠加对性能/快捷键是否可接受？若不可接受，是否降级为仅颜色叠加（可调透明度）？
+- 预设匹配规则的优先级与命名规范是否需要额外 UI 设计？
+- CLI 命令集合是否需要涵盖定时器/预设/颜色参数的全量读写？
 
 ## User Prompt
 Main Goal:
@@ -68,6 +84,7 @@ Main Goal:
 - Reorder keylist rows for 36-key mode (high->low).
 - Unify Editor Play vs Main Start sound.
 - Validate OutputScheduler + late-drop integration and regressions, including the new repro MIDI with near-bar delay.
+- 新请求：制作覆盖 `dwrg.exe` 的透明幕布（捕获+曲线/LUT 色阶/亮度/对比度调节），含托盘控制、图片/准星/计时器叠加、F5/F6 计时热键、预设与 CLI 控制、非 100% DPI 对齐、Core 拆分。
 
 Phase Steps:
 1. Re-verify denominator handling uses actual values (no log2 conversion).

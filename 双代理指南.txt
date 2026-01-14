@@ -389,3 +389,6 @@ allowed-tools: Read
 此命令已废弃，请使用：/ai-end $ARGUMENTS
 
 
+repo：Windows+WSL 都有，给ai发一句话，让它自动commit+push+merge
+在当前仓库根目录（自动兼容 Windows PowerShell / WSL bash）执行“安全自动提交流程”：先输出 `pwd`、`git rev-parse --show-toplevel`、`git status --porcelain=v1 -uall` 作为证据；若工作区无变更则退出；若有变更则先 `git pull --rebase --autostash` 同步远端并检查是否处于 merge/rebase（是则退出并报告）；快速检查是否有敏感文件被纳入提交（如 .env、*key*、*token*、*service-account*.json、id_rsa*，发现则停止并列清单）；然后 `git add -A` 并以 `autosave: YYYY-MM-DD HH:MM:SS` 提交（若 commit 失败因无变更则退出），`git push -u origin HEAD`；接着自动识别默认主分支（origin/HEAD 指向的 main/master），如果当前就在主分支则仅完成 commit+push；否则切到主分支 `git checkout <main>` → `git pull --rebase` → 将当前分支合并进主分支（优先 fast-forward，否则用 `--no-ff`），最后 `git push`；若任何一步出现冲突/拒绝/权限错误，立即停止并输出冲突文件列表与下一步建议（不要擅自改冲突内容）。
+

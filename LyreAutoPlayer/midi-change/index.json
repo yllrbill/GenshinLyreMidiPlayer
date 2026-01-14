@@ -332,6 +332,15 @@
       "last_modified": "2026-01-07T16:59:56.745535",
       "source_file_size": 7278,
       "source_note_count": 816
+    },
+    {
+      "source_path": "d:\\dw11\\piano\\lyreautoplayer\\midi\\level!-refined.mid",
+      "saved_path": "d:\\dw11\\piano\\lyreautoplayer\\midi-change\\level!-refined_custom.mid",
+      "display_name": "level!-refined_custom",
+      "edit_style": "custom",
+      "last_modified": "2026-01-09T01:00:22.825418",
+      "source_file_size": 17570,
+      "source_note_count": 2163
     }
   ]
 }
